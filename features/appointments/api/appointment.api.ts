@@ -4,6 +4,7 @@ import type { Appointment } from "../types/appointment";
 const supabase = createClient();
 
 export type CreateAppointmentInput = {
+    
   customer_id: number;
   doctor_name?: string;
   branch_name?: string;
@@ -14,6 +15,16 @@ export type CreateAppointmentInput = {
   source?: string;
   notes?: string;
   created_from_channel?: string;
+};
+export type UpdateAppointmentStatusInput = {
+  id: number;
+  status:
+    | "booked"
+    | "confirmed"
+    | "arrived"
+    | "completed"
+    | "cancelled"
+    | "no_show";
 };
 
 export async function getAppointments(): Promise<Appointment[]> {
@@ -95,6 +106,40 @@ export async function createAppointment(
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  return data as Appointment;
+  
+}
+export async function updateAppointmentStatus(
+  input: UpdateAppointmentStatusInput
+): Promise<Appointment> {
+  const { data, error } = await supabase
+    .from("appointments")
+    .update({
+      status: input.status,
+    })
+    .eq("id", input.id)
+    .select(`
+      *,
+      customers (
+        id,
+        first_name,
+        last_name,
+        phone,
+        customer_code
+      )
+    `)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error(
+      "Appointment was not updated. Check the update policy and appointment ID."
+    );
   }
 
   return data as Appointment;

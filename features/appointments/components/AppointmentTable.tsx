@@ -1,10 +1,24 @@
 "use client";
 
-import type { Appointment } from "../types/appointment";
+import { toast } from "sonner";
+import type {
+  Appointment,
+  AppointmentStatus,
+} from "../types/appointment";
+import { useUpdateAppointment } from "../hooks/useUpdateAppointment";
 
 type AppointmentTableProps = {
   appointments: Appointment[];
 };
+
+const statuses: AppointmentStatus[] = [
+  "booked",
+  "confirmed",
+  "arrived",
+  "completed",
+  "cancelled",
+  "no_show",
+];
 
 function formatDateTime(value: string) {
   if (!value) return "Not available";
@@ -41,6 +55,28 @@ function getStatusClasses(status: string) {
 export default function AppointmentTable({
   appointments,
 }: AppointmentTableProps) {
+  const updateAppointment = useUpdateAppointment();
+
+  async function handleStatusChange(
+    appointmentId: number,
+    status: AppointmentStatus
+  ) {
+    try {
+      await updateAppointment.mutateAsync({
+        id: appointmentId,
+        status,
+      });
+
+      toast.success("Appointment status updated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update appointment status"
+      );
+    }
+  }
+
   if (appointments.length === 0) {
     return (
       <div className="rounded-2xl border bg-white p-10 text-center text-gray-500">
@@ -51,7 +87,7 @@ export default function AppointmentTable({
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
-      <table className="w-full min-w-[1000px]">
+      <table className="w-full min-w-[1100px]">
         <thead className="bg-slate-100">
           <tr>
             <th className="px-5 py-4 text-left">Date & Time</th>
@@ -101,13 +137,25 @@ export default function AppointmentTable({
                 </td>
 
                 <td className="px-5 py-4">
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(
+                  <select
+                    value={appointment.status}
+                    disabled={updateAppointment.isPending}
+                    onChange={(event) =>
+                      handleStatusChange(
+                        appointment.id,
+                        event.target.value as AppointmentStatus
+                      )
+                    }
+                    className={`rounded-full border-0 px-3 py-1 text-sm font-medium outline-none ${getStatusClasses(
                       appointment.status
                     )}`}
                   >
-                    {appointment.status}
-                  </span>
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status.replace("_", " ")}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               </tr>
             );
