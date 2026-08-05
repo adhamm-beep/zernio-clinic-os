@@ -1,16 +1,26 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  createAppointment,
-  type CreateAppointmentInput,
-} from "../api/appointment.api";
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { createAppointment } from "../api/appointment.api";
+
+import type {
+  Appointment,
+  CreateAppointmentInput,
+} from "../types/appointment";
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (appointment: CreateAppointmentInput) =>
+  return useMutation<
+    Appointment,
+    Error,
+    CreateAppointmentInput
+  >({
+    mutationFn: (appointment) =>
       createAppointment(appointment),
 
     onSuccess: async () => {

@@ -8,7 +8,7 @@ export interface Customer {
   gender: string | null;
   status: string | null;
   date_of_birth: string | null;
-  created_at?: string;
+  created_at: string;
 }
 export type CustomerAppointmentSummary = {
   id: number;

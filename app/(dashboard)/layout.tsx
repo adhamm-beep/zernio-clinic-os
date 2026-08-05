@@ -1,5 +1,7 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+
 import DashboardLayout from "@/components/DashboardLayout";
+import { ClinicProvider } from "@/features/clinic/context/ClinicProvider";
 
 export default function Layout({
   children,
@@ -7,8 +9,10 @@ export default function Layout({
   children: ReactNode;
 }) {
   return (
-    <DashboardLayout>
-      {children}
-    </DashboardLayout>
+    <ClinicProvider>
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
+    </ClinicProvider>
   );
 }

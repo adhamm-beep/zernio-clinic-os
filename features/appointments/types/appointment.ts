@@ -6,26 +6,145 @@ export type AppointmentStatus =
   | "cancelled"
   | "no_show";
 
+export interface AppointmentCustomer {
+  id: number;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  customer_code: string | null;
+}
+
+export interface AppointmentDoctor {
+  id: number;
+  staff_name: string;
+}
+
+export interface AppointmentService {
+  id: number;
+  name: string;
+  default_price: number;
+  duration_minutes: number;
+}
+
+export interface AppointmentRoom {
+  id: number;
+  name: string;
+}
+
+export interface AppointmentBranch {
+  id: number;
+  name: string;
+}
+
 export interface Appointment {
   id: number;
   created_at: string;
+
+  clinic_id: number;
+  branch_id: number;
+
   customer_id: number;
-  dentolize_appointment_id: number | null;
-  doctor_name: string | null;
-  branch_name: string | null;
+
+  doctor_id: number | null;
+  service_id: number | null;
+  room_id: number | null;
+
   appointment_at: string;
-  status: AppointmentStatus | string;
-  appointment_type: string | null;
-  room: string | null;
+
+  status: AppointmentStatus;
   source: string | null;
   notes: string | null;
   created_from_channel: string | null;
 
-  customers?: {
-    id: number;
-    first_name: string | null;
-    last_name: string | null;
-    phone: string | null;
-    customer_code: string | null;
-  } | null;
+  customers: AppointmentCustomer | null;
+  staff: AppointmentDoctor | null;
+  services: AppointmentService | null;
+  rooms: AppointmentRoom | null;
+  branches: AppointmentBranch | null;
+}
+
+export interface CreateAppointmentInput {
+  clinic_id: number;
+  branch_id: number;
+
+  customer_id: number;
+
+  doctor_id: number;
+  service_id: number;
+  room_id: number;
+
+  appointment_at: string;
+
+  source: string;
+
+  status: AppointmentStatus;
+
+  notes?: string;
+  created_from_channel?: string;
+}
+
+export interface UpdateAppointmentStatusInput {
+  id: number;
+  status: AppointmentStatus;
+}
+
+export interface AppointmentAvailabilityQuery {
+  clinic_id: number;
+  branch_id: number;
+
+  appointment_date: string;
+
+  doctor_id?: number;
+  room_id?: number;
+}
+
+export interface AppointmentConflict {
+  id: number;
+
+  appointment_at: string;
+
+  doctor_id: number | null;
+  room_id: number | null;
+
+  status: AppointmentStatus;
+}
+
+export interface AvailableTimeSlot {
+  value: string;
+  label: string;
+
+  appointment_at: string;
+  end_at: string;
+
+  is_available: boolean;
+
+  doctor_conflict?: boolean;
+  room_conflict?: boolean;
+}
+
+export interface AppointmentCalendarEvent {
+  id: number;
+
+  title: string;
+
+  start: string;
+  end: string;
+
+  customerName: string;
+  doctorName: string;
+  roomName: string;
+  serviceName: string;
+
+  status: AppointmentStatus;
+}
+
+export interface AppointmentStatistics {
+  total: number;
+
+  booked: number;
+  confirmed: number;
+  arrived: number;
+  completed: number;
+  cancelled: number;
+  no_show: number;
 }

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import StartTreatmentSessionButton from "@/features/treatment-history/components/StartTreatmentSessionButton";
+import CustomerIntelligenceCards from "@/features/customers/components/CustomerIntelligenceCards";
+import CustomerTimeline from "@/features/timeline/components/CustomerTimeline";
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,20 +18,31 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { useCustomer360 } from "@/features/customers/hooks/useCustomer360";
+import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
+
 import EditCustomerDialog from "@/features/customers/components/EditCustomerDialog";
 
+import { useCustomer360 } from "@/features/customers/hooks/useCustomer360";
 
-function formatMoney(value: number) {
+import MedicalRecordCard from "@/features/medical-record/components/MedicalRecordCard";
+
+const CLINIC_ID = 1;
+const BRANCH_ID = 2;
+
+function formatMoney(value: number): string {
   return new Intl.NumberFormat("en-SA", {
     style: "currency",
     currency: "SAR",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(Number(value ?? 0));
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) return "Not available";
+function formatDateTime(
+  value: string | null
+): string {
+  if (!value) {
+    return "Not available";
+  }
 
   const date = new Date(value);
 
@@ -42,7 +56,9 @@ function formatDateTime(value: string | null) {
   }).format(date);
 }
 
-function getStatusClasses(status: string) {
+function getStatusClasses(
+  status: string
+): string {
   switch (status) {
     case "completed":
     case "paid":
@@ -67,9 +83,64 @@ function getStatusClasses(status: string) {
   }
 }
 
+type TimelineItem = {
+  id: string;
+
+  type:
+    | "appointment"
+    | "treatment"
+    | "payment"
+    | "follow-up";
+
+  date: string | null;
+
+  title: string;
+
+  description: string;
+
+  meta?: string;
+};
+
+function getTimelineIcon(
+  type: TimelineItem["type"]
+) {
+  switch (type) {
+    case "appointment":
+      return (
+        <CalendarDays className="h-5 w-5 text-blue-600" />
+      );
+
+    case "treatment":
+      return (
+        <Stethoscope className="h-5 w-5 text-purple-600" />
+      );
+
+    case "payment":
+      return (
+        <CircleDollarSign className="h-5 w-5 text-green-600" />
+      );
+
+    case "follow-up":
+      return (
+        <ReceiptText className="h-5 w-5 text-orange-600" />
+      );
+
+    default:
+      return (
+        <FileText className="h-5 w-5 text-slate-600" />
+      );
+  }
+}
+
 export default function CustomerProfilePage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{
+    id: string;
+  }>();
+
   const customerId = params.id;
+
+  const numericCustomerId =
+    Number(customerId);
 
   const {
     data: customer,
@@ -113,35 +184,195 @@ export default function CustomerProfilePage() {
   }
 
   const fullName =
-    `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim() ||
-    "Unnamed Customer";
+    `${customer.first_name ?? ""} ${
+      customer.last_name ?? ""
+    }`.trim() || "Unnamed Customer";
 
   const information = [
     {
       label: "Customer code",
-      value: customer.customer_code || "Not available",
+
+      value:
+        customer.customer_code ||
+        "Not available",
     },
+
     {
       label: "Phone",
-      value: customer.phone || "Not available",
+
+      value:
+        customer.phone ||
+        "Not available",
     },
+
     {
       label: "Email",
-      value: customer.email || "Not available",
+
+      value:
+        customer.email ||
+        "Not available",
     },
+
     {
       label: "Gender",
-      value: customer.gender || "Not available",
+
+      value:
+        customer.gender ||
+        "Not available",
     },
+
     {
       label: "Date of birth",
-      value: customer.date_of_birth || "Not available",
+
+      value:
+        customer.date_of_birth ||
+        "Not available",
     },
+
     {
       label: "Last visit",
-      value: formatDateTime(customer.lastVisit),
+
+      value: formatDateTime(
+        customer.lastVisit
+      ),
     },
   ];
+
+  const timelineItems: TimelineItem[] = [
+    ...customer.appointments.map(
+      (item) => ({
+        id: `appointment-${item.id}`,
+
+        type:
+          "appointment" as const,
+
+        date:
+          item.appointment_at,
+
+        title: `Appointment: ${
+          item.appointment_type ||
+          "General"
+        }`,
+
+        description:
+          item.status,
+
+        meta: `${
+          item.doctor_name ||
+          "No doctor"
+        } · ${
+          item.branch_name ||
+          "No branch"
+        }`,
+      })
+    ),
+
+    ...customer.treatments.map(
+      (item) => ({
+        id: `treatment-${item.id}`,
+
+        type:
+          "treatment" as const,
+
+        date:
+          item.treatment_date,
+
+        title: `Treatment: ${
+          item.service_name
+        }`,
+
+        description:
+          item.status,
+
+        meta: `${
+          item.doctor_name ||
+          "No doctor"
+        } · ${formatMoney(
+          Math.max(
+            Number(
+              item.price ?? 0
+            ) -
+              Number(
+                item.discount ?? 0
+              ),
+            0
+          )
+        )}`,
+      })
+    ),
+
+    ...customer.payments.map(
+      (item) => ({
+        id: `payment-${item.id}`,
+
+        type:
+          "payment" as const,
+
+        date:
+          item.payment_date,
+
+        title: `Payment received: ${formatMoney(
+          item.amount
+        )}`,
+
+        description:
+          item.payment_status,
+
+        meta: `${item.payment_method.replaceAll(
+          "_",
+          " "
+        )} · Invoice ${
+          item.invoice_number ||
+          "—"
+        }`,
+      })
+    ),
+
+    ...customer.followUps.map(
+      (item) => ({
+        id: `follow-up-${item.id}`,
+
+        type:
+          "follow-up" as const,
+
+        date:
+          item.scheduled_at,
+
+        title: `Follow Up: ${item.channel.replaceAll(
+          "_",
+          " "
+        )}`,
+
+        description:
+          item.status,
+
+        meta: `${
+          item.follow_up_type ||
+          "General"
+        } · ${
+          item.assigned_to ||
+          "Not assigned"
+        }`,
+      })
+    ),
+  ]
+    .filter(
+      (item) =>
+        item.date !== null
+    )
+    .sort((first, second) => {
+      const firstDate =
+        new Date(
+          first.date ?? 0
+        ).getTime();
+
+      const secondDate =
+        new Date(
+          second.date ?? 0
+        ).getTime();
+
+      return secondDate - firstDate;
+    });
 
   return (
     <div className="space-y-8">
@@ -150,6 +381,7 @@ export default function CustomerProfilePage() {
         className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft size={18} />
+
         Back to customers
       </Link>
 
@@ -170,12 +402,16 @@ export default function CustomerProfilePage() {
               </h1>
 
               <p className="mt-2 text-slate-300">
-                Customer #{customer.customer_code}
+                Customer #
+                {customer.customer_code ||
+                  customer.id}
               </p>
 
               <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
                 <Phone size={16} />
-                {customer.phone || "Phone not available"}
+
+                {customer.phone ||
+                  "Phone not available"}
               </div>
             </div>
           </div>
@@ -183,18 +419,31 @@ export default function CustomerProfilePage() {
           <div className="flex flex-col gap-3 lg:items-end">
             <span
               className={`w-fit rounded-full px-4 py-2 text-sm font-medium ${
-                customer.status === "inactive"
+                customer.status ===
+                "inactive"
                   ? "bg-red-100 text-red-700"
                   : "bg-green-100 text-green-700"
               }`}
             >
-              {customer.status || "Unknown"}
+              {customer.status ||
+                "Unknown"}
             </span>
 
             <div className="flex flex-wrap gap-3">
-              <EditCustomerDialog customer={customer} />
+              <AddAppointmentDialogV2
+                clinicId={CLINIC_ID}
+                branchId={BRANCH_ID}
+              />
 
-             
+              <EditCustomerDialog
+                customer={customer}
+              />
+              <StartTreatmentSessionButton
+  clinicId={CLINIC_ID}
+  branchId={BRANCH_ID}
+  customerId={numericCustomerId}
+  customerName={fullName}
+/>
             </div>
           </div>
         </div>
@@ -204,8 +453,11 @@ export default function CustomerProfilePage() {
             <p className="text-sm text-slate-300">
               Total Paid
             </p>
+
             <p className="mt-2 text-3xl font-bold">
-              {formatMoney(customer.totalPaid)}
+              {formatMoney(
+                customer.totalPaid
+              )}
             </p>
           </div>
 
@@ -213,8 +465,11 @@ export default function CustomerProfilePage() {
             <p className="text-sm text-slate-300">
               Treatment Value
             </p>
+
             <p className="mt-2 text-3xl font-bold">
-              {formatMoney(customer.treatmentValue)}
+              {formatMoney(
+                customer.treatmentValue
+              )}
             </p>
           </div>
 
@@ -222,14 +477,18 @@ export default function CustomerProfilePage() {
             <p className="text-sm text-slate-300">
               Outstanding Balance
             </p>
+
             <p
               className={`mt-2 text-3xl font-bold ${
-                customer.outstandingBalance > 0
+                customer.outstandingBalance >
+                0
                   ? "text-orange-300"
                   : "text-green-300"
               }`}
             >
-              {formatMoney(customer.outstandingBalance)}
+              {formatMoney(
+                customer.outstandingBalance
+              )}
             </p>
           </div>
 
@@ -237,368 +496,219 @@ export default function CustomerProfilePage() {
             <p className="text-sm text-slate-300">
               Total Activity
             </p>
+
             <p className="mt-2 text-3xl font-bold">
-              {customer.appointments.length +
-                customer.treatments.length +
-                customer.payments.length +
-                customer.followUps.length}
+              {timelineItems.length}
             </p>
           </div>
         </div>
       </section>
-
+<CustomerIntelligenceCards
+  customer={customer}
+/>
+<CustomerTimeline
+  customerId={numericCustomerId}
+/>
       <section className="rounded-2xl bg-white p-7 shadow-sm">
         <h2 className="text-xl font-bold text-gray-900">
           Customer Information
         </h2>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {information.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-xl border border-gray-200 p-4"
-            >
-              <p className="text-sm text-gray-500">{item.label}</p>
-              <p className="mt-1 font-medium text-gray-900">
-                {item.value}
-              </p>
-            </div>
-          ))}
+          {information.map(
+            (item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-gray-200 p-4"
+              >
+                <p className="text-sm text-gray-500">
+                  {item.label}
+                </p>
+
+                <p className="mt-1 font-medium text-gray-900">
+                  {item.value}
+                </p>
+              </div>
+            )
+          )}
         </div>
-      </section>
+      </section>      {/* Medical Record */}
 
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <CalendarDays className="text-blue-600" />
-          <p className="mt-4 text-sm text-gray-500">
-            Appointments
-          </p>
-          <p className="mt-1 text-2xl font-bold">
-            {customer.appointments.length}
-          </p>
-        </div>
+      <MedicalRecordCard
+        customerId={numericCustomerId}
+        clinicId={CLINIC_ID}
+        branchId={BRANCH_ID}
+      />
 
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <Stethoscope className="text-purple-600" />
-          <p className="mt-4 text-sm text-gray-500">
-            Treatments
-          </p>
-          <p className="mt-1 text-2xl font-bold">
-            {customer.treatments.length}
-          </p>
-        </div>
+      {/* Customer Timeline */}
 
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <WalletCards className="text-green-600" />
-          <p className="mt-4 text-sm text-gray-500">
-            Payments
-          </p>
-          <p className="mt-1 text-2xl font-bold">
-            {customer.payments.length}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <Clock3 className="text-orange-600" />
-          <p className="mt-4 text-sm text-gray-500">
-            Follow Ups
-          </p>
-          <p className="mt-1 text-2xl font-bold">
-            {customer.followUps.length}
-          </p>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <CalendarDays className="text-blue-600" />
-            <div>
-              <h2 className="text-lg font-bold">
-                Appointments
-              </h2>
-              <p className="text-sm text-gray-500">
-                Previous and upcoming visits
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {customer.appointments.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">
-                No appointments found.
-              </p>
-            ) : (
-              customer.appointments.slice(0, 5).map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border p-4"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {appointment.appointment_type ||
-                        "Appointment"}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {formatDateTime(appointment.appointment_at)}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {appointment.doctor_name || "No doctor"} ·{" "}
-                      {appointment.branch_name || "No branch"}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                      appointment.status
-                    )}`}
-                  >
-                    {appointment.status.replaceAll("_", " ")}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Stethoscope className="text-purple-600" />
-            <div>
-              <h2 className="text-lg font-bold">
-                Treatments
-              </h2>
-              <p className="text-sm text-gray-500">
-                Procedures and treatment records
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {customer.treatments.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">
-                No treatments found.
-              </p>
-            ) : (
-              customer.treatments.slice(0, 5).map((treatment) => (
-                <div
-                  key={treatment.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border p-4"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {treatment.service_name}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {formatDateTime(treatment.treatment_date)}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {treatment.doctor_name || "No doctor"}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="font-semibold">
-                      {formatMoney(
-                        Math.max(
-                          Number(treatment.price ?? 0) -
-                            Number(treatment.discount ?? 0),
-                          0
-                        )
-                      )}
-                    </p>
-
-                    <span
-                      className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                        treatment.status
-                      )}`}
-                    >
-                      {treatment.status.replaceAll("_", " ")}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <CircleDollarSign className="text-green-600" />
-            <div>
-              <h2 className="text-lg font-bold">
-                Payments
-              </h2>
-              <p className="text-sm text-gray-500">
-                Invoices and collected payments
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {customer.payments.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">
-                No payments found.
-              </p>
-            ) : (
-              customer.payments.slice(0, 5).map((payment) => (
-                <div
-                  key={payment.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border p-4"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {payment.payment_method.replaceAll("_", " ")}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {formatDateTime(payment.payment_date)}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      Invoice: {payment.invoice_number || "—"}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="font-semibold">
-                      {formatMoney(payment.amount)}
-                    </p>
-
-                    <span
-                      className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                        payment.payment_status
-                      )}`}
-                    >
-                      {payment.payment_status.replaceAll("_", " ")}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <ReceiptText className="text-orange-600" />
-            <div>
-              <h2 className="text-lg font-bold">
-                Follow Ups
-              </h2>
-              <p className="text-sm text-gray-500">
-                Customer follow-up history
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {customer.followUps.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">
-                No follow ups found.
-              </p>
-            ) : (
-              customer.followUps.slice(0, 5).map((followUp) => (
-                <div
-                  key={followUp.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border p-4"
-                >
-                  <div>
-                    <p className="font-medium capitalize">
-                      {followUp.channel.replaceAll("_", " ")}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {formatDateTime(followUp.scheduled_at)}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {followUp.follow_up_type || "General"} ·{" "}
-                      {followUp.assigned_to || "Not assigned"}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                      followUp.status
-                    )}`}
-                  >
-                    {followUp.status.replaceAll("_", " ")}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <FileText className="text-slate-700" />
+      <section className="rounded-2xl bg-white p-7 shadow-sm">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">
+            <h2 className="text-xl font-bold text-gray-900">
               Customer Timeline
             </h2>
-            <p className="text-sm text-gray-500">
-              Unified activity overview
+
+            <p className="mt-1 text-sm text-gray-500">
+              Complete chronological activity for this customer.
             </p>
+          </div>
+
+          <div className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+            {timelineItems.length} Events
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          {[
-            ...customer.appointments.map((item) => ({
-              id: `appointment-${item.id}`,
-              date: item.appointment_at,
-              title: `Appointment: ${
-                item.appointment_type || "General"
-              }`,
-              description: item.status,
-            })),
-            ...customer.treatments.map((item) => ({
-              id: `treatment-${item.id}`,
-              date: item.treatment_date,
-              title: `Treatment: ${item.service_name}`,
-              description: item.status,
-            })),
-            ...customer.payments.map((item) => ({
-              id: `payment-${item.id}`,
-              date: item.payment_date,
-              title: `Payment: ${formatMoney(item.amount)}`,
-              description: item.payment_status,
-            })),
-            ...customer.followUps.map((item) => ({
-              id: `follow-up-${item.id}`,
-              date: item.scheduled_at,
-              title: `Follow Up: ${item.channel}`,
-              description: item.status,
-            })),
-          ]
-            .filter((item) => item.date)
-            .sort(
-              (a, b) =>
-                new Date(b.date as string).getTime() -
-                new Date(a.date as string).getTime()
-            )
-            .slice(0, 12)
-            .map((item) => (
-              <div
-                key={item.id}
-                className="flex gap-4 rounded-xl border p-4"
-              >
-                <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-slate-950" />
+        <div className="mt-8 space-y-5">
 
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-sm capitalize text-gray-500">
-                    {item.description.replaceAll("_", " ")}
-                  </p>
-                  <p className="mt-2 text-xs text-gray-400">
-                    {formatDateTime(item.date)}
-                  </p>
-                </div>
+          {timelineItems.length === 0 && (
+            <div className="rounded-xl border border-dashed p-8 text-center text-gray-500">
+              No activity found.
+            </div>
+          )}
+
+          {timelineItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex gap-4 rounded-xl border border-gray-200 p-5 transition hover:border-slate-400"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+                {getTimelineIcon(item.type)}
               </div>
-            ))}
+
+              <div className="flex-1">
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+
+                  <h3 className="font-semibold text-gray-900">
+                    {item.title}
+                  </h3>
+
+                  <span className="text-sm text-gray-500">
+                    {formatDateTime(item.date)}
+                  </span>
+
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
+                      item.description
+                    )}`}
+                  >
+                    {item.description}
+                  </span>
+
+                  {item.meta && (
+                    <span className="text-sm text-gray-500">
+                      {item.meta}
+                    </span>
+                  )}
+
+                </div>
+
+              </div>
+            </div>
+          ))}
+
         </div>
       </section>
+
+      {/* Statistics */}
+
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+
+              <p className="text-sm text-gray-500">
+                Appointments
+              </p>
+
+              <p className="mt-2 text-3xl font-bold">
+                {customer.appointments.length}
+              </p>
+
+            </div>
+
+            <CalendarDays className="h-10 w-10 text-blue-600" />
+
+          </div>
+
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+
+              <p className="text-sm text-gray-500">
+                Treatments
+              </p>
+
+              <p className="mt-2 text-3xl font-bold">
+                {customer.treatments.length}
+              </p>
+
+            </div>
+
+            <Stethoscope className="h-10 w-10 text-purple-600" />
+
+          </div>
+
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+
+              <p className="text-sm text-gray-500">
+                Payments
+              </p>
+
+              <p className="mt-2 text-3xl font-bold">
+                {customer.payments.length}
+              </p>
+
+            </div>
+
+            <WalletCards className="h-10 w-10 text-green-600" />
+
+          </div>
+
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+
+              <p className="text-sm text-gray-500">
+                Follow Ups
+              </p>
+
+              <p className="mt-2 text-3xl font-bold">
+                {customer.followUps.length}
+              </p>
+
+            </div>
+
+            <Clock3 className="h-10 w-10 text-orange-600" />
+
+          </div>
+
+        </div>
+
+      </section>
+
     </div>
   );
 }

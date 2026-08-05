@@ -101,9 +101,17 @@ export default function EditCustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        Edit Customer
-      </DialogTrigger>
+      <DialogTrigger
+  render={
+    <Button
+      type="button"
+      variant="outline"
+      className="border-gray-300 bg-white text-gray-900 hover:border-black hover:bg-black hover:text-white"
+    />
+  }
+>
+  Edit Customer
+</DialogTrigger>
 
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>

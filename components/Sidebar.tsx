@@ -14,7 +14,12 @@ const menu = [
   {
     title: "Appointments",
     href: "/appointments",
-    icon: "📅",
+    icon: "📋",
+  },
+  {
+    title: "Calendar",
+    href: "/calendar",
+    icon: "🗓️",
   },
   {
     title: "Treatments",
@@ -25,6 +30,11 @@ const menu = [
     title: "Payments",
     href: "/payments",
     icon: "💰",
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: "⚙️",
   },
   {
     title: "Reports",

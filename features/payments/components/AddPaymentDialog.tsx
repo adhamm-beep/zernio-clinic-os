@@ -274,7 +274,7 @@ export default function AddPaymentDialog() {
                 {new Date(
                   appointment.appointment_at
                 ).toLocaleString()}{" "}
-                — {appointment.appointment_type || "Appointment"}
+                — appointment.services?.name ?? "No service"
               </option>
             ))}
           </select>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import SearchBar from "@/components/SearchBar";
-import AddCustomerDialog from "@/features/customers/components/AddCustomerDialog";
+import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
 import CustomerTable from "@/features/customers/components/CustomerTable";
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 
@@ -48,7 +48,10 @@ export default function CustomersPage() {
           </p>
         </div>
 
-        <AddCustomerDialog />
+        <AddAppointmentDialogV2
+  clinicId={1}
+  branchId={2}
+/>
       </div>
 
       <SearchBar
