@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Customer } from "../types/customer";
+import type { Customer, Customer360 } from "../types/customer";
 
 const supabase = createClient();
 
@@ -137,4 +137,142 @@ function normalizePhone(phone: string): string {
   }
 
   return digits;
+}
+export async function getCustomer360(
+  id: string
+): Promise<Customer360 | null> {
+  const [
+    customerResult,
+    appointmentsResult,
+    treatmentsResult,
+    paymentsResult,
+    followUpsResult,
+  ] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+
+    supabase
+      .from("appointments")
+      .select(`
+        id,
+        appointment_at,
+        status,
+        appointment_type,
+        doctor_name,
+        branch_name
+      `)
+      .eq("customer_id", id)
+      .order("appointment_at", { ascending: false }),
+
+    supabase
+      .from("treatments")
+      .select(`
+        id,
+        treatment_date,
+        service_name,
+        doctor_name,
+        status,
+        price,
+        discount
+      `)
+      .eq("customer_id", id)
+      .order("treatment_date", { ascending: false }),
+
+    supabase
+      .from("payments")
+      .select(`
+        id,
+        payment_date,
+        amount,
+        payment_method,
+        payment_status,
+        invoice_number
+      `)
+      .eq("customer_id", id)
+      .order("payment_date", { ascending: false }),
+
+    supabase
+      .from("follow_ups")
+      .select(`
+        id,
+        scheduled_at,
+        channel,
+        follow_up_type,
+        status,
+        assigned_to,
+        outcome
+      `)
+      .eq("customer_id", id)
+      .order("scheduled_at", { ascending: false }),
+  ]);
+
+  const firstError =
+    customerResult.error ||
+    appointmentsResult.error ||
+    treatmentsResult.error ||
+    paymentsResult.error ||
+    followUpsResult.error;
+
+  if (firstError) {
+    throw new Error(firstError.message);
+  }
+
+  if (!customerResult.data) {
+    return null;
+  }
+
+  const appointments = appointmentsResult.data ?? [];
+  const treatments = treatmentsResult.data ?? [];
+  const payments = paymentsResult.data ?? [];
+  const followUps = followUpsResult.data ?? [];
+
+  const totalPaid = payments
+    .filter(
+      (payment) =>
+        payment.payment_status !== "cancelled" &&
+        payment.payment_status !== "refunded"
+    )
+    .reduce(
+      (sum, payment) => sum + Number(payment.amount ?? 0),
+      0
+    );
+
+  const treatmentValue = treatments.reduce(
+    (sum, treatment) =>
+      sum +
+      Math.max(
+        Number(treatment.price ?? 0) -
+          Number(treatment.discount ?? 0),
+        0
+      ),
+    0
+  );
+
+  const lastVisit =
+    appointments.find(
+      (appointment) =>
+        appointment.status === "completed" ||
+        appointment.status === "arrived"
+    )?.appointment_at ??
+    treatments.find((treatment) => treatment.treatment_date)
+      ?.treatment_date ??
+    null;
+
+  return {
+    ...customerResult.data,
+    appointments,
+    treatments,
+    payments,
+    followUps,
+    totalPaid,
+    treatmentValue,
+    outstandingBalance: Math.max(
+      treatmentValue - totalPaid,
+      0
+    ),
+    lastVisit,
+  } as Customer360;
 }

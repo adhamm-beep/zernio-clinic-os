@@ -3,7 +3,7 @@ import Link from "next/link";
 const menu = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: "🏠",
   },
   {
