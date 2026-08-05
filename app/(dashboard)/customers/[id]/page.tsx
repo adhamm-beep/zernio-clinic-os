@@ -1,5 +1,5 @@
 "use client";
-
+import EditCustomerDialog from "@/features/customers/components/EditCustomerDialog";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -157,9 +157,13 @@ export default function CustomerProfilePage() {
             </div>
           </div>
 
-          <span className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
-            {customer.status || "Unknown"}
-          </span>
+          <div className="flex flex-col items-start gap-3 md:items-end">
+  <span className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
+    {customer.status || "Unknown"}
+  </span>
+
+  <EditCustomerDialog customer={customer} />
+</div>
         </div>
       </section>
 

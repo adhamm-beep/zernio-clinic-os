@@ -14,6 +14,10 @@ export type CreateCustomerInput = {
   status: string;
 };
 
+export type UpdateCustomerInput = CreateCustomerInput & {
+  id: number;
+};
+
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
     .from("customers")
@@ -59,6 +63,52 @@ export async function createCustomer(
       date_of_birth: customer.date_of_birth || null,
       status: customer.status,
     })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as Customer;
+}
+
+export async function updateCustomer(
+  customer: UpdateCustomerInput
+): Promise<Customer> {
+  const { data, error } = await supabase
+    .from("customers")
+    .update({
+      customer_code: customer.customer_code.trim(),
+      first_name: customer.first_name.trim(),
+      last_name: customer.last_name?.trim() || null,
+      phone: customer.phone.trim(),
+      phone_normalized: normalizePhone(customer.phone),
+      email: customer.email?.trim() || null,
+      gender: customer.gender || null,
+      date_of_birth: customer.date_of_birth || null,
+      status: customer.status,
+    })
+    .eq("id", customer.id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as Customer;
+}
+
+export async function deactivateCustomer(
+  id: number
+): Promise<Customer> {
+  const { data, error } = await supabase
+    .from("customers")
+    .update({
+      status: "inactive",
+    })
+    .eq("id", id)
     .select()
     .single();
 
