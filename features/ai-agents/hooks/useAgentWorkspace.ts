@@ -1,0 +1,1 @@
+"use client";import{useQuery}from"@tanstack/react-query";import{getAgentWorkspace}from"../api/agents.api";export function useAgentWorkspace(c:number,b:number){return useQuery({queryKey:["ai-agent-workspace",c,b],queryFn:()=>getAgentWorkspace(c,b),enabled:c>0&&b>0,staleTime:30000});}

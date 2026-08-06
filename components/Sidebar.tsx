@@ -52,6 +52,11 @@ const menu = [
     icon: "📣",
   },
   {
+    title: "AI Agents",
+    href: "/ai-agents",
+    icon: "🤖",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
