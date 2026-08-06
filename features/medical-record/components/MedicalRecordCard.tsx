@@ -171,7 +171,7 @@ export default function MedicalRecordCard({
           <div className="flex items-center gap-3">
             <span className="rounded-xl bg-emerald-600 p-2 text-white"><Sparkles className="h-5 w-5" /></span>
             <div>
-              <h3 className="font-bold text-slate-950">Medical Safety Summary</h3>
+              <h3 className="font-bold text-slate-950">AI Medical Summary</h3>
               <p className="text-xs text-slate-500">Processed privately without sending medical text to AI services</p>
             </div>
           </div>
@@ -201,6 +201,12 @@ export default function MedicalRecordCard({
         <p className="mt-4 text-xs text-slate-500">
           {documentedSafetyFields}/4 core safety categories documented. This is a review aid, not a diagnosis.
         </p>
+        <div className="mt-4 rounded-xl bg-white/90 p-4 text-sm leading-6 text-slate-700">
+          <span className="font-semibold">Clinical handover:</span>{" "}
+          {attentionLabels.length > 0
+            ? `${attentionLabels.join(", ")}. Verify these entries with the customer before selecting a treatment or material.`
+            : "The core safety history is incomplete. Ask about allergies, chronic conditions, current medications, and contraindications before treatment."}
+        </div>
       </div>
 
       <div>

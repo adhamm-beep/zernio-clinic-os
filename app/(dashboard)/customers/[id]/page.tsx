@@ -20,6 +20,7 @@ import {
 
 import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
 import CustomerIntelligenceCards from "@/features/customers/components/CustomerIntelligenceCards";
+import CustomerAINotes from "@/features/customers/components/CustomerAINotes";
 import ExecutiveDashboard from "@/features/customers/dashboard/ExecutiveDashboard";
 import EditCustomerDialog from "@/features/customers/components/EditCustomerDialog";
 import { useCustomer360 } from "@/features/customers/hooks/useCustomer360";
@@ -168,7 +169,19 @@ export default function CustomerProfilePage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-purple-100 bg-gradient-to-br from-purple-50 via-white to-blue-50 p-7 shadow-sm">
+      <nav aria-label="Customer 360 sections" className="sticky top-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur">
+        {[
+          ["Overview", "overview"],
+          ["AI Intelligence", "intelligence"],
+          ["Medical", "medical"],
+          ["Timeline", "timeline"],
+          ["Activity", "activity"],
+        ].map(([label, target]) => (
+          <a key={target} href={`#${target}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-950 hover:text-white">{label}</a>
+        ))}
+      </nav>
+
+      <section id="overview" className="scroll-mt-24 rounded-3xl border border-purple-100 bg-gradient-to-br from-purple-50 via-white to-blue-50 p-7 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="rounded-2xl bg-purple-600 p-3 text-white"><BrainCircuit /></div>
           <div>
@@ -202,7 +215,18 @@ export default function CustomerProfilePage() {
         </div>
       </section>
 
-      <ExecutiveDashboard insights={insights} profile={brain} />
+      <div id="intelligence" className="scroll-mt-24 space-y-6">
+        <ExecutiveDashboard insights={insights} profile={brain} />
+
+        <CustomerAINotes
+          customerName={fullName}
+          profile={brain}
+          completedAppointments={completedAppointments}
+          completedTreatments={completedTreatments}
+          pendingFollowUps={pendingFollowUps}
+          outstandingBalance={customer.outstandingBalance}
+        />
+      </div>
 
       <CustomerIntelligenceCards customer={customer} />
 
@@ -213,15 +237,17 @@ export default function CustomerProfilePage() {
         </div>
       </section>
 
-      {workspaceReady ? (
-        <MedicalRecordCard customerId={numericCustomerId} clinicId={clinicId!} branchId={branchId!} />
-      ) : (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
-          Select a clinic branch to manage the medical record.
-        </div>
-      )}
+      <div id="medical" className="scroll-mt-24">
+        {workspaceReady ? (
+          <MedicalRecordCard customerId={numericCustomerId} clinicId={clinicId!} branchId={branchId!} />
+        ) : (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
+            Select a clinic branch to manage the medical record.
+          </div>
+        )}
+      </div>
 
-      <section className="rounded-2xl bg-white p-7 shadow-sm">
+      <section id="timeline" className="scroll-mt-24 rounded-2xl bg-white p-7 shadow-sm">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div><h2 className="text-xl font-bold text-gray-900">Customer Timeline</h2><p className="mt-1 text-sm text-gray-500">Complete chronological activity for this customer.</p></div>
           {brain.riskScore >= 60 && <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-2 text-xs font-semibold text-orange-800"><AlertTriangle size={15} />Retention risk</span>}
@@ -229,7 +255,7 @@ export default function CustomerProfilePage() {
         <CustomerTimeline customerId={numericCustomerId} />
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section id="activity" className="scroll-mt-24 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {[
           ["Appointments", customer.appointments.length, CalendarDays, "text-blue-600"],
           ["Treatments", treatmentActivity.length, Stethoscope, "text-purple-600"],

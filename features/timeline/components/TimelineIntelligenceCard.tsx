@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
 import type { TimelineEvent } from "../types/timeline";
 
@@ -21,14 +21,21 @@ export default function TimelineIntelligenceCard({ events }: Props) {
   const pendingFollowUps = events.filter(
     (event) => event.type === "follow_up" && ["pending", "in_progress"].includes(event.status ?? "")
   ).length;
+  const completedTreatments = events.filter((event) => event.type === "treatment" && event.status === "completed").length;
+  const paidEvents = events.filter((event) => event.type === "payment" && ["paid", "completed"].includes(event.status ?? "")).length;
+  const latestEvent = events.reduce<TimelineEvent | null>((latest, event) => {
+    if (!latest || new Date(event.date).getTime() > new Date(latest.date).getTime()) return event;
+    return latest;
+  }, null);
   const direction = recent.length >= previous.length ? "up" : "down";
   const summary = events.length === 0
     ? "No activity is recorded yet."
-    : `${events.length} unified events are recorded. Activity in the last 30 days is ${direction === "up" ? "stable or increasing" : "lower than the previous period"}.`;
+    : `${events.length} unified events are recorded across the care journey. Activity in the last 30 days is ${direction === "up" ? "stable or increasing" : "lower than the previous period"}. ${completedTreatments} treatment(s) were completed and ${paidEvents} payment event(s) were closed.`;
   const actions = [
     pendingFollowUps > 0 ? `Complete ${pendingFollowUps} pending follow-up${pendingFollowUps === 1 ? "" : "s"}.` : null,
     missed > 0 ? `Review ${missed} missed, cancelled, or unanswered interaction${missed === 1 ? "" : "s"}.` : null,
     recent.length === 0 && events.length > 0 ? "Consider a reactivation follow-up." : null,
+    latestEvent ? `Latest recorded touchpoint: ${latestEvent.title}.` : null,
   ].filter((item): item is string => Boolean(item));
 
   return (
@@ -57,6 +64,12 @@ export default function TimelineIntelligenceCard({ events }: Props) {
         </ul>
       ) : (
         <p className="mt-4 text-sm font-medium text-emerald-700">No immediate timeline action is required.</p>
+      )}
+      {events.length > 0 && (
+        <div className="mt-4 flex gap-3 rounded-xl border border-violet-100 bg-white p-4 text-sm text-slate-700">
+          <CalendarCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600" />
+          <p><span className="font-semibold">AI timeline note:</span> {missed > 0 ? "Confirm the next appointment and use a reminder because missed interactions were detected." : "The journey is consistent; keep the next treatment or follow-up clearly scheduled."}</p>
+        </div>
       )}
     </div>
   );
