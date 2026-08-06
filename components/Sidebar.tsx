@@ -62,6 +62,11 @@ const menu = [
     icon: "🏢",
   },
   {
+    title: "Ask Zernio AI",
+    href: "/ask-zernio",
+    icon: "✨",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
