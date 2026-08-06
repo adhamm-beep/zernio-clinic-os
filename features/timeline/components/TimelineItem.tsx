@@ -52,7 +52,7 @@ export default function TimelineItem({
           <span className="text-sm text-gray-500">
             {new Date(
               event.date
-            ).toLocaleString()}
+            ).toLocaleString("en-US", { hour12: true })}
           </span>
         </div>
 

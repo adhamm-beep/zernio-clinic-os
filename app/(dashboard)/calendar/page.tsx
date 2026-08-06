@@ -10,11 +10,12 @@ import { useCalendar } from "@/features/calendar/hooks/useCalendar";
 import { useCalendarEvents } from "@/features/calendar/hooks/useCalendarEvents";
 
 import { formatCalendarTitle } from "@/features/calendar/lib/calendar.utils";
-
-const CLINIC_ID = 1;
-const BRANCH_ID = 2;
+import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 export default function CalendarPage() {
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
   const {
     data: events = [],
     isLoading,
@@ -23,8 +24,8 @@ export default function CalendarPage() {
     refetch,
     isFetching,
   } = useCalendarEvents(
-    CLINIC_ID,
-    BRANCH_ID
+    clinicId,
+    branchId
   );
 
   const {
@@ -59,10 +60,9 @@ export default function CalendarPage() {
         </div>
 
         <div className="shrink-0">
-          <AddAppointmentDialogV2
-            clinicId={CLINIC_ID}
-            branchId={BRANCH_ID}
-          />
+          {clinicId > 0 && branchId > 0 && (
+            <AddAppointmentDialogV2 clinicId={clinicId} branchId={branchId} />
+          )}
         </div>
       </div>
 

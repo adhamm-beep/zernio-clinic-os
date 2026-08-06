@@ -14,6 +14,8 @@ export type PaymentStatus =
 
 export interface Payment {
   id: number;
+  clinic_id: number;
+  branch_id: number;
   created_at: string;
 
   customer_id: number;

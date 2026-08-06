@@ -50,7 +50,7 @@ export default function TreatmentTimeline({
           <p className="mt-2 text-sm text-gray-500">
             {new Date(
               session.sessionDate
-            ).toLocaleString()}
+            ).toLocaleString("en-US", { hour12: true })}
           </p>
 
           {session.notes && (

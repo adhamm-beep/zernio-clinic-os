@@ -30,8 +30,8 @@ export default function CustomerTable({ customers }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <table className="w-full">
+    <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
+      <table className="w-full min-w-3xl">
         <thead className="bg-slate-100">
           <tr>
             <th className="px-5 py-4 text-left">Code</th>

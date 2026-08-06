@@ -5,6 +5,7 @@ import {
   updateCustomer,
   type UpdateCustomerInput,
 } from "../api/customer.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useUpdateCustomer() {
   const queryClient = useQueryClient();
@@ -14,13 +15,7 @@ export function useUpdateCustomer() {
       updateCustomer(customer),
 
     onSuccess: async (updatedCustomer) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["customers"],
-      });
-
-      await queryClient.invalidateQueries({
-        queryKey: ["customer", String(updatedCustomer.id)],
-      });
+      await invalidateCustomerWorkspace(queryClient, updatedCustomer.id);
     },
   });
 }

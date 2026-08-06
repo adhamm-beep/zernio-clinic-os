@@ -22,8 +22,18 @@ export function useCalendar(
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
+      if (filters.doctorId === -1 && (event.doctorId !== null || event.serviceCategory !== "Laser Hair Removal")) {
+        return false;
+      }
+      if (filters.doctorId === -2 && (event.doctorId !== null || event.serviceCategory !== "Bleaching")) {
+        return false;
+      }
+      if (filters.doctorId === -3 && (event.doctorId !== null || event.serviceCategory !== "ProFacial")) {
+        return false;
+      }
+
       if (
-        filters.doctorId &&
+        filters.doctorId && filters.doctorId > 0 &&
         event.doctorId !== filters.doctorId
       ) {
         return false;

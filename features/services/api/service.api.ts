@@ -30,6 +30,9 @@ export async function createService(
       default_price: service.default_price,
       duration_minutes: service.duration_minutes,
       is_active: service.is_active ?? true,
+      code: service.code?.trim() || null,
+      provider_type: service.provider_type ?? "doctor",
+      price_starting_from: service.price_starting_from ?? false,
     })
     .select("*")
     .single();

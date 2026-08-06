@@ -12,6 +12,7 @@ import {
 import type {
   CreateTreatmentSessionInput,
 } from "../types/treatment-history";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useCreateTreatmentSession() {
   const queryClient =
@@ -26,20 +27,10 @@ export function useCreateTreatmentSession() {
     onSuccess: async (
       createdSession
     ) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [
-            "treatment-history",
-            createdSession.customerId,
-          ],
-        }),
-
-        queryClient.invalidateQueries({
-          queryKey: [
-            "customer-360",
-          ],
-        }),
-      ]);
+      await invalidateCustomerWorkspace(
+        queryClient,
+        createdSession.customerId
+      );
     },
   });
 }

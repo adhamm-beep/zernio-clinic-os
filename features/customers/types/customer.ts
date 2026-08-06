@@ -48,9 +48,18 @@ export type CustomerFollowUpSummary = {
   outcome: string | null;
 };
 
+export type CustomerTreatmentSessionSummary = {
+  id: number;
+  clinic_id: number;
+  branch_id: number;
+  session_date: string;
+  status: string;
+};
+
 export interface Customer360 extends Customer {
   appointments: CustomerAppointmentSummary[];
   treatments: CustomerTreatmentSummary[];
+  treatmentSessions: CustomerTreatmentSessionSummary[];
   payments: CustomerPaymentSummary[];
   followUps: CustomerFollowUpSummary[];
 

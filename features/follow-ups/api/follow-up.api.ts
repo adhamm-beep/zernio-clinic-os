@@ -3,8 +3,8 @@ import type { FollowUp } from "../types/follow-up";
 
 const supabase = createClient();
 
-export async function getFollowUps(): Promise<FollowUp[]> {
-  const { data, error } = await supabase
+export async function getFollowUps(clinicId?: number, branchId?: number): Promise<FollowUp[]> {
+  let query = supabase
     .from("follow_ups")
     .select(`
       *,
@@ -20,6 +20,11 @@ export async function getFollowUps(): Promise<FollowUp[]> {
       ascending: true,
     });
 
+  if (clinicId && clinicId > 0) query = query.eq("clinic_id", clinicId);
+  if (branchId && branchId > 0) query = query.eq("branch_id", branchId);
+
+  const { data, error } = await query;
+
   if (error) {
     throw new Error(error.message);
   }
@@ -27,6 +32,8 @@ export async function getFollowUps(): Promise<FollowUp[]> {
   return (data ?? []) as FollowUp[];
 }
 export type CreateFollowUpInput = {
+  clinic_id: number;
+  branch_id: number;
   customer_id: number;
   appointment_id?: number | null;
   treatment_id?: number | null;
@@ -49,6 +56,8 @@ export async function createFollowUp(
   const { data, error } = await supabase
     .from("follow_ups")
     .insert({
+      clinic_id: followUp.clinic_id,
+      branch_id: followUp.branch_id,
       customer_id: followUp.customer_id,
       appointment_id: followUp.appointment_id ?? null,
       treatment_id: followUp.treatment_id ?? null,

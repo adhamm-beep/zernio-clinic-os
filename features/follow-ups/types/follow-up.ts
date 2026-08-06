@@ -15,6 +15,8 @@ export type FollowUpStatus =
 
 export interface FollowUp {
   id: number;
+  clinic_id: number;
+  branch_id: number;
   created_at: string;
 
   customer_id: number;

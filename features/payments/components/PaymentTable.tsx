@@ -1,6 +1,7 @@
 "use client";
 
 import type { Payment } from "../types/payment";
+import InvoiceDialog from "./InvoiceDialog";
 
 type PaymentTableProps = {
   payments: Payment[];
@@ -76,6 +77,7 @@ export default function PaymentTable({
             <th className="px-5 py-4 text-left">Method</th>
             <th className="px-5 py-4 text-left">Invoice</th>
             <th className="px-5 py-4 text-left">Status</th>
+            <th className="px-5 py-4 text-left">Actions</th>
           </tr>
         </thead>
 
@@ -96,7 +98,6 @@ export default function PaymentTable({
                 <td className="px-5 py-4">
                   {formatDate(payment.payment_date)}
                 </td>
-
                 <td className="px-5 py-4 font-medium">
                   {customerName}
                 </td>
@@ -135,6 +136,7 @@ export default function PaymentTable({
                     {payment.payment_status.replaceAll("_", " ")}
                   </span>
                 </td>
+                <td className="px-5 py-4"><InvoiceDialog payment={payment} /></td>
               </tr>
             );
           })}

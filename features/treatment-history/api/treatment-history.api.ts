@@ -38,6 +38,9 @@ const TREATMENT_SESSION_SELECT = `
     id,
     service_id,
     product_id,
+    service_variant_id,
+    unit_price,
+    line_total,
     product_name,
     quantity,
     unit,
@@ -56,6 +59,9 @@ type TreatmentItemRow = {
   service_id: number | null;
 
   product_id: number | null;
+  service_variant_id: number | null;
+  unit_price: number | string | null;
+  line_total: number | string | null;
 
   product_name: string | null;
 
@@ -133,6 +139,10 @@ function mapTreatmentItem(
 
     productId:
       item.product_id,
+
+    serviceVariantId: item.service_variant_id,
+    unitPrice: item.unit_price === null ? null : Number(item.unit_price),
+    lineTotal: item.line_total === null ? null : Number(item.line_total),
 
     productName:
       item.product_name,
@@ -411,6 +421,10 @@ export async function addTreatmentItems(
         product_id:
           item.productId ??
           null,
+
+        service_variant_id: item.serviceVariantId ?? null,
+        unit_price: item.unitPrice ?? null,
+        line_total: item.lineTotal ?? null,
 
         product_name:
           item.productName?.trim() ||

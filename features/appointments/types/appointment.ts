@@ -48,6 +48,7 @@ export interface Appointment {
   doctor_id: number | null;
   service_id: number | null;
   room_id: number | null;
+  device_id: number | null;
 
   appointment_at: string;
 
@@ -69,9 +70,10 @@ export interface CreateAppointmentInput {
 
   customer_id: number;
 
-  doctor_id: number;
+  doctor_id: number | null;
   service_id: number;
   room_id: number;
+  device_id?: number | null;
 
   appointment_at: string;
 
@@ -105,6 +107,7 @@ export interface AppointmentConflict {
 
   doctor_id: number | null;
   room_id: number | null;
+  device_id: number | null;
 
   status: AppointmentStatus;
 }

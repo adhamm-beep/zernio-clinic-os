@@ -5,6 +5,7 @@ import {
   createTreatment,
   type CreateTreatmentInput,
 } from "../api/treatment.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useCreateTreatment() {
   const queryClient = useQueryClient();
@@ -13,10 +14,11 @@ export function useCreateTreatment() {
     mutationFn: (treatment: CreateTreatmentInput) =>
       createTreatment(treatment),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["treatments"],
-      });
+    onSuccess: async (createdTreatment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        createdTreatment.customer_id
+      );
     },
   });
 }

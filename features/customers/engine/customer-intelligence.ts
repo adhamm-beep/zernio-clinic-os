@@ -24,21 +24,32 @@ export function buildCustomerIntelligence(
     );
 
   const completedTreatments =
-    customer.treatments.filter(
-      (treatment) =>
-        treatment.status === "completed"
-    );
+    customer.treatmentSessions.length > 0
+      ? customer.treatmentSessions.filter(
+          (session) => session.status === "completed"
+        )
+      : customer.treatments.filter(
+          (treatment) => treatment.status === "completed"
+        );
 
-  const upcomingAppointment =
-    customer.appointments.find(
+  const upcomingAppointment = customer.appointments
+    .filter(
       (appointment) =>
+        !["cancelled", "completed", "no_show"].includes(
+          appointment.status
+        ) &&
         new Date(appointment.appointment_at) > new Date()
-    );
+    )
+    .sort(
+      (first, second) =>
+        new Date(first.appointment_at).getTime() -
+        new Date(second.appointment_at).getTime()
+    )[0];
 
   const averageSpend =
-    completedTreatments.length === 0
+    completedAppointments.length === 0
       ? 0
-      : customer.totalPaid / completedTreatments.length;
+      : customer.totalPaid / completedAppointments.length;
 
   return {
     totalVisits: completedAppointments.length,
@@ -54,10 +65,14 @@ export function buildCustomerIntelligence(
     lastVisit: customer.lastVisit,
 
     lastTreatment:
-      completedTreatments[0]?.service_name ?? null,
+      customer.treatments.find(
+        (treatment) => treatment.status === "completed"
+      )?.service_name ?? null,
 
     lastDoctor:
-      completedTreatments[0]?.doctor_name ?? null,
+      customer.treatments.find(
+        (treatment) => treatment.status === "completed"
+      )?.doctor_name ?? null,
 
     nextAppointment:
       upcomingAppointment?.appointment_at ?? null,

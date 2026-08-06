@@ -11,6 +11,7 @@ import type {
   Appointment,
   UpdateAppointmentStatusInput,
 } from "../types/appointment";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useUpdateAppointment() {
   const queryClient = useQueryClient();
@@ -23,10 +24,11 @@ export function useUpdateAppointment() {
     mutationFn: (input) =>
       updateAppointmentStatus(input),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["appointments"],
-      });
+    onSuccess: async (updatedAppointment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        updatedAppointment.customer_id
+      );
     },
   });
 }

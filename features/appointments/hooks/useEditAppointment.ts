@@ -9,6 +9,7 @@ import {
   updateAppointment,
   type UpdateAppointmentInput,
 } from "../api/appointment.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useEditAppointment() {
   const queryClient =
@@ -20,20 +21,11 @@ export function useEditAppointment() {
     ) =>
       updateAppointment(input),
 
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [
-            "appointments",
-          ],
-        }),
-
-        queryClient.invalidateQueries({
-          queryKey: [
-            "calendar-events",
-          ],
-        }),
-      ]);
+    onSuccess: async (updatedAppointment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        updatedAppointment.customer_id
+      );
     },
   });
 }

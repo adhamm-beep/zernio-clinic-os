@@ -13,10 +13,10 @@ export default function DashboardLayout({
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1 overflow-x-hidden">
         <Header />
 
-        <main className="p-8">
+        <main className="min-w-0 p-8">
           {children}
         </main>
       </div>

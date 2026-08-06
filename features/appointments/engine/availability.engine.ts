@@ -39,9 +39,11 @@ function toDate(
 }
 
 function formatTime(date: Date): string {
-  return date
-    .toTimeString()
-    .slice(0, 5);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function formatLabel(
@@ -119,9 +121,10 @@ export function generateAvailableSlots(
         continue;
       }
 
+      const existingDuration = Number(appointment.services?.duration_minutes) || 30;
       const existingEnd = new Date(
         existingStart.getTime() +
-          30 * 60_000
+          existingDuration * 60_000
       );
 
       const overlap =

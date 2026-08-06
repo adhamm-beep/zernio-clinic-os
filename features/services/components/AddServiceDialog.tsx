@@ -37,6 +37,9 @@ const serviceSchema = z.object({
     .min(5, "Minimum duration is 5 minutes"),
 
   is_active: z.boolean(),
+  code: z.string().optional(),
+  provider_type: z.enum(["doctor", "department"]),
+  price_starting_from: z.boolean(),
 });
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
@@ -69,6 +72,9 @@ export default function AddServiceDialog() {
       default_price: 0,
       duration_minutes: 30,
       is_active: true,
+      code: "",
+      provider_type: "doctor",
+      price_starting_from: false,
     },
   });
 
@@ -80,6 +86,9 @@ export default function AddServiceDialog() {
         default_price: values.default_price,
         duration_minutes: values.duration_minutes,
         is_active: values.is_active,
+        code: values.code,
+        provider_type: values.provider_type,
+        price_starting_from: values.price_starting_from,
       });
 
       toast.success("Service added successfully");
@@ -90,6 +99,9 @@ export default function AddServiceDialog() {
         default_price: 0,
         duration_minutes: 30,
         is_active: true,
+        code: "",
+        provider_type: "doctor",
+        price_starting_from: false,
       });
 
       setOpen(false);
@@ -112,6 +124,9 @@ export default function AddServiceDialog() {
         default_price: 0,
         duration_minutes: 30,
         is_active: true,
+        code: "",
+        provider_type: "doctor",
+        price_starting_from: false,
       });
     }
   }
@@ -135,6 +150,17 @@ export default function AddServiceDialog() {
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-4"
         >
+          <div>
+            <Input placeholder="Service code (optional)" {...register("code")} />
+          </div>
+
+          <div>
+            <select {...register("provider_type")} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
+              <option value="doctor">Doctor service</option>
+              <option value="department">Department service</option>
+            </select>
+          </div>
+
           <div>
             <Input
               placeholder="Service name"
@@ -207,6 +233,11 @@ export default function AddServiceDialog() {
               </p>
             )}
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" {...register("price_starting_from")} className="h-4 w-4 rounded border-gray-300" />
+            Price starts from this amount
+          </label>
 
           <label className="flex items-center gap-2 text-sm">
             <input

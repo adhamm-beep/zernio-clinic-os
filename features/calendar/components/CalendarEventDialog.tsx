@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { useEditAppointment } from "@/features/appointments/hooks/useEditAppointment";
 import { useDeleteAppointment } from "@/features/appointments/hooks/useDeleteAppointment";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
+import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 
 import type {
   CalendarEvent,
@@ -43,6 +44,7 @@ type EditForm = {
   doctorId: string;
   serviceId: string;
   roomId: string;
+  deviceId: string;
   appointmentDate: string;
   appointmentTime: string;
   status: CalendarEventStatus;
@@ -118,7 +120,9 @@ function createForm(
     doctorId:
       event.doctorId !== null
         ? String(event.doctorId)
-        : "",
+        : event.serviceCategory === "Laser Hair Removal" ? "-1"
+        : event.serviceCategory === "Bleaching" ? "-2"
+        : event.serviceCategory === "ProFacial" ? "-3" : "",
 
     serviceId:
       event.serviceId !== null
@@ -129,6 +133,8 @@ function createForm(
       event.roomId !== null
         ? String(event.roomId)
         : "",
+
+    deviceId: event.deviceId !== null ? String(event.deviceId) : "",
 
     appointmentDate:
       toLocalDate(event.start),
@@ -167,6 +173,8 @@ export default function CalendarEventDialog({
 
   useEffect(() => {
     if (event) {
+      // The dialog form is intentionally reset when a different event opens.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(createForm(event));
     }
 
@@ -187,10 +195,42 @@ export default function CalendarEventDialog({
           Number(form.serviceId)
       ) ?? null
     );
-  }, [
-    form?.serviceId,
-    masterData?.services,
-  ]);
+  }, [form, masterData?.services]);
+
+  const doctorServices = useMemo(() => {
+    const doctorId = Number(form?.doctorId);
+    if (!doctorId) return [];
+    if (doctorId === -1) return (masterData?.services ?? []).filter((service) => service.provider_type === "department" && service.category === "Laser Hair Removal");
+    if (doctorId === -2) return (masterData?.services ?? []).filter((service) => service.provider_type === "department" && service.category === "Bleaching");
+    if (doctorId === -3) return (masterData?.services ?? []).filter((service) => service.provider_type === "department" && service.category === "ProFacial");
+    const ids = new Set((masterData?.staffServices ?? []).filter((link) => link.staff_id === doctorId).map((link) => link.service_id));
+    return (masterData?.services ?? []).filter((service) => ids.has(service.id));
+  }, [form?.doctorId, masterData?.services, masterData?.staffServices]);
+
+  const availableDevices = useMemo(() => {
+    const serviceId = Number(form?.serviceId);
+    const providerId = Number(form?.doctorId);
+    if (!serviceId) return [];
+    const serviceDeviceIds = new Set((masterData?.serviceDevices ?? []).filter((link) => link.service_id === serviceId).map((link) => link.device_id));
+    const staffDeviceIds = providerId > 0 ? new Set((masterData?.staffDevices ?? []).filter((link) => link.staff_id === providerId).map((link) => link.device_id)) : null;
+    return (masterData?.devices ?? []).filter((device) => serviceDeviceIds.has(device.id) && (!staffDeviceIds || staffDeviceIds.has(device.id)));
+  }, [form?.doctorId, form?.serviceId, masterData?.devices, masterData?.serviceDevices, masterData?.staffDevices]);
+
+  const availableRooms = useMemo(() => {
+    const rooms = masterData?.rooms ?? [];
+    const deviceId = Number(form?.deviceId);
+    const providerId = Number(form?.doctorId);
+    if (deviceId) {
+      const roomId = masterData?.devices.find((device) => device.id === deviceId)?.room_id;
+      return rooms.filter((room) => room.id === roomId);
+    }
+    if (providerId === -3) return rooms.filter((room) => room.name.trim().toLowerCase() === "profacial room");
+    if (providerId > 0) {
+      const ids = new Set((masterData?.staffRooms ?? []).filter((link) => link.staff_id === providerId).map((link) => link.room_id));
+      return rooms.filter((room) => ids.has(room.id));
+    }
+    return [];
+  }, [form?.deviceId, form?.doctorId, masterData?.devices, masterData?.rooms, masterData?.staffRooms]);
 
   function updateForm<
     Key extends keyof EditForm
@@ -233,9 +273,14 @@ export default function CalendarEventDialog({
       form.roomId
     );
 
+    if (availableDevices.length > 0 && !form.deviceId) {
+      toast.error("Please select the device used for this service.");
+      return;
+    }
+
     if (
       !Number.isInteger(doctorId) ||
-      doctorId <= 0
+      (doctorId <= 0 && ![-1, -2, -3].includes(doctorId))
     ) {
       toast.error(
         "Please select a doctor."
@@ -286,11 +331,13 @@ export default function CalendarEventDialog({
       await editAppointment.mutateAsync({
         id: event.appointmentId,
 
-        doctor_id: doctorId,
+        doctor_id: doctorId > 0 ? doctorId : null,
 
         service_id: serviceId,
 
         room_id: roomId,
+
+        device_id: form.deviceId ? Number(form.deviceId) : null,
 
         appointment_at:
           appointmentDate.toISOString(),
@@ -413,20 +460,25 @@ export default function CalendarEventDialog({
 
                     <select
                       value={form.doctorId}
-                      disabled={masterLoading}
-                      onChange={(changeEvent) =>
-                        updateForm(
-                          "doctorId",
-                          changeEvent.target.value
-                        )
-                      }
+                      disabled={masterLoading || !form.doctorId}
+                      onChange={(changeEvent) => setForm((current) => current ? {
+                        ...current,
+                        doctorId: changeEvent.target.value,
+                        serviceId: "",
+                        deviceId: "",
+                        roomId: "",
+                      } : current)}
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                     >
                       <option value="">
-                        Select doctor
+                        Select doctor or department
                       </option>
 
-                      {masterData?.staff.map(
+                      <option value="-1">Laser Department (Nurses)</option>
+                      <option value="-2">Hair Bleaching Department (PicoWay)</option>
+                      <option value="-3">ProFacial Department (Nurse)</option>
+
+                      {masterData?.staff.filter(isApprovedDoctor).map(
                         (doctor) => (
                           <option
                             key={doctor.id}
@@ -447,19 +499,14 @@ export default function CalendarEventDialog({
                     <select
                       value={form.serviceId}
                       disabled={masterLoading}
-                      onChange={(changeEvent) =>
-                        updateForm(
-                          "serviceId",
-                          changeEvent.target.value
-                        )
-                      }
+                      onChange={(changeEvent) => setForm((current) => current ? {...current, serviceId: changeEvent.target.value, deviceId: "", roomId: ""} : current)}
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                     >
                       <option value="">
-                        Select service
+                        {form.doctorId ? "Select service" : "Select doctor first"}
                       </option>
 
-                      {masterData?.services.map(
+                      {doctorServices.map(
                         (service) => (
                           <option
                             key={service.id}
@@ -474,7 +521,7 @@ export default function CalendarEventDialog({
                 </div>
 
                 {selectedService && (
-                  <div className="grid gap-3 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">
+                  <div className="grid gap-3 rounded-xl border bg-slate-50 p-4">
                     <div>
                       <p className="text-xs text-gray-500">
                         Duration
@@ -488,20 +535,21 @@ export default function CalendarEventDialog({
                       </p>
                     </div>
 
-                    <div>
-                      <p className="text-xs text-gray-500">
-                        Price
-                      </p>
-
-                      <p className="mt-1 text-sm font-medium">
-                        {
-                          selectedService.default_price
-                        }{" "}
-                        SAR
-                      </p>
-                    </div>
                   </div>
                 )}
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Device</label>
+                  <select
+                    value={form.deviceId}
+                    disabled={masterLoading || !form.serviceId || availableDevices.length === 0}
+                    onChange={(changeEvent) => setForm((current) => current ? {...current, deviceId: changeEvent.target.value, roomId: ""} : current)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60"
+                  >
+                    <option value="">{!form.serviceId ? "Select service first" : availableDevices.length ? "Select device" : "No device required"}</option>
+                    {availableDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
+                  </select>
+                </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
@@ -510,7 +558,7 @@ export default function CalendarEventDialog({
 
                   <select
                     value={form.roomId}
-                    disabled={masterLoading}
+                    disabled={masterLoading || availableRooms.length === 0}
                     onChange={(changeEvent) =>
                       updateForm(
                         "roomId",
@@ -523,7 +571,7 @@ export default function CalendarEventDialog({
                       Select room
                     </option>
 
-                    {masterData?.rooms.map(
+                    {availableRooms.map(
                       (room) => (
                         <option
                           key={room.id}

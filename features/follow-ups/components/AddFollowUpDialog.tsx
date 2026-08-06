@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ function getCurrentDateTimeLocal() {
   return localDate.toISOString().slice(0, 16);
 }
 
-export default function AddFollowUpDialog() {
+export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: number; branchId: number }) {
   const [open, setOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
 
@@ -60,7 +60,7 @@ export default function AddFollowUpDialog() {
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm<FollowUpFormData>({
     resolver: zodResolver(followUpSchema),
@@ -79,7 +79,7 @@ export default function AddFollowUpDialog() {
     },
   });
 
-  const selectedCustomerId = watch("customer_id");
+  const selectedCustomerId = useWatch({ control, name: "customer_id" });
 
   const filteredCustomers = useMemo(() => {
     const query = customerSearch.trim().toLowerCase();
@@ -141,6 +141,8 @@ export default function AddFollowUpDialog() {
       }
 
       await createFollowUp.mutateAsync({
+        clinic_id: clinicId,
+        branch_id: branchId,
         customer_id: customerId,
         appointment_id: appointmentId,
         treatment_id: treatmentId,
@@ -250,8 +252,8 @@ export default function AddFollowUpDialog() {
               >
                 {new Date(
                   appointment.appointment_at
-                ).toLocaleString()}{" "}
-                —appointment.services?.name ?? "No service"
+                ).toLocaleString("en-US", { hour12: true })}{" "}
+                — {appointment.services?.name ?? "No service"}
               </option>
             ))}
           </select>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
+import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 
 import { useAvailableSlots } from "../hooks/useAvailableSlots";
 import { useCreateAppointment } from "../hooks/useCreateAppointment";
@@ -26,6 +27,7 @@ type FormValues = {
   doctor_id: number;
   service_id: number;
   room_id: number;
+  device_id: number;
   appointment_date: string;
   appointment_time: string;
   source: string;
@@ -88,9 +90,10 @@ export default function AddAppointmentDialogV2({
 
   const {
     register,
-    watch,
+    control,
     reset,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
@@ -98,6 +101,7 @@ export default function AddAppointmentDialogV2({
       doctor_id: 0,
       service_id: 0,
       room_id: 0,
+      device_id: 0,
       appointment_date: getTodayDate(),
       appointment_time: "",
       source: "",
@@ -105,21 +109,14 @@ export default function AddAppointmentDialogV2({
     },
   });
 
-  const doctorId = Number(
-    watch("doctor_id")
-  );
+  const doctorId = Number(useWatch({ control, name: "doctor_id" }));
 
-  const serviceId = Number(
-    watch("service_id")
-  );
+  const serviceId = Number(useWatch({ control, name: "service_id" }));
 
-  const roomId = Number(
-    watch("room_id")
-  );
+  const roomId = Number(useWatch({ control, name: "room_id" }));
+  const deviceId = Number(useWatch({ control, name: "device_id" }));
 
-  const appointmentDate = watch(
-    "appointment_date"
-  );
+  const appointmentDate = useWatch({ control, name: "appointment_date" });
 
   const selectedService = useMemo(
     () =>
@@ -129,11 +126,55 @@ export default function AddAppointmentDialogV2({
       ),
     [masterData?.services, serviceId]
   );
-const availableStaff =
-  masterData?.staff ?? [];
+const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
 
-const availableRooms =
-  masterData?.rooms ?? [];
+  const availableServices = useMemo(() => {
+    const services = masterData?.services ?? [];
+    if (!doctorId) return [];
+    if (doctorId === -1) return services.filter((service) => service.provider_type === "department" && service.category === "Laser Hair Removal");
+    if (doctorId === -2) return services.filter((service) => service.provider_type === "department" && service.category === "Bleaching");
+    if (doctorId === -3) return services.filter((service) => service.provider_type === "department" && service.category === "ProFacial");
+    const allowed = new Set((masterData?.staffServices ?? []).filter((link) => link.staff_id === doctorId).map((link) => link.service_id));
+    return services.filter((service) => service.provider_type === "doctor" && allowed.has(service.id));
+  }, [doctorId, masterData?.services, masterData?.staffServices]);
+
+  const availableDevices = useMemo(() => {
+    const doctorCanProvideService = doctorId < 0 ||
+      (masterData?.staffServices ?? []).some((link) => link.staff_id === doctorId && link.service_id === serviceId);
+    if (!doctorCanProvideService) return [];
+    const ids = new Set((masterData?.serviceDevices ?? []).filter((link) => link.service_id === serviceId).map((link) => link.device_id));
+    const permittedDevices = doctorId < 0 ? null : new Set((masterData?.staffDevices ?? []).filter((link) => link.staff_id === doctorId).map((link) => link.device_id));
+    return (masterData?.devices ?? []).filter((device) => ids.has(device.id) && (!permittedDevices || permittedDevices.has(device.id)));
+  }, [doctorId, masterData?.devices, masterData?.serviceDevices, masterData?.staffDevices, masterData?.staffServices, serviceId]);
+
+  const availableRooms = useMemo(() => {
+    const rooms = masterData?.rooms ?? [];
+    if (deviceId > 0) {
+      const roomIdForDevice = masterData?.devices.find((device) => device.id === deviceId)?.room_id;
+      return rooms.filter((room) => room.id === roomIdForDevice);
+    }
+    if (doctorId > 0) {
+      const ids = new Set((masterData?.staffRooms ?? []).filter((link) => link.staff_id === doctorId).map((link) => link.room_id));
+      return rooms.filter((room) => ids.has(room.id));
+    }
+    if (doctorId === -3) return rooms.filter((room) => room.name.trim().toLowerCase() === "profacial room");
+    return [];
+  }, [deviceId, doctorId, masterData?.devices, masterData?.rooms, masterData?.staffRooms]);
+
+  useEffect(() => {
+    setValue("device_id", availableDevices.length === 1 ? availableDevices[0].id : 0);
+  }, [availableDevices, setValue]);
+
+  useEffect(() => {
+    setValue("room_id", availableRooms.length === 1 ? availableRooms[0].id : 0);
+  }, [availableRooms, setValue]);
+
+  useEffect(() => {
+    if (doctorId && serviceId && !availableServices.some((service) => service.id === serviceId)) {
+      setValue("service_id", 0);
+      setValue("device_id", 0);
+    }
+  }, [availableServices, doctorId, serviceId, setValue]);
 
   const filteredCustomers = useMemo(() => {
     const query = customerSearch
@@ -183,6 +224,7 @@ const availableRooms =
       appointmentDate || undefined,
     duration_minutes:
       selectedService?.duration_minutes,
+    device_id: deviceId > 0 ? deviceId : undefined,
   });
 
   function resetForm() {
@@ -192,6 +234,7 @@ const availableRooms =
       doctor_id: 0,
       service_id: 0,
       room_id: 0,
+      device_id: 0,
       appointment_date: getTodayDate(),
       appointment_time: "",
       source: "",
@@ -232,6 +275,7 @@ const availableRooms =
     const selectedRoomId = Number(
       values.room_id
     );
+    const selectedDeviceId = Number(values.device_id);
 
     if (
       !Number.isInteger(customerId) ||
@@ -268,6 +312,7 @@ const availableRooms =
     }
 
     if (
+      selectedService?.provider_type === "doctor" &&
       !Number.isInteger(
         selectedRoomId
       ) ||
@@ -276,6 +321,11 @@ const availableRooms =
       toast.error(
         "Please select a room."
       );
+      return;
+    }
+
+    if (availableDevices.length > 0 && selectedDeviceId <= 0) {
+      toast.error("Please select the device used for this service.");
       return;
     }
 
@@ -299,9 +349,10 @@ const availableRooms =
         clinic_id: clinicId,
         branch_id: branchId,
         customer_id: customerId,
-        doctor_id: selectedDoctorId,
+        doctor_id: selectedService?.provider_type === "doctor" ? selectedDoctorId : null,
         service_id: selectedServiceId,
         room_id: selectedRoomId,
+        device_id: selectedDeviceId > 0 ? selectedDeviceId : null,
         appointment_at:
           selectedSlot.appointment_at,
         source:
@@ -427,20 +478,23 @@ const availableRooms =
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Doctor
+                Doctor / Department
               </label>
 
               <select
                 {...register("doctor_id", {
                   valueAsNumber: true,
-                  required: true,
                 })}
                 disabled={masterDataLoading}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               >
                 <option value={0}>
-                  Select doctor
+                  Select doctor or department
                 </option>
+
+                <option value={-1}>Laser Department (Nurses)</option>
+                <option value={-2}>Hair Bleaching Department (PicoWay)</option>
+                <option value={-3}>ProFacial Department (Nurse)</option>
 
                 {availableStaff.map(
                   (member) => (
@@ -465,14 +519,14 @@ const availableRooms =
                   valueAsNumber: true,
                   required: true,
                 })}
-                disabled={masterDataLoading}
+                disabled={masterDataLoading || !doctorId}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               >
                 <option value={0}>
-                  Select service
+                  {doctorId ? "Select service" : "Select doctor first"}
                 </option>
 
-                {masterData?.services.map(
+                {availableServices.map(
                   (service) => (
                     <option
                       key={service.id}
@@ -487,6 +541,15 @@ const availableRooms =
           </div>
 
           <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Device</label>
+              <select {...register("device_id", { valueAsNumber: true })} disabled={!serviceId || availableDevices.length === 0} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                <option value={0}>{!serviceId ? "Select a service first" : availableDevices.length === 0 ? "No device allowed for this service" : "Select device"}</option>
+                {availableDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
+              </select>
+              {availableDevices.length === 1 && <p className="mt-1 text-xs text-gray-500">Selected automatically for this service.</p>}
+            </div>
+
+          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Room
             </label>
@@ -496,11 +559,11 @@ const availableRooms =
                 valueAsNumber: true,
                 required: true,
               })}
-              disabled={masterDataLoading}
+              disabled={masterDataLoading || availableRooms.length === 0}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value={0}>
-                Select room
+                {availableRooms.length ? "Select room" : "Select service/device first"}
               </option>
 
               {availableRooms.map(
@@ -517,7 +580,7 @@ const availableRooms =
           </div>
 
           {selectedService && (
-            <div className="grid gap-3 rounded-xl border bg-slate-50 p-4 sm:grid-cols-3">
+            <div className="grid gap-3 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs text-gray-500">
                   Category
@@ -542,18 +605,6 @@ const availableRooms =
                 </p>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-500">
-                  Price
-                </p>
-
-                <p className="mt-1 text-sm font-medium">
-                  {
-                    selectedService.default_price
-                  }{" "}
-                  SAR
-                </p>
-              </div>
             </div>
           )}
 
@@ -587,7 +638,7 @@ const availableRooms =
                 }
               )}
               disabled={
-                !doctorId ||
+                (selectedService?.provider_type === "doctor" && !doctorId) ||
                 !serviceId ||
                 !roomId ||
                 !appointmentDate ||

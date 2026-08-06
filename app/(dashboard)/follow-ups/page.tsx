@@ -3,13 +3,17 @@
 import FollowUpTable from "@/features/follow-ups/components/FollowUpTable";
 import { useFollowUps } from "@/features/follow-ups/hooks/useFollowUps";
 import AddFollowUpDialog from "@/features/follow-ups/components/AddFollowUpDialog";
+import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 export default function FollowUpsPage() {
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
   const {
     data: followUps = [],
     isLoading,
     error,
-  } = useFollowUps();
+  } = useFollowUps(clinicId, branchId);
 
   const pendingCount = followUps.filter(
     (followUp) => followUp.status === "pending"
@@ -31,7 +35,9 @@ export default function FollowUpsPage() {
             {followUps.length} follow ups
           </p>
         </div>
-<AddFollowUpDialog />
+        {clinicId > 0 && branchId > 0 && (
+          <AddFollowUpDialog clinicId={clinicId} branchId={branchId} />
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -32,7 +32,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function AddCustomerDialog() {
+export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: number; branchId: number }) {
   const [open, setOpen] = useState(false);
   const createCustomer = useCreateCustomer();
 
@@ -48,6 +48,8 @@ export default function AddCustomerDialog() {
   async function onSubmit(values: FormData) {
     try {
       await createCustomer.mutateAsync({
+        clinic_id: clinicId,
+        branch_id: branchId,
         ...values,
         gender: "",
         date_of_birth: "",

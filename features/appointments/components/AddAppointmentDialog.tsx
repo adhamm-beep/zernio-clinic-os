@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
+import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 
 import { useCreateAppointment } from "../hooks/useCreateAppointment";
 
@@ -117,6 +118,7 @@ export default function AddAppointmentDialog({
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm<AppointmentFormData>({
     resolver:
@@ -145,6 +147,17 @@ export default function AddAppointmentDialog({
       status: "booked",
     },
   });
+
+  const selectedDoctorId = Number(useWatch({ control, name: "doctor_id" }));
+  const doctorServices = useMemo(() => {
+    if (!selectedDoctorId) return [];
+    const ids = new Set((masterData?.staffServices ?? []).filter((link) => link.staff_id === selectedDoctorId).map((link) => link.service_id));
+    return (masterData?.services ?? []).filter((service) => ids.has(service.id));
+  }, [masterData?.services, masterData?.staffServices, selectedDoctorId]);
+
+  useEffect(() => {
+    setValue("service_id", "");
+  }, [selectedDoctorId, setValue]);
 
   useEffect(() => {
     if (
@@ -563,9 +576,7 @@ export default function AddAppointmentDialog({
               {...register(
                 "doctor_id"
               )}
-              disabled={
-                masterLoading
-              }
+              disabled={masterLoading || !selectedDoctorId}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="">
@@ -574,7 +585,7 @@ export default function AddAppointmentDialog({
                   : "Select doctor"}
               </option>
 
-              {masterData?.staff.map(
+              {masterData?.staff.filter(isApprovedDoctor).map(
                 (doctor) => (
                   <option
                     key={doctor.id}
@@ -613,10 +624,10 @@ export default function AddAppointmentDialog({
               <option value="">
                 {masterLoading
                   ? "Loading services..."
-                  : "Select service"}
+                  : selectedDoctorId ? "Select service" : "Select doctor first"}
               </option>
 
-              {masterData?.services.map(
+              {doctorServices.map(
                 (service) => (
                   <option
                     key={

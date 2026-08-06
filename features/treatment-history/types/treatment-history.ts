@@ -10,6 +10,9 @@ export interface TreatmentItem {
   serviceId: number | null;
 
   productId: number | null;
+  serviceVariantId: number | null;
+  unitPrice: number | null;
+  lineTotal: number | null;
 
   productName: string | null;
 
@@ -74,6 +77,9 @@ export type CreateTreatmentItemInput = {
   serviceId?: number;
 
   productId?: number;
+  serviceVariantId?: number;
+  unitPrice?: number;
+  lineTotal?: number;
 
   productName?: string;
 

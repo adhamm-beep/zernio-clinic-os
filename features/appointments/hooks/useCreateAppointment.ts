@@ -11,6 +11,7 @@ import type {
   Appointment,
   CreateAppointmentInput,
 } from "../types/appointment";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
@@ -23,10 +24,11 @@ export function useCreateAppointment() {
     mutationFn: (appointment) =>
       createAppointment(appointment),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["appointments"],
-      });
+    onSuccess: async (createdAppointment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        createdAppointment.customer_id
+      );
     },
   });
 }

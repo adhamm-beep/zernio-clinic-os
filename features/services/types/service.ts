@@ -6,6 +6,9 @@ export interface Service {
   default_price: number;
   duration_minutes: number;
   is_active: boolean;
+  code: string | null;
+  provider_type: "doctor" | "department" | null;
+  price_starting_from: boolean;
 }
 
 export type CreateServiceInput = {
@@ -14,4 +17,7 @@ export type CreateServiceInput = {
   default_price: number;
   duration_minutes: number;
   is_active?: boolean;
+  code?: string;
+  provider_type?: "doctor" | "department";
+  price_starting_from?: boolean;
 };

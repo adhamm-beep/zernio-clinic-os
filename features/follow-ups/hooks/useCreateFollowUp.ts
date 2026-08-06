@@ -5,6 +5,7 @@ import {
   createFollowUp,
   type CreateFollowUpInput,
 } from "../api/follow-up.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useCreateFollowUp() {
   const queryClient = useQueryClient();
@@ -13,10 +14,11 @@ export function useCreateFollowUp() {
     mutationFn: (followUp: CreateFollowUpInput) =>
       createFollowUp(followUp),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["follow-ups"],
-      });
+    onSuccess: async (createdFollowUp) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        createdFollowUp.customer_id
+      );
     },
   });
 }

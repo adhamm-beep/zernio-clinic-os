@@ -3,13 +3,17 @@
 import PaymentTable from "@/features/payments/components/PaymentTable";
 import { usePayments } from "@/features/payments/hooks/usePayments";
 import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
+import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 export default function PaymentsPage() {
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
   const {
     data: payments = [],
     isLoading,
     error,
-  } = usePayments();
+  } = usePayments(clinicId, branchId);
 
   const totalAmount = payments.reduce(
     (sum, payment) => sum + Number(payment.amount ?? 0),
@@ -29,7 +33,9 @@ export default function PaymentsPage() {
           </p>
         </div>
 
-        <AddPaymentDialog />
+        {clinicId > 0 && branchId > 0 && (
+          <AddPaymentDialog clinicId={clinicId} branchId={branchId} />
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

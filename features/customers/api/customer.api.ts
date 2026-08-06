@@ -4,6 +4,8 @@ import type { Customer, Customer360 } from "../types/customer";
 const supabase = createClient();
 
 export type CreateCustomerInput = {
+  clinic_id: number;
+  branch_id: number;
   customer_code: string;
   first_name: string;
   last_name?: string;
@@ -14,7 +16,7 @@ export type CreateCustomerInput = {
   status: string;
 };
 
-export type UpdateCustomerInput = CreateCustomerInput & {
+export type UpdateCustomerInput = Omit<CreateCustomerInput, "clinic_id" | "branch_id"> & {
   id: number;
 };
 
@@ -53,6 +55,8 @@ export async function createCustomer(
   const { data, error } = await supabase
     .from("customers")
     .insert({
+      clinic_id: customer.clinic_id,
+      branch_id: customer.branch_id,
       customer_code: customer.customer_code.trim(),
       first_name: customer.first_name.trim(),
       last_name: customer.last_name?.trim() || null,
@@ -141,17 +145,24 @@ function normalizePhone(phone: string): string {
 export async function getCustomer360(
   id: string
 ): Promise<Customer360 | null> {
+  const customerId = Number(id);
+
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    return null;
+  }
+
   const [
     customerResult,
     appointmentsResult,
     treatmentsResult,
     paymentsResult,
     followUpsResult,
+    treatmentSessionsResult,
   ] = await Promise.all([
     supabase
       .from("customers")
       .select("*")
-      .eq("id", id)
+      .eq("id", customerId)
       .maybeSingle(),
 
     supabase
@@ -164,7 +175,7 @@ export async function getCustomer360(
         doctor_name,
         branch_name
       `)
-      .eq("customer_id", id)
+      .eq("customer_id", customerId)
       .order("appointment_at", { ascending: false }),
 
     supabase
@@ -178,7 +189,7 @@ export async function getCustomer360(
         price,
         discount
       `)
-      .eq("customer_id", id)
+      .eq("customer_id", customerId)
       .order("treatment_date", { ascending: false }),
 
     supabase
@@ -191,7 +202,7 @@ export async function getCustomer360(
         payment_status,
         invoice_number
       `)
-      .eq("customer_id", id)
+      .eq("customer_id", customerId)
       .order("payment_date", { ascending: false }),
 
     supabase
@@ -205,8 +216,14 @@ export async function getCustomer360(
         assigned_to,
         outcome
       `)
-      .eq("customer_id", id)
+      .eq("customer_id", customerId)
       .order("scheduled_at", { ascending: false }),
+
+    supabase
+      .from("treatment_sessions")
+      .select("id, session_date, status")
+      .eq("customer_id", customerId)
+      .order("session_date", { ascending: false }),
   ]);
 
   const firstError =
@@ -214,7 +231,8 @@ export async function getCustomer360(
     appointmentsResult.error ||
     treatmentsResult.error ||
     paymentsResult.error ||
-    followUpsResult.error;
+    followUpsResult.error ||
+    treatmentSessionsResult.error;
 
   if (firstError) {
     throw new Error(firstError.message);
@@ -228,6 +246,7 @@ export async function getCustomer360(
   const treatments = treatmentsResult.data ?? [];
   const payments = paymentsResult.data ?? [];
   const followUps = followUpsResult.data ?? [];
+  const treatmentSessions = treatmentSessionsResult.data ?? [];
 
   const totalPaid = payments
     .filter(
@@ -240,7 +259,9 @@ export async function getCustomer360(
       0
     );
 
-  const treatmentValue = treatments.reduce(
+  const treatmentValue = treatments
+    .filter((treatment) => treatment.status !== "cancelled")
+    .reduce(
     (sum, treatment) =>
       sum +
       Math.max(
@@ -248,23 +269,25 @@ export async function getCustomer360(
           Number(treatment.discount ?? 0),
         0
       ),
-    0
-  );
+      0
+    );
 
-  const lastVisit =
-    appointments.find(
-      (appointment) =>
-        appointment.status === "completed" ||
-        appointment.status === "arrived"
-    )?.appointment_at ??
-    treatments.find((treatment) => treatment.treatment_date)
-      ?.treatment_date ??
-    null;
+  const now = Date.now();
+  const visitDates = [
+    ...appointments
+      .filter((appointment) => (appointment.status === "completed" || appointment.status === "arrived") && new Date(appointment.appointment_at).getTime() <= now)
+      .map((appointment) => appointment.appointment_at),
+    ...treatments
+      .filter((treatment) => treatment.status === "completed" && treatment.treatment_date && new Date(treatment.treatment_date).getTime() <= now)
+      .map((treatment) => treatment.treatment_date as string),
+  ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const lastVisit = visitDates[0] ?? null;
 
   return {
     ...customerResult.data,
     appointments,
     treatments,
+    treatmentSessions,
     payments,
     followUps,
     totalPaid,

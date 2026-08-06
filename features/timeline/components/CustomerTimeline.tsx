@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import TimelineEventDialog from "./TimelineEventDialog";
+import TimelineIntelligenceCard from "./TimelineIntelligenceCard";
 
 import {
   CalendarDays,
@@ -89,7 +90,7 @@ function formatDayHeading(
   }
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    "en-US",
     {
       weekday: "long",
       day: "numeric",
@@ -109,6 +110,7 @@ function formatTime(
     {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     }
   ).format(date);
 }
@@ -400,6 +402,8 @@ export default function CustomerTimeline({
           })}
         </div>
       </div>
+
+      <TimelineIntelligenceCard events={data} />
 
       {groupedEvents.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed p-12 text-center">

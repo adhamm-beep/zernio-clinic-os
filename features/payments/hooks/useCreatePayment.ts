@@ -5,6 +5,7 @@ import {
   createPayment,
   type CreatePaymentInput,
 } from "../api/payment.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useCreatePayment() {
   const queryClient = useQueryClient();
@@ -13,10 +14,11 @@ export function useCreatePayment() {
     mutationFn: (payment: CreatePaymentInput) =>
       createPayment(payment),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["payments"],
-      });
+    onSuccess: async (createdPayment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        createdPayment.customer_id
+      );
     },
   });
 }

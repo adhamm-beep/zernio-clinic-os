@@ -3,9 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPayments } from "../api/payment.api";
 
-export function usePayments() {
+export function usePayments(clinicId?: number, branchId?: number) {
   return useQuery({
-    queryKey: ["payments"],
-    queryFn: getPayments,
+    queryKey: ["payments", clinicId ?? "all", branchId ?? "all"],
+    queryFn: () => getPayments(clinicId, branchId),
+    enabled: clinicId === undefined || (clinicId > 0 && (branchId === undefined || branchId > 0)),
   });
 }

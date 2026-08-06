@@ -6,10 +6,15 @@ export type TreatmentStatus =
 
 export interface Treatment {
   id: number;
+  clinic_id: number;
+  branch_id: number;
   created_at: string;
 
   customer_id: number;
   appointment_id: number | null;
+  doctor_id: number | null;
+  service_id: number | null;
+  service_variant_id: number | null;
 
   service_name: string;
   doctor_name: string | null;

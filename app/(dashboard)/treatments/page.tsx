@@ -3,13 +3,17 @@
 import TreatmentTable from "@/features/treatments/components/TreatmentTable";
 import { useTreatments } from "@/features/treatments/hooks/useTreatments";
 import AddTreatmentDialog from "@/features/treatments/components/AddTreatmentDialog";
+import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 export default function TreatmentsPage() {
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
   const {
     data: treatments = [],
     isLoading,
     error,
-  } = useTreatments();
+  } = useTreatments(clinicId, branchId);
 
   return (
     <div className="space-y-6">
@@ -24,7 +28,9 @@ export default function TreatmentsPage() {
           </p>
         </div>
 
-        <AddTreatmentDialog />
+        {clinicId > 0 && branchId > 0 && (
+          <AddTreatmentDialog clinicId={clinicId} branchId={branchId} />
+        )}
       </div>
 
       {isLoading && (

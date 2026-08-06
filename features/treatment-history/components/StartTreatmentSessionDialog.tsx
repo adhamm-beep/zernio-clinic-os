@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
+import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 
 import { useCreateTreatmentSession } from "../hooks/useCreateTreatmentSession";
 import { useFinishTreatmentSession } from "../hooks/useFinishTreatmentSession";
@@ -61,6 +62,8 @@ type ProductFormItem = {
   localId: string;
 
   serviceId: string;
+  serviceVariantId: string;
+  unitPrice: string;
 
   productName: string;
 
@@ -86,6 +89,8 @@ function createEmptyProduct(): ProductFormItem {
     localId: crypto.randomUUID(),
 
     serviceId: "",
+    serviceVariantId: "",
+    unitPrice: "",
 
     productName: "",
 
@@ -199,6 +204,8 @@ export default function StartTreatmentSessionDialog({
       return;
     }
 
+    // Opening the dialog resets its doctor selection from the current context.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedDoctorId(
       doctorId
         ? String(doctorId)
@@ -314,6 +321,10 @@ export default function StartTreatmentSessionDialog({
             item.productName.trim() ||
             undefined,
 
+          serviceVariantId: item.serviceVariantId ? Number(item.serviceVariantId) : undefined,
+          unitPrice: item.unitPrice ? Number(item.unitPrice) : undefined,
+          lineTotal: item.unitPrice ? Number(item.unitPrice) * (quantity ?? 1) : undefined,
+
           quantity:
             quantity !== undefined &&
             Number.isFinite(quantity)
@@ -353,10 +364,8 @@ export default function StartTreatmentSessionDialog({
 
   function validateForm(): boolean {
     if (
-      !Number.isInteger(
-        Number(selectedDoctorId)
-      ) ||
-      Number(selectedDoctorId) <= 0
+      !Number.isInteger(Number(selectedDoctorId)) ||
+      ![-1, -2, -3].includes(Number(selectedDoctorId)) && Number(selectedDoctorId) <= 0
     ) {
       toast.error(
         "Please select a doctor."
@@ -426,8 +435,7 @@ export default function StartTreatmentSessionDialog({
 
           appointmentId,
 
-          doctorId:
-            Number(selectedDoctorId),
+          doctorId: Number(selectedDoctorId) > 0 ? Number(selectedDoctorId) : undefined,
 
           sessionDate:
             appointmentDate ??
@@ -530,7 +538,7 @@ export default function StartTreatmentSessionDialog({
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs text-slate-400">
-                  Treating Doctor
+                  Doctor / Department
                 </label>
 
                 <select
@@ -543,10 +551,12 @@ export default function StartTreatmentSessionDialog({
                   }
                   onChange={(
                     event: ChangeEvent<HTMLSelectElement>
-                  ) =>
+                  ) => {
                     setSelectedDoctorId(
                       event.target.value
-                    )
+                    );
+                    setProducts([createEmptyProduct()]);
+                  }
                   }
                   className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none"
                 >
@@ -554,10 +564,14 @@ export default function StartTreatmentSessionDialog({
                     value=""
                     className="text-black"
                   >
-                    Select doctor
+                    Select doctor or department
                   </option>
 
-                  {masterData?.staff.map(
+                  <option value="-1" className="text-black">Laser Department (Nurses)</option>
+                  <option value="-2" className="text-black">Hair Bleaching Department (PicoWay)</option>
+                  <option value="-3" className="text-black">ProFacial Department (Nurse)</option>
+
+                  {masterData?.staff.filter(isApprovedDoctor).map(
                     (doctor) => (
                       <option
                         key={doctor.id}
@@ -582,12 +596,8 @@ export default function StartTreatmentSessionDialog({
                   {appointmentDate
                     ? new Date(
                         appointmentDate
-                      ).toLocaleString(
-                        "en-GB"
-                      )
-                    : new Date().toLocaleString(
-                        "en-GB"
-                      )}
+                      ).toLocaleString("en-US", { hour12: true })
+                    : new Date().toLocaleString("en-US", { hour12: true })}
                 </div>
               </div>
             </div>
@@ -725,23 +735,29 @@ export default function StartTreatmentSessionDialog({
                             masterDataLoading ||
                             isSaving
                           }
-                          onChange={(
-                            event: ChangeEvent<HTMLSelectElement>
-                          ) =>
-                            updateProduct(
-                              product.localId,
-                              "serviceId",
-                              event.target
-                                .value
-                            )
-                          }
+                          onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                            updateProduct(product.localId, "serviceId", event.target.value);
+                            updateProduct(product.localId, "serviceVariantId", "");
+                            updateProduct(product.localId, "productName", "");
+                            updateProduct(product.localId, "unitPrice", "");
+                          }}
                           className="w-full rounded-md border bg-white px-3 py-2 text-sm"
                         >
                           <option value="">
                             Select service
                           </option>
 
-                          {masterData?.services.map(
+                          {masterData?.services.filter((service) =>
+                            Number(selectedDoctorId) < 0
+                              ? service.provider_type === "department" && (
+                                  (Number(selectedDoctorId) === -1 && service.category === "Laser Hair Removal") ||
+                                  (Number(selectedDoctorId) === -2 && service.category === "Bleaching") ||
+                                  (Number(selectedDoctorId) === -3 && service.category === "ProFacial")
+                                )
+                              : masterData.staffServices.some((link) =>
+                                  link.staff_id === Number(selectedDoctorId) && link.service_id === service.id
+                                )
+                          ).map(
                             (service) => (
                               <option
                                 key={
@@ -762,26 +778,47 @@ export default function StartTreatmentSessionDialog({
 
                       <div>
                         <label className="mb-1 block text-sm font-medium">
-                          Product Name
+                          Material / Treatment Option
                         </label>
 
-                        <Input
-                          value={
-                            product.productName
-                          }
-                          disabled={isSaving}
-                          placeholder="Example: Teosyal RHA"
-                          onChange={(
-                            event: ChangeEvent<HTMLInputElement>
-                          ) =>
-                            updateProduct(
-                              product.localId,
-                              "productName",
-                              event.target
-                                .value
-                            )
-                          }
-                        />
+                        <select
+                          value={product.serviceVariantId}
+                          disabled={isSaving || !product.serviceId}
+                          onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                            const variant = masterData?.serviceVariants.find((item) => item.id === Number(event.target.value));
+                            const doctorPrice = masterData?.serviceVariantPrices.find((item) =>
+                              item.service_variant_id === variant?.id && item.staff_id === Number(selectedDoctorId)
+                            );
+                            updateProduct(product.localId, "serviceVariantId", event.target.value);
+                            updateProduct(product.localId, "productName", variant?.name ?? "");
+                            updateProduct(product.localId, "unitPrice", variant ? String(doctorPrice?.price ?? variant.price) : "");
+                          }}
+                          className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="">{product.serviceId ? "Select material or option" : "Select service first"}</option>
+                          {masterData?.serviceVariants.filter((variant) => {
+                            if (variant.service_id !== Number(product.serviceId)) return false;
+                            return Number(selectedDoctorId) <= 0 || masterData.serviceVariantPrices.some((price) =>
+                              price.service_variant_id === variant.id && price.staff_id === Number(selectedDoctorId)
+                            );
+                          }).map((variant) => {
+                            const doctorPrice = masterData.serviceVariantPrices.find((price) =>
+                              price.service_variant_id === variant.id && price.staff_id === Number(selectedDoctorId)
+                            );
+                            const price = doctorPrice?.price ?? variant.price;
+                            const startingFrom = doctorPrice?.is_starting_from ?? variant.is_starting_from;
+                            return (
+                              <option key={variant.id} value={variant.id}>
+                                {variant.name} — {startingFrom ? "From " : ""}{price} SAR
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-sm font-medium">Unit Price</label>
+                        <Input value={product.unitPrice} readOnly placeholder="Selected automatically" />
                       </div>
 
                       <div>

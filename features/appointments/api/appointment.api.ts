@@ -20,6 +20,7 @@ customer_id,
 doctor_id,
 service_id,
 room_id,
+device_id,
 
 appointment_at,
 
@@ -58,13 +59,25 @@ id,
 name
 )
 `;
-export async function getAppointments(): Promise<Appointment[]> {
-  const { data, error } = await supabase
+export async function getAppointments(
+  clinicId?: number,
+  branchId?: number
+): Promise<Appointment[]> {
+  let query = supabase
     .from("appointments")
     .select(APPOINTMENT_SELECT)
     .order("appointment_at", {
       ascending: true,
     });
+
+  if (clinicId && clinicId > 0) {
+    query = query.eq("clinic_id", clinicId);
+  }
+  if (branchId && branchId > 0) {
+    query = query.eq("branch_id", branchId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -97,11 +110,35 @@ export async function createAppointment(
 
   const hour = appointmentTime.getHours();
 
-  if (hour < 10 || hour >= 22) {
+  if (appointmentTime.getDay() === 5) throw new Error("The clinic is closed on Friday.");
+
+  if (hour < (appointment.doctor_id ? 14 : 10) || hour >= 22) {
     throw new Error(
-      "Appointments are only allowed between 10:00 AM and 10:00 PM."
+      appointment.doctor_id
+        ? "Doctor appointments are only allowed between 2:00 PM and 10:00 PM."
+        : "Laser appointments are only allowed between 10:00 AM and 10:00 PM."
     );
   }
+
+  const { data: service } = await supabase
+    .from("services")
+    .select("duration_minutes")
+    .eq("id", appointment.service_id)
+    .single();
+
+  const conflict = await checkAppointmentConflict({
+    clinic_id: appointment.clinic_id,
+    branch_id: appointment.branch_id,
+    doctor_id: appointment.doctor_id,
+    room_id: appointment.room_id,
+    device_id: appointment.device_id,
+    appointment_at: appointment.appointment_at,
+    duration_minutes: Number(service?.duration_minutes) || 30,
+  });
+
+  if (conflict.deviceConflict) throw new Error("The selected device is already booked at this time.");
+  if (conflict.doctorConflict) throw new Error("The doctor is already booked at this time.");
+  if (conflict.roomConflict) throw new Error("The room is already booked at this time.");
 
   const { data, error } =
     await supabase
@@ -124,6 +161,9 @@ export async function createAppointment(
 
         room_id:
           appointment.room_id,
+
+        device_id:
+          appointment.device_id ?? null,
 
         appointment_at:
           appointment.appointment_at,
@@ -182,7 +222,11 @@ export type AppointmentConflict = {
 
   room_id: number | null;
 
+  device_id: number | null;
+
   status: AppointmentStatus;
+
+  services?: { duration_minutes: number | null } | null;
 };
 
 export type AppointmentConflictCheckInput = {
@@ -190,9 +234,10 @@ export type AppointmentConflictCheckInput = {
 
   branch_id: number;
 
-  doctor_id: number;
+  doctor_id?: number | null;
 
   room_id: number;
+  device_id?: number | null;
 
   appointment_at: string;
 
@@ -207,6 +252,8 @@ export type AppointmentConflictCheckResult = {
   doctorConflict: boolean;
 
   roomConflict: boolean;
+
+  deviceConflict: boolean;
 
   conflictingAppointments: AppointmentConflict[];
 };
@@ -223,7 +270,9 @@ export async function getAppointmentConflicts(
         appointment_at,
         doctor_id,
         room_id,
-        status
+        device_id,
+        status,
+        services(duration_minutes)
       `)
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
@@ -277,10 +326,11 @@ export async function checkAppointmentConflict(
             appointment.appointment_at
           );
 
+        const existingDuration = Number(appointment.services?.duration_minutes) || 30;
         const existingEnd =
           new Date(
             existingStart.getTime() +
-              30 * 60000
+              existingDuration * 60000
           );
 
         const overlap =
@@ -293,10 +343,10 @@ export async function checkAppointmentConflict(
           return false;
 
         return (
-          appointment.doctor_id ===
-            input.doctor_id ||
+          (!!input.doctor_id && appointment.doctor_id === input.doctor_id) ||
           appointment.room_id ===
-            input.room_id
+            input.room_id ||
+          (!!input.device_id && appointment.device_id === input.device_id)
         );
       }
     );
@@ -306,7 +356,7 @@ export async function checkAppointmentConflict(
       conflicts.length > 0,
 
     doctorConflict:
-      conflicts.some(
+      !!input.doctor_id && conflicts.some(
         (x) =>
           x.doctor_id ===
           input.doctor_id
@@ -319,6 +369,9 @@ export async function checkAppointmentConflict(
           input.room_id
       ),
 
+    deviceConflict:
+      !!input.device_id && conflicts.some((x) => x.device_id === input.device_id),
+
     conflictingAppointments:
       conflicts,
   };
@@ -327,8 +380,9 @@ export type AvailableSlotsInput = {
   clinic_id: number;
   branch_id: number;
 
-  doctor_id: number;
+  doctor_id?: number | null;
   room_id: number;
+  device_id?: number | null;
 
   appointment_date: string;
 
@@ -359,6 +413,14 @@ function parseTime(
   return new Date(`${date}T${time}:00`);
 }
 
+function formatTime12Hour(date: Date): string {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export async function getAvailableAppointmentSlots(
   input: AvailableSlotsInput
 ): Promise<GeneratedTimeSlot[]> {
@@ -369,11 +431,26 @@ export async function getAvailableAppointmentSlots(
       input.branch_id
     );
 
+  const weekday = new Date(`${input.appointment_date}T12:00:00`).getDay();
+  if (weekday === 5) return [];
+
+  let scheduledOpening: string | undefined;
+  let scheduledClosing: string | undefined;
+  if (input.doctor_id) {
+    const { data: hours, error: hoursError } = await supabase.from("staff_working_hours")
+      .select("start_time, end_time, is_working")
+      .eq("staff_id", input.doctor_id).eq("weekday", weekday).maybeSingle();
+    if (hoursError) throw new Error(hoursError.message);
+    if (!hours?.is_working) return [];
+    scheduledOpening = hours.start_time?.slice(0, 5);
+    scheduledClosing = hours.end_time?.slice(0, 5);
+  }
+
  const opening =
-  input.opening_time ?? "10:00";
+  input.opening_time ?? scheduledOpening ?? (input.doctor_id ? "14:00" : "10:00");
 
   const closing =
-    input.closing_time ?? "22:00";
+    input.closing_time ?? scheduledClosing ?? "22:00";
 
   const interval =
     input.interval_minutes ?? 30;
@@ -410,6 +487,7 @@ export async function getAvailableAppointmentSlots(
 
     let doctorBusy = false;
     let roomBusy = false;
+    let deviceBusy = false;
 
     for (const appointment of appointments) {
 
@@ -418,10 +496,11 @@ export async function getAvailableAppointmentSlots(
           appointment.appointment_at
         );
 
+      const existingDuration = Number(appointment.services?.duration_minutes) || 30;
       const existingEnd =
         new Date(
           existingStart.getTime() +
-            30 * 60000
+            existingDuration * 60000
         );
 
       const overlap =
@@ -431,6 +510,7 @@ export async function getAvailableAppointmentSlots(
       if (!overlap) continue;
 
       if (
+        input.doctor_id &&
         appointment.doctor_id ===
         input.doctor_id
       ) {
@@ -443,6 +523,8 @@ export async function getAvailableAppointmentSlots(
       ) {
         roomBusy = true;
       }
+
+      if (input.device_id && appointment.device_id === input.device_id) deviceBusy = true;
     }
 
     slots.push({
@@ -453,11 +535,7 @@ export async function getAvailableAppointmentSlots(
           .slice(0,5),
 
       label:
-        `${current
-          .toTimeString()
-          .slice(0,5)} - ${slotEnd
-          .toTimeString()
-          .slice(0,5)}`,
+        `${formatTime12Hour(current)} - ${formatTime12Hour(slotEnd)}`,
 
       appointment_at:
         current.toISOString(),
@@ -467,7 +545,8 @@ export async function getAvailableAppointmentSlots(
 
       is_available:
         !doctorBusy &&
-        !roomBusy,
+        !roomBusy &&
+        !deviceBusy,
 
       doctor_conflict:
         doctorBusy,
@@ -497,13 +576,41 @@ export async function updateAppointmentTime(
     input.appointment_at
   );
 
+  const { data: current, error: currentError } = await supabase.from("appointments")
+    .select("clinic_id, branch_id, doctor_id, service_id, room_id, device_id")
+    .eq("id", input.id).single();
+  if (currentError) throw currentError;
+  const { data: service, error: serviceError } = await supabase.from("services")
+    .select("duration_minutes").eq("id", current.service_id).single();
+  if (serviceError) throw serviceError;
+  const durationMinutes = Number(service?.duration_minutes) || 30;
   const hour = appointmentTime.getHours();
+  const appointmentEnd = new Date(appointmentTime.getTime() + durationMinutes * 60_000);
+  const closing = new Date(appointmentTime);
+  closing.setHours(22, 0, 0, 0);
 
-  if (hour < 10 || hour >= 22) {
+  if (appointmentTime.getDay() === 5) throw new Error("The clinic is closed on Friday.");
+  if (hour < (current.doctor_id ? 14 : 10) || appointmentEnd > closing) {
     throw new Error(
-      "Appointments are only allowed between 10:00 AM and 10:00 PM."
+      current.doctor_id
+        ? "Doctor appointments are only allowed between 2:00 PM and 10:00 PM."
+        : "Department appointments are only allowed between 10:00 AM and 10:00 PM."
     );
   }
+
+  const conflict = await checkAppointmentConflict({
+    clinic_id: current.clinic_id,
+    branch_id: current.branch_id,
+    doctor_id: current.doctor_id,
+    room_id: current.room_id,
+    device_id: current.device_id,
+    appointment_at: input.appointment_at,
+    duration_minutes: durationMinutes,
+    ignore_appointment_id: input.id,
+  });
+  if (conflict.deviceConflict) throw new Error("The device is already booked at this time.");
+  if (conflict.doctorConflict) throw new Error("The doctor is already booked at this time.");
+  if (conflict.roomConflict) throw new Error("The room is already booked at this time.");
 
   const { data, error } = await supabase
     .from("appointments")
@@ -521,9 +628,10 @@ export async function updateAppointmentTime(
 export type UpdateAppointmentInput = {
   id: number;
 
-  doctor_id: number;
+  doctor_id: number | null;
   service_id: number;
   room_id: number;
+  device_id?: number | null;
 
   appointment_at: string;
 
@@ -601,12 +709,14 @@ export async function updateAppointment(
   );
 
   if (
-    hour < 10 ||
+    hour < (input.doctor_id ? 14 : 10) ||
     appointmentEnd >
       closingTime
   ) {
     throw new Error(
-      "Appointments are only allowed between 10:00 AM and 10:00 PM."
+      input.doctor_id
+        ? "Doctor appointments are only allowed between 2:00 PM and 10:00 PM."
+        : "Laser appointments are only allowed between 10:00 AM and 10:00 PM."
     );
   }
 
@@ -623,6 +733,8 @@ export async function updateAppointment(
 
       room_id:
         input.room_id,
+
+      device_id: input.device_id,
 
       appointment_at:
         input.appointment_at,
@@ -659,6 +771,10 @@ export async function updateAppointment(
     );
   }
 
+  if (conflictResult.deviceConflict) {
+    throw new Error("The selected device is already booked at this time.");
+  }
+
   const { data, error } =
     await supabase
       .from("appointments")
@@ -671,6 +787,8 @@ export async function updateAppointment(
 
         room_id:
           input.room_id,
+
+        device_id: input.device_id ?? null,
 
         appointment_at:
           input.appointment_at,

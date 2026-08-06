@@ -25,10 +25,12 @@ export interface CalendarEvent {
   doctorName: string;
 
   roomId: number | null;
+  deviceId: number | null;
 
   roomName: string;
 
   serviceName: string;
+  serviceCategory: string | null;
 
   durationMinutes: number;
 

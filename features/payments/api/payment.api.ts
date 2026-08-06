@@ -8,6 +8,8 @@ import type {
 const supabase = createClient();
 
 export type CreatePaymentInput = {
+  clinic_id: number;
+  branch_id: number;
   customer_id: number;
   appointment_id?: number | null;
   treatment_id?: number | null;
@@ -23,8 +25,8 @@ export type CreatePaymentInput = {
   source_system?: string;
 };
 
-export async function getPayments(): Promise<Payment[]> {
-  const { data, error } = await supabase
+export async function getPayments(clinicId?: number, branchId?: number): Promise<Payment[]> {
+  let query = supabase
     .from("payments")
     .select(`
       *,
@@ -47,6 +49,11 @@ export async function getPayments(): Promise<Payment[]> {
       ascending: false,
     });
 
+  if (clinicId && clinicId > 0) query = query.eq("clinic_id", clinicId);
+  if (branchId && branchId > 0) query = query.eq("branch_id", branchId);
+
+  const { data, error } = await query;
+
   if (error) {
     throw new Error(error.message);
   }
@@ -60,6 +67,8 @@ export async function createPayment(
   const { data, error } = await supabase
     .from("payments")
     .insert({
+      clinic_id: payment.clinic_id,
+      branch_id: payment.branch_id,
       customer_id: payment.customer_id,
       appointment_id: payment.appointment_id ?? null,
       treatment_id: payment.treatment_id ?? null,

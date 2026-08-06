@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -19,13 +19,16 @@ import { Input } from "@/components/ui/input";
 
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { useAppointments } from "@/features/appointments/hooks/useAppointments";
+import { useMasterData } from "@/features/master-data/hooks/useMasterData";
+import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 import { useCreateTreatment } from "../hooks/useCreateTreatment";
 
 const treatmentSchema = z.object({
   customer_id: z.string().min(1, "Please select a customer"),
   appointment_id: z.string().optional(),
-  service_name: z.string().min(2, "Service name is required"),
-  doctor_name: z.string().optional(),
+  service_id: z.string().min(1, "Please select a service"),
+  provider_id: z.string().min(1, "Please select a doctor or department"),
+  variant_id: z.string().optional(),
   quantity: z.string().optional(),
   quantity_unit: z.string().optional(),
   price: z.string().min(1, "Price is required"),
@@ -43,27 +46,30 @@ const treatmentSchema = z.object({
 
 type TreatmentFormData = z.infer<typeof treatmentSchema>;
 
-export default function AddTreatmentDialog() {
+export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: number; branchId: number }) {
   const [open, setOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
 
   const { data: customers = [] } = useCustomers();
   const { data: appointments = [] } = useAppointments();
+  const { data: masterData } = useMasterData();
   const createTreatment = useCreateTreatment();
 
   const {
     register,
     handleSubmit,
     reset,
-    watch,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<TreatmentFormData>({
     resolver: zodResolver(treatmentSchema),
     defaultValues: {
       customer_id: "",
       appointment_id: "",
-      service_name: "",
-      doctor_name: "",
+      service_id: "",
+      provider_id: "",
+      variant_id: "",
       quantity: "",
       quantity_unit: "ml",
       price: "",
@@ -75,9 +81,11 @@ export default function AddTreatmentDialog() {
     },
   });
 
-  const selectedCustomerId = watch("customer_id");
-  const watchedPrice = Number(watch("price") || 0);
-  const watchedDiscount = Number(watch("discount") || 0);
+  const selectedCustomerId = useWatch({ control, name: "customer_id" });
+  const selectedProviderId = Number(useWatch({ control, name: "provider_id" }) || 0);
+  const selectedServiceId = Number(useWatch({ control, name: "service_id" }) || 0);
+  const watchedPrice = Number(useWatch({ control, name: "price" }) || 0);
+  const watchedDiscount = Number(useWatch({ control, name: "discount" }) || 0);
   const finalPrice = Math.max(watchedPrice - watchedDiscount, 0);
 
   const filteredCustomers = useMemo(() => {
@@ -110,6 +118,16 @@ export default function AddTreatmentDialog() {
       String(appointment.customer_id) === selectedCustomerId
   );
 
+  const availableServices = (masterData?.services ?? []).filter((service) => selectedProviderId < 0
+    ? service.provider_type === "department" && (
+      (selectedProviderId === -1 && service.category === "Laser Hair Removal") ||
+      (selectedProviderId === -2 && service.category === "Bleaching") ||
+      (selectedProviderId === -3 && service.category === "ProFacial")
+    )
+    : masterData?.staffServices.some((link) => link.staff_id === selectedProviderId && link.service_id === service.id));
+  const availableVariants = (masterData?.serviceVariants ?? []).filter((variant) => variant.service_id === selectedServiceId &&
+    (selectedProviderId < 0 || masterData?.serviceVariantPrices.some((price) => price.staff_id === selectedProviderId && price.service_variant_id === variant.id)));
+
   async function onSubmit(values: TreatmentFormData) {
     try {
       const customerId = Number(values.customer_id);
@@ -124,6 +142,10 @@ export default function AddTreatmentDialog() {
       const price = Number(values.price);
       const cost = Number(values.cost || 0);
       const discount = Number(values.discount || 0);
+      const providerId = Number(values.provider_id);
+      const service = masterData?.services.find((item) => item.id === Number(values.service_id));
+      const variant = masterData?.serviceVariants.find((item) => item.id === Number(values.variant_id));
+      const provider = masterData?.staff.find((item) => item.id === providerId);
 
       if (!Number.isInteger(customerId) || customerId <= 0) {
         toast.error("Please select a valid customer");
@@ -135,11 +157,30 @@ export default function AddTreatmentDialog() {
         return;
       }
 
+      if (!service || (providerId > 0 && !variant)) {
+        toast.error("Please select a valid service and material");
+        return;
+      }
+
+      if (values.treatment_date) {
+        const treatmentTime = new Date(values.treatment_date);
+        const hour = treatmentTime.getHours();
+        if (treatmentTime.getDay() === 5 || hour < (providerId > 0 ? 14 : 10) || hour >= 22) {
+          toast.error(providerId > 0 ? "Doctor treatments must be Saturday–Thursday, 2:00 PM–10:00 PM." : "Department treatments must be Saturday–Thursday, 10:00 AM–10:00 PM.");
+          return;
+        }
+      }
+
       await createTreatment.mutateAsync({
+        clinic_id: clinicId,
+        branch_id: branchId,
         customer_id: customerId,
         appointment_id: appointmentId,
-        service_name: values.service_name,
-        doctor_name: values.doctor_name,
+        doctor_id: providerId > 0 ? providerId : null,
+        service_id: service.id,
+        service_variant_id: variant?.id ?? null,
+        service_name: variant?.name ?? service.name,
+        doctor_name: providerId > 0 ? provider?.staff_name : providerId === -1 ? "Laser Department" : providerId === -2 ? "Hair Bleaching Department" : "ProFacial Department",
         quantity,
         quantity_unit: values.quantity_unit,
         price,
@@ -237,29 +278,34 @@ export default function AddTreatmentDialog() {
               >
                 {new Date(
                   appointment.appointment_at
-                ).toLocaleString()}{" "}
-                — appointment.services?.name ?? "No service"
+                ).toLocaleString("en-US", { hour12: true })}{" "}
+                — {appointment.services?.name ?? "No service"}
               </option>
             ))}
           </select>
 
-          <div>
-            <Input
-              placeholder="Service name — Botox, Filler, Laser..."
-              {...register("service_name")}
-            />
-
-            {errors.service_name && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.service_name.message}
-              </p>
-            )}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <select {...register("provider_id", { onChange: () => { setValue("service_id", ""); setValue("variant_id", ""); setValue("price", ""); } })} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
+                <option value="">Select doctor / department</option>
+                <option value="-1">Laser Department</option><option value="-2">Hair Bleaching Department</option><option value="-3">ProFacial Department</option>
+                {masterData?.staff.filter(isApprovedDoctor).map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.staff_name}</option>)}
+              </select>
+              {errors.provider_id && <p className="mt-1 text-sm text-red-600">{errors.provider_id.message}</p>}
+            </div>
+            <div>
+              <select {...register("service_id", { onChange: (event) => { setValue("variant_id", ""); const serviceId = Number(event.target.value); const departmentPrice = masterData?.servicePrices.find((item) => item.service_id === serviceId && item.staff_id === null); setValue("price", selectedProviderId < 0 && departmentPrice ? String(departmentPrice.price) : ""); } })} disabled={!selectedProviderId} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
+                <option value="">Select service</option>{availableServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
+              </select>
+              {errors.service_id && <p className="mt-1 text-sm text-red-600">{errors.service_id.message}</p>}
+            </div>
+            <div>
+              <select {...register("variant_id", { onChange: (event) => { const variantId = Number(event.target.value); const selectedVariant = masterData?.serviceVariants.find((item) => item.id === variantId); const doctorPrice = masterData?.serviceVariantPrices.find((item) => item.service_variant_id === variantId && item.staff_id === selectedProviderId); setValue("price", selectedVariant ? String(doctorPrice?.price ?? selectedVariant.price) : ""); } })} disabled={!selectedServiceId} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
+                <option value="">Select material / option</option>{availableVariants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name}</option>)}
+              </select>
+              {selectedProviderId > 0 && !availableVariants.length && <p className="mt-1 text-xs text-amber-600">Add a material and price in Price / Service List first.</p>}
+            </div>
           </div>
-
-          <Input
-            placeholder="Doctor name"
-            {...register("doctor_name")}
-          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Input

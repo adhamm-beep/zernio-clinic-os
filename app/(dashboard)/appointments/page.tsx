@@ -3,11 +3,12 @@
 import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
 import AppointmentTable from "@/features/appointments/components/AppointmentTable";
 import { useAppointments } from "@/features/appointments/hooks/useAppointments";
-
-const CLINIC_ID = 1;
-const BRANCH_ID = 2;
+import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 export default function AppointmentsPage() {
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
   const {
     data: appointments = [],
     isLoading,
@@ -15,7 +16,7 @@ export default function AppointmentsPage() {
     error,
     refetch,
     isFetching,
-  } = useAppointments();
+  } = useAppointments(clinicId, branchId);
 
   return (
     <div className="space-y-6">
@@ -32,10 +33,9 @@ export default function AppointmentsPage() {
           </p>
         </div>
 
-        <AddAppointmentDialogV2
-          clinicId={CLINIC_ID}
-          branchId={BRANCH_ID}
-        />
+        {clinicId > 0 && branchId > 0 && (
+          <AddAppointmentDialogV2 clinicId={clinicId} branchId={branchId} />
+        )}
       </header>
 
       {isLoading && (

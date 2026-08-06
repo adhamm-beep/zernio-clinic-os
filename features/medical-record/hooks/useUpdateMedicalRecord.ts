@@ -12,6 +12,7 @@ import {
 import type {
   SaveMedicalRecordInput,
 } from "../types/medical-record";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useUpdateMedicalRecord() {
   const queryClient =
@@ -26,12 +27,10 @@ export function useUpdateMedicalRecord() {
     onSuccess: async (
       savedRecord
     ) => {
-      await queryClient.invalidateQueries({
-        queryKey: [
-          "medical-record",
-          savedRecord.customer_id,
-        ],
-      });
+      await invalidateCustomerWorkspace(
+        queryClient,
+        savedRecord.customer_id
+      );
     },
   });
 }

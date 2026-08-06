@@ -5,6 +5,8 @@ import type {
   CalendarEventStatus,
   CalendarFilters as CalendarFiltersType,
 } from "../types/calendar";
+import { isApprovedDoctorName } from "@/features/master-data/utils/doctors";
+import { isOperationalRoomName } from "@/features/master-data/utils/rooms";
 
 type CalendarFiltersProps = {
   events: CalendarEvent[];
@@ -24,7 +26,7 @@ export default function CalendarFilters({
       events
         .filter(
           (event) =>
-            event.doctorId !== null
+            event.doctorId !== null && isApprovedDoctorName(event.doctorName)
         )
         .map((event) => [
           event.doctorId as number,
@@ -41,7 +43,7 @@ export default function CalendarFilters({
       events
         .filter(
           (event) =>
-            event.roomId !== null
+            event.roomId !== null && isOperationalRoomName(event.roomName)
         )
         .map((event) => [
           event.roomId as number,
@@ -57,7 +59,7 @@ export default function CalendarFilters({
     <div className="grid gap-4 rounded-2xl border bg-white p-4 shadow-sm md:grid-cols-3">
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
-          Doctor
+          Doctor / Department
         </label>
 
         <select
@@ -77,8 +79,12 @@ export default function CalendarFilters({
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
         >
           <option value="">
-            All doctors
+            All providers
           </option>
+
+          <option value={-1}>Laser Department (Nurses)</option>
+          <option value={-2}>Hair Bleaching Department (PicoWay)</option>
+          <option value={-3}>ProFacial Department (Nurse)</option>
 
           {doctors.map((doctor) => (
             <option

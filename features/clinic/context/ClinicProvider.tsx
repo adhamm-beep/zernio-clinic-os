@@ -3,7 +3,6 @@
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -24,8 +23,12 @@ type ClinicProviderProps = {
 export function ClinicProvider({
   children,
 }: ClinicProviderProps) {
-  const [selectedBranchId, setSelectedBranchIdState] =
-    useState<number | null>(null);
+  const [storedBranchId, setSelectedBranchIdState] =
+    useState<number | null>(() => {
+      if (typeof window === "undefined") return null;
+      const value = Number(window.localStorage.getItem(BRANCH_STORAGE_KEY));
+      return Number.isInteger(value) && value > 0 ? value : null;
+    });
 
   const {
     data,
@@ -40,55 +43,17 @@ export function ClinicProvider({
   });
 
   const clinic = data?.clinic ?? null;
-  const branches = data?.branches ?? [];
+  const branches = useMemo(
+    () => data?.branches ?? [],
+    [data?.branches]
+  );
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+  const selectedBranchId = useMemo(() => {
+    if (branches.some((branch) => branch.id === storedBranchId)) {
+      return storedBranchId;
     }
-
-    const storedValue = window.localStorage.getItem(
-      BRANCH_STORAGE_KEY
-    );
-
-    if (!storedValue) {
-      return;
-    }
-
-    const parsedBranchId = Number(storedValue);
-
-    if (
-      Number.isInteger(parsedBranchId) &&
-      parsedBranchId > 0
-    ) {
-      setSelectedBranchIdState(parsedBranchId);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (branches.length === 0) {
-      return;
-    }
-
-    const selectedBranchStillExists = branches.some(
-      (branch) => branch.id === selectedBranchId
-    );
-
-    if (selectedBranchStillExists) {
-      return;
-    }
-
-    const firstBranchId = branches[0].id;
-
-    setSelectedBranchIdState(firstBranchId);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        BRANCH_STORAGE_KEY,
-        String(firstBranchId)
-      );
-    }
-  }, [branches, selectedBranchId]);
+    return branches[0]?.id ?? null;
+  }, [branches, storedBranchId]);
 
   const setSelectedBranchId = useCallback(
     (branchId: number) => {

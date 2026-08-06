@@ -6,31 +6,74 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15_000);
 
-    if (error) {
-      setMessage(error.message);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setMessage(result.error || "Sign in failed.");
+        setLoading(false);
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Login request timed out. Check your connection and try again."
+          : "Could not connect to the login service. Try again."
+      );
       setLoading(false);
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setMessage("Enter your email address first.");
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    setResetLoading(true);
+    setMessage("");
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      { redirectTo: `${window.location.origin}/reset-password` }
+    );
+
+    setResetLoading(false);
+    setMessage(
+      error
+        ? error.message
+        : "Password reset link sent. Check your email inbox and spam folder."
+    );
   }
 
   return (
@@ -85,6 +128,15 @@ export default function LoginPage() {
           className="mt-6 w-full rounded-lg bg-green-600 px-5 py-3 font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Signing in..." : "Sign in"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleForgotPassword}
+          disabled={resetLoading || loading}
+          className="mt-3 w-full rounded-lg px-5 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-60"
+        >
+          {resetLoading ? "Sending reset link..." : "Forgot password?"}
         </button>
       </form>
     </main>

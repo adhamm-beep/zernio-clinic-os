@@ -1,3 +1,5 @@
+import ClinicAnalyticsDashboard from "@/features/reports/components/ClinicAnalyticsDashboard";
+
 export default function ReportsPage() {
-  return <h1 className="text-4xl font-bold">Reports</h1>;
+  return <ClinicAnalyticsDashboard />;
 }

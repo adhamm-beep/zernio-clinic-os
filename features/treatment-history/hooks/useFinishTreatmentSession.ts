@@ -8,6 +8,7 @@ import {
 import {
   finishTreatmentSession,
 } from "../api/treatment-history.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 type FinishTreatmentSessionInput = {
   sessionId: number;
@@ -33,20 +34,10 @@ export function useFinishTreatmentSession() {
     onSuccess: async (
       completedSession
     ) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [
-            "treatment-history",
-            completedSession.customerId,
-          ],
-        }),
-
-        queryClient.invalidateQueries({
-          queryKey: [
-            "customer-360",
-          ],
-        }),
-      ]);
+      await invalidateCustomerWorkspace(
+        queryClient,
+        completedSession.customerId
+      );
     },
   });
 }

@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deactivateCustomer } from "../api/customer.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useDeactivateCustomer() {
   const queryClient = useQueryClient();
@@ -10,13 +11,7 @@ export function useDeactivateCustomer() {
     mutationFn: (id: number) => deactivateCustomer(id),
 
     onSuccess: async (customer) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["customers"],
-      });
-
-      await queryClient.invalidateQueries({
-        queryKey: ["customer", String(customer.id)],
-      });
+      await invalidateCustomerWorkspace(queryClient, customer.id);
     },
   });
 }

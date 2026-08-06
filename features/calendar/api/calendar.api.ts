@@ -17,6 +17,7 @@ type CalendarAppointmentRow = {
   service_id: number | null;
 
   room_id: number | null;
+  device_id: number | null;
 
   appointment_at: string;
 
@@ -48,6 +49,7 @@ type CalendarAppointmentRow = {
   services:
     | {
         name: string;
+        category: string | null;
         duration_minutes: number | null;
       }
     | null;
@@ -65,6 +67,7 @@ export async function getCalendarEvents(
       doctor_id,
       service_id,
       room_id,
+      device_id,
       appointment_at,
       status,
       source,
@@ -85,6 +88,7 @@ export async function getCalendarEvents(
 
       services(
         name,
+        category,
         duration_minutes
       )
     `)
@@ -152,9 +156,11 @@ export async function getCalendarEvents(
         doctorId:
           item.doctor_id,
 
-        doctorName:
-          item.staff?.staff_name ??
-          "No Doctor",
+        doctorName: item.staff?.staff_name ?? (
+          item.services?.category === "Laser Hair Removal" ? "Laser Department" :
+          item.services?.category === "Bleaching" ? "Hair Bleaching Department" :
+          item.services?.category === "ProFacial" ? "ProFacial Department" : "No Doctor"
+        ),
 
         serviceId:
           item.service_id,
@@ -163,8 +169,12 @@ export async function getCalendarEvents(
           item.services?.name ??
           "No Service",
 
+        serviceCategory: item.services?.category ?? null,
+
         roomId:
           item.room_id,
+
+        deviceId: item.device_id,
 
         roomName:
           item.rooms?.name ??

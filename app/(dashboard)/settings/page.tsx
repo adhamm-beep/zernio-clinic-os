@@ -17,7 +17,7 @@ const modules: SettingsModule[] = [
     title: "Services",
     description:
       "Manage clinic services, prices, categories and duration.",
-    href: "/settings/services",
+    href: "/price-list",
   },
   {
     title: "Clinic Context",

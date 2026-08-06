@@ -10,6 +10,7 @@ type Params = {
 
   doctor_id?: number;
   room_id?: number;
+  device_id?: number;
 
   appointment_date?: string;
   duration_minutes?: number;
@@ -21,7 +22,6 @@ export function useAvailableSlots(
   return useQuery({
 
     enabled:
-      !!params.doctor_id &&
       !!params.room_id &&
       !!params.appointment_date &&
       !!params.duration_minutes,
@@ -39,11 +39,11 @@ export function useAvailableSlots(
         branch_id:
           params.branch_id,
 
-        doctor_id:
-          params.doctor_id!,
+        doctor_id: params.doctor_id ?? null,
 
         room_id:
           params.room_id!,
+        device_id: params.device_id ?? null,
 
         appointment_date:
           params.appointment_date!,

@@ -32,6 +32,11 @@ const menu = [
     icon: "💰",
   },
   {
+    title: "Price / Service List",
+    href: "/price-list",
+    icon: "﷼",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
@@ -45,7 +50,7 @@ const menu = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-72 bg-slate-900 text-white">
+    <aside className="w-72 shrink-0 bg-slate-900 text-white">
 
       <div className="border-b border-slate-700 p-8">
 
