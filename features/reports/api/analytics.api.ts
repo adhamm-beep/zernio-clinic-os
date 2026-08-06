@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 
-import type { ClinicAnalytics, RankedMetric, TrendPoint } from "../types/analytics";
+import type { ClinicAnalytics, DoctorMetric, RankedMetric, SourceMetric, TrendPoint } from "../types/analytics";
 
 const supabase = createClient();
 
@@ -25,13 +25,13 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
   const [appointmentsResult, paymentsResult, treatmentsResult, sessionsResult] = await Promise.all([
     supabase
       .from("appointments")
-      .select("id, appointment_at, status")
+      .select("id, appointment_at, status, doctor_name, source, created_from_channel")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .gte("appointment_at", sixMonthsAgo.toISOString()),
     supabase
       .from("payments")
-      .select("id, amount, payment_method, payment_status, payment_date")
+      .select("id, amount, payment_method, payment_status, payment_date, appointment_id")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .gte("payment_date", sixMonthsAgo.toISOString()),
@@ -87,6 +87,22 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
     };
   });
 
+  const dailyTrend: TrendPoint[] = Array.from({ length: 14 }, (_, index) => {
+    const start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (13 - index)));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return {
+      label: new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(start),
+      revenue: validPayments
+        .filter((item) => item.payment_date && new Date(item.payment_date) >= start && new Date(item.payment_date) < end)
+        .reduce((sum, item) => sum + paymentAmount(item), 0),
+      bookings: appointments.filter((item) => {
+        const date = new Date(item.appointment_at);
+        return date >= start && date < end;
+      }).length,
+    };
+  });
+
   function rankBy(field: "doctor_name" | "service_name"): RankedMetric[] {
     const map = new Map<string, RankedMetric>();
     for (const treatment of treatments) {
@@ -112,13 +128,60 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
     return sum + Number(item.final_price ?? Math.max(Number(item.price ?? 0) - Number(item.discount ?? 0), 0));
   }, 0);
   const collected = validPayments.reduce((sum, item) => sum + paymentAmount(item), 0);
-  const doctorMap = new Map<string, RankedMetric>();
-  for (const session of sessions) {
+  const doctorMap = new Map<string, DoctorMetric>();
+  const sessionDoctorName = (session: (typeof sessions)[number]) => {
     const relation = Array.isArray(session.doctor) ? session.doctor[0] : session.doctor;
-    const name = relation?.staff_name?.trim() || "Unassigned";
-    const current = doctorMap.get(name) ?? { name, count: 0, revenue: 0 };
+    return relation?.staff_name?.trim() || "Unassigned";
+  };
+  for (const session of sessions) {
+    const name = sessionDoctorName(session);
+    const current = doctorMap.get(name) ?? { name, count: 0, revenue: 0, successRate: 0, utilizationRate: 0 };
     doctorMap.set(name, { ...current, count: current.count + 1 });
   }
+
+  for (const treatment of treatments) {
+    const name = treatment.doctor_name?.trim() || "Unassigned";
+    const current = doctorMap.get(name) ?? { name, count: 0, revenue: 0, successRate: 0, utilizationRate: 0 };
+    const revenue = Number(treatment.final_price ?? Math.max(Number(treatment.price ?? 0) - Number(treatment.discount ?? 0), 0));
+    doctorMap.set(name, { ...current, revenue: current.revenue + revenue });
+  }
+
+  const currentMonthAppointments = appointments.filter((item) => new Date(item.appointment_at) >= currentMonth);
+  for (const [name, doctor] of doctorMap) {
+    const doctorSessions = sessions.filter((item) => sessionDoctorName(item) === name);
+    const successful = doctorSessions.filter((item) => item.status === "completed").length;
+    const bookedSlots = currentMonthAppointments.filter((item) => (item.doctor_name?.trim() || "Unassigned") === name && !["cancelled", "no_show"].includes(item.status ?? "")).length;
+    const elapsedWorkingDays = Array.from({ length: now.getDate() }, (_, index) => new Date(now.getFullYear(), now.getMonth(), index + 1))
+      .filter((date) => date.getDay() !== 5).length;
+    const capacitySlots = Math.max(elapsedWorkingDays * 16, 1);
+    doctorMap.set(name, {
+      ...doctor,
+      successRate: percent(successful, doctorSessions.length),
+      utilizationRate: percent(bookedSlots, capacitySlots),
+    });
+  }
+
+  const sourceMap = new Map<string, SourceMetric>();
+  for (const appointment of appointments) {
+    const source = appointment.source?.trim() || appointment.created_from_channel?.trim() || "Unknown";
+    const current = sourceMap.get(source) ?? { source, leads: 0, converted: 0, conversionRate: 0, revenue: 0 };
+    current.leads += 1;
+    if (appointment.status === "completed") current.converted += 1;
+    sourceMap.set(source, current);
+  }
+  const appointmentSources = new Map(appointments.map((item) => [item.id, item.source?.trim() || item.created_from_channel?.trim() || "Unknown"]));
+  for (const payment of validPayments) {
+    if (!payment.appointment_id) continue;
+    const source = appointmentSources.get(payment.appointment_id);
+    if (!source) continue;
+    const current = sourceMap.get(source);
+    if (current) current.revenue += paymentAmount(payment);
+  }
+  const sources = [...sourceMap.values()]
+    .map((item) => ({ ...item, conversionRate: percent(item.converted, item.leads) }))
+    .sort((a, b) => b.leads - a.leads);
+  const totalLeads = sources.reduce((sum, item) => sum + item.leads, 0);
+  const convertedLeads = sources.reduce((sum, item) => sum + item.converted, 0);
 
   return {
     revenue: {
@@ -143,10 +206,19 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
       refunded: refundedPayments.reduce((sum, item) => sum + paymentAmount(item), 0),
       outstanding: Math.max(treatmentValue - collected, 0),
       collectionRate: percent(collected, treatmentValue),
+      refundRate: percent(refundedPayments.reduce((sum, item) => sum + paymentAmount(item), 0), collected + refundedPayments.reduce((sum, item) => sum + paymentAmount(item), 0)),
     },
     monthlyTrend,
-    doctors: [...doctorMap.values()].sort((a, b) => b.count - a.count).slice(0, 6),
+    dailyTrend,
+    doctors: [...doctorMap.values()].sort((a, b) => b.revenue - a.revenue || b.count - a.count).slice(0, 6),
     services: rankBy("service_name"),
     paymentMethods: [...methodMap.values()].sort((a, b) => b.amount - a.amount),
+    marketing: {
+      totalLeads,
+      convertedLeads,
+      conversionRate: percent(convertedLeads, totalLeads),
+      costPerBooking: null,
+      sources,
+    },
   };
 }
