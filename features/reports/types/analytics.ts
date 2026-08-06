@@ -1,7 +1,7 @@
 export type TrendPoint = { label: string; revenue: number; bookings: number };
 export type RankedMetric = { name: string; count: number; revenue: number };
 export type DoctorMetric = RankedMetric & { successRate: number; utilizationRate: number };
-export type SourceMetric = { source: string; leads: number; converted: number; conversionRate: number; revenue: number };
+export type SourceMetric = { source: string; leads: number; converted: number; conversionRate: number; revenue: number; spend: number; costPerBooking: number | null; roi: number | null };
 
 export type ClinicAnalytics = {
   revenue: {
@@ -38,6 +38,9 @@ export type ClinicAnalytics = {
     convertedLeads: number;
     conversionRate: number;
     costPerBooking: number | null;
+    spend: number;
+    attributedRevenue: number;
+    roi: number | null;
     sources: SourceMetric[];
   };
 };

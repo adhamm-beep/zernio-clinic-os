@@ -47,6 +47,11 @@ const menu = [
     icon: "👔",
   },
   {
+    title: "Marketing OS",
+    href: "/marketing",
+    icon: "📣",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",

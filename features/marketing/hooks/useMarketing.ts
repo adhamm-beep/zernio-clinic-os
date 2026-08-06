@@ -1,0 +1,1 @@
+"use client";import{useQuery}from"@tanstack/react-query";import{getMarketingData}from"../api/marketing.api";export function useMarketing(c:number,b:number){return useQuery({queryKey:["marketing",c,b],queryFn:()=>getMarketingData(c,b),enabled:c>0&&b>0});}

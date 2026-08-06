@@ -22,7 +22,7 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
   const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-  const [appointmentsResult, paymentsResult, treatmentsResult, sessionsResult] = await Promise.all([
+  const [appointmentsResult, paymentsResult, treatmentsResult, sessionsResult, leadsResult, costsResult, campaignsResult] = await Promise.all([
     supabase
       .from("appointments")
       .select("id, appointment_at, status, doctor_name, source, created_from_channel")
@@ -47,9 +47,12 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .gte("session_date", sixMonthsAgo.toISOString()),
+    supabase.from("marketing_leads").select("source,status,appointment_id").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",sixMonthsAgo.toISOString()),
+    supabase.from("marketing_source_costs").select("source,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("period_month",sixMonthsAgo.toISOString().slice(0,10)),
+    supabase.from("marketing_campaigns").select("channel,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",sixMonthsAgo.toISOString()),
   ]);
 
-  const firstError = appointmentsResult.error || paymentsResult.error || treatmentsResult.error || sessionsResult.error;
+  const firstError = appointmentsResult.error || paymentsResult.error || treatmentsResult.error || sessionsResult.error || leadsResult.error || costsResult.error || campaignsResult.error;
   if (firstError) throw new Error(firstError.message);
 
   const appointments = appointmentsResult.data ?? [];
@@ -164,10 +167,23 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
   const sourceMap = new Map<string, SourceMetric>();
   for (const appointment of appointments) {
     const source = appointment.source?.trim() || appointment.created_from_channel?.trim() || "Unknown";
-    const current = sourceMap.get(source) ?? { source, leads: 0, converted: 0, conversionRate: 0, revenue: 0 };
+    const current = sourceMap.get(source) ?? { source, leads: 0, converted: 0, conversionRate: 0, revenue: 0, spend: 0, costPerBooking: null, roi: null };
     current.leads += 1;
     if (appointment.status === "completed") current.converted += 1;
     sourceMap.set(source, current);
+  }
+  for (const lead of leadsResult.data ?? []) {
+    const source = lead.source?.trim() || "Unknown";
+    const current = sourceMap.get(source) ?? { source, leads: 0, converted: 0, conversionRate: 0, revenue: 0, spend: 0, costPerBooking: null, roi: null };
+    current.leads += 1;
+    if (["booked","converted"].includes(lead.status)) current.converted += 1;
+    sourceMap.set(source,current);
+  }
+  for (const cost of costsResult.data ?? []) {
+    const source=cost.source?.trim()||"Unknown";const current=sourceMap.get(source)??{source,leads:0,converted:0,conversionRate:0,revenue:0,spend:0,costPerBooking:null,roi:null};current.spend+=Number(cost.spend??0);sourceMap.set(source,current);
+  }
+  for (const campaign of campaignsResult.data ?? []) {
+    const source=campaign.channel?.trim()||"Unknown";const current=sourceMap.get(source)??{source,leads:0,converted:0,conversionRate:0,revenue:0,spend:0,costPerBooking:null,roi:null};current.spend+=Number(campaign.spend??0);sourceMap.set(source,current);
   }
   const appointmentSources = new Map(appointments.map((item) => [item.id, item.source?.trim() || item.created_from_channel?.trim() || "Unknown"]));
   for (const payment of validPayments) {
@@ -178,10 +194,12 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
     if (current) current.revenue += paymentAmount(payment);
   }
   const sources = [...sourceMap.values()]
-    .map((item) => ({ ...item, conversionRate: percent(item.converted, item.leads) }))
+    .map((item) => ({ ...item, conversionRate: percent(item.converted, item.leads), costPerBooking:item.converted?item.spend/item.converted:null, roi:item.spend?((item.revenue-item.spend)/item.spend)*100:null }))
     .sort((a, b) => b.leads - a.leads);
   const totalLeads = sources.reduce((sum, item) => sum + item.leads, 0);
   const convertedLeads = sources.reduce((sum, item) => sum + item.converted, 0);
+  const marketingSpend=sources.reduce((sum,item)=>sum+item.spend,0);
+  const attributedRevenue=sources.reduce((sum,item)=>sum+item.revenue,0);
 
   return {
     revenue: {
@@ -217,7 +235,10 @@ export async function getClinicAnalytics(clinicId: number, branchId: number): Pr
       totalLeads,
       convertedLeads,
       conversionRate: percent(convertedLeads, totalLeads),
-      costPerBooking: null,
+      costPerBooking: convertedLeads ? marketingSpend / convertedLeads : null,
+      spend:marketingSpend,
+      attributedRevenue,
+      roi:marketingSpend?((attributedRevenue-marketingSpend)/marketingSpend)*100:null,
       sources,
     },
   };
