@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "mobile-patient/.expo-dist/**",
+    "mobile-patient/node_modules/**",
     "next-env.d.ts",
   ]),
 ]);
