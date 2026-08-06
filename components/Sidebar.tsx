@@ -42,6 +42,11 @@ const menu = [
     icon: "📦",
   },
   {
+    title: "Staff & HR",
+    href: "/staff",
+    icon: "👔",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
