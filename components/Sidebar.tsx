@@ -57,6 +57,11 @@ const menu = [
     icon: "🤖",
   },
   {
+    title: "Enterprise",
+    href: "/enterprise",
+    icon: "🏢",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
