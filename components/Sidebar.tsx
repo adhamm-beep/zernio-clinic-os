@@ -37,6 +37,11 @@ const menu = [
     icon: "﷼",
   },
   {
+    title: "Inventory",
+    href: "/inventory",
+    icon: "📦",
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: "⚙️",
