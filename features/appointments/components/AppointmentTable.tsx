@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+
 import type {
   Appointment,
   AppointmentStatus,
@@ -90,10 +92,19 @@ export default function AppointmentTable({
     appointmentId: number,
     status: AppointmentStatus
   ) {
-    await updateAppointment.mutateAsync({
-      id: appointmentId,
-      status,
-    });
+    try {
+      await updateAppointment.mutateAsync({
+        id: appointmentId,
+        status,
+      });
+      toast.success("Appointment status updated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update appointment status"
+      );
+    }
   }
 
   if (appointments.length === 0) {

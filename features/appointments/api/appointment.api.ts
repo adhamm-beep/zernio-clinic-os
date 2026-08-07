@@ -197,21 +197,17 @@ export async function createAppointment(
 export async function updateAppointmentStatus(
   input: UpdateAppointmentStatusInput
 ): Promise<Appointment> {
-  const { data, error } =
-    await supabase
-      .from("appointments")
-      .update({
-        status: input.status,
-      })
-      .eq("id", input.id)
-      .select(
-        APPOINTMENT_SELECT
-      )
-      .single();
+  const { error } = await supabase.rpc(
+    "staff_update_appointment_status",
+    {
+      p_appointment_id: input.id,
+      p_status: input.status,
+    }
+  );
 
   if (error) throw error;
 
- return data as unknown as Appointment;
+  return getAppointment(input.id);
 }
 export type AppointmentConflict = {
   id: number;
