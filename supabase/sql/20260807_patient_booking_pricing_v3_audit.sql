@@ -1,5 +1,5 @@
-with checks as (
- select 'booking_providers',count(*)::bigint value,6::bigint expected from public.patient_booking_providers()
+with checks(check_name,value,expected) as (
+ select 'booking_providers'::text,count(*)::bigint,6::bigint from public.patient_booking_providers()
  union all select 'department_providers',count(*)::bigint,3 from public.patient_booking_providers() where role='department'
  union all select 'doctor_providers',count(*)::bigint,3 from public.patient_booking_providers() where role='doctor'
  union all select 'department_services_without_full_price',count(*)::bigint,0 from public.services s where s.is_active and s.provider_type='department' and s.category in('Laser Hair Removal','ProFacial','Bleaching') and not exists(select 1 from public.service_prices sp where sp.service_id=s.id and sp.is_active)
