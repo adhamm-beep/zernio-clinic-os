@@ -3,13 +3,14 @@ begin;
 create or replace function public.patient_booking_providers()
 returns table(id bigint,name text,role text)
 language sql stable security definer set search_path=public as $$
-  select st.id,st.staff_name,'doctor'::text from public.staff st
-  where st.is_active and lower(coalesce(st.role,''))='doctor'
-    and exists(select 1 from public.staff_services ss where ss.staff_id=st.id and ss.is_active)
-  union all select -101,'Laser Department','department' where exists(select 1 from public.services where is_active and provider_type='department' and category='Laser Hair Removal')
-  union all select -102,'ProFacial Department','department' where exists(select 1 from public.services where is_active and provider_type='department' and category='ProFacial')
-  union all select -103,'Bleaching Department','department' where exists(select 1 from public.services where is_active and provider_type='department' and category='Bleaching')
-  order by role desc,name
+  select q.provider_id,q.provider_name,q.provider_role from (
+    select st.id::bigint provider_id,st.staff_name::text provider_name,'doctor'::text provider_role from public.staff st
+    where st.is_active and lower(coalesce(st.role,''))='doctor'
+      and exists(select 1 from public.staff_services ss where ss.staff_id=st.id and ss.is_active)
+    union all select -101::bigint,'Laser Department'::text,'department'::text where exists(select 1 from public.services where is_active and provider_type='department' and category='Laser Hair Removal')
+    union all select -102::bigint,'ProFacial Department'::text,'department'::text where exists(select 1 from public.services where is_active and provider_type='department' and category='ProFacial')
+    union all select -103::bigint,'Bleaching Department'::text,'department'::text where exists(select 1 from public.services where is_active and provider_type='department' and category='Bleaching')
+  )q order by q.provider_role desc,q.provider_name
 $$;
 
 create or replace function public.patient_provider_services(p_provider_id bigint)
