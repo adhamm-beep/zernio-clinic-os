@@ -13,28 +13,29 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-
-    "baseUrl": ".",
-
-    "paths": {
-      "@/*": ["./*"]
-    },
-
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
   },
-
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "features/**/*.ts",
+    "features/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "proxy.ts",
+    "next.config.ts"
   ],
-
-  "exclude": ["node_modules", "supabase/functions"]
+  "exclude": [
+    "node_modules",
+    "mobile-patient",
+    "mobile-patient/**/*",
+    "supabase/functions",
+    "supabase/functions/**/*"
+  ]
 }
