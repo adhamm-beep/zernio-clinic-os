@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 
 import { useClinicAnalytics } from "../hooks/useClinicAnalytics";
+import DateRangeFilter from "@/features/date-range/DateRangeFilter";
+import { useDateRange } from "@/features/date-range/useDateRange";
 import type { DoctorMetric, RankedMetric } from "../types/analytics";
 
 function money(value: number) {
@@ -36,10 +38,11 @@ function DoctorPerformance({ items }: { items: DoctorMetric[] }) {
 }
 
 export default function ClinicAnalyticsDashboard() {
+  const range = useDateRange();
   const { clinic, selectedBranch, isLoading: clinicLoading } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
-  const { data, isLoading, error, refetch, isFetching } = useClinicAnalytics(clinicId, branchId);
+  const { data, isLoading, error, refetch, isFetching } = useClinicAnalytics(clinicId, branchId, range.from, range.to);
 
   if (clinicLoading || isLoading) return <div className="rounded-2xl bg-white p-12 text-center shadow-sm">Loading clinic analytics...</div>;
   if (!clinicId || !branchId) return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">Select a clinic and branch to view analytics.</div>;
@@ -54,6 +57,8 @@ export default function ClinicAnalyticsDashboard() {
       <div><p className="text-sm font-semibold uppercase tracking-wide text-violet-600">Clinic Analytics</p><h1 className="mt-1 text-3xl font-bold text-slate-950">Reports & Performance</h1><p className="mt-2 text-sm text-slate-500">{clinic?.name} · {selectedBranch?.name}</p></div>
       <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}><RefreshCw className={isFetching ? "animate-spin" : ""} />{isFetching ? "Refreshing" : "Refresh"}</Button>
     </header>
+
+    <DateRangeFilter />
 
     <nav aria-label="Analytics sections" className="sticky top-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur">
       {[["Revenue", "revenue"], ["Doctors", "doctors"], ["Marketing", "marketing"], ["Booking", "booking"], ["Finance", "finance"]].map(([label, target]) => <a key={target} href={`#${target}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950 hover:text-white">{label}</a>)}

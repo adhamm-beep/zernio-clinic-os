@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,13 +10,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"error" | "success">("error");
   const [loading, setLoading] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    setMessageType("error");
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 15_000);
@@ -51,29 +52,6 @@ export default function LoginPage() {
     } finally {
       window.clearTimeout(timeoutId);
     }
-  }
-
-  async function handleForgotPassword() {
-    if (!email.trim()) {
-      setMessage("Enter your email address first.");
-      return;
-    }
-
-    setResetLoading(true);
-    setMessage("");
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email.trim(),
-      { redirectTo: `${window.location.origin}/reset-password` }
-    );
-
-    setResetLoading(false);
-    setMessage(
-      error
-        ? error.message
-        : "Password reset link sent. Check your email inbox and spam folder."
-    );
   }
 
   return (
@@ -117,7 +95,15 @@ export default function LoginPage() {
         />
 
         {message && (
-          <p className="mt-4 text-center text-sm text-red-600">
+          <p
+            role="status"
+            aria-live="polite"
+            className={`mt-4 rounded-lg px-3 py-2 text-center text-sm ${
+              messageType === "success"
+                ? "bg-green-50 text-green-700"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
             {message}
           </p>
         )}
@@ -130,14 +116,12 @@ export default function LoginPage() {
           {loading ? "Signing in..." : "Sign in"}
         </button>
 
-        <button
-          type="button"
-          onClick={handleForgotPassword}
-          disabled={resetLoading || loading}
-          className="mt-3 w-full rounded-lg px-5 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-60"
+        <Link
+          href={`/forgot-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ""}`}
+          className="mt-3 block w-full rounded-lg px-5 py-2 text-center text-sm font-medium text-green-700 hover:bg-green-50"
         >
-          {resetLoading ? "Sending reset link..." : "Forgot password?"}
-        </button>
+          Forgot password?
+        </Link>
       </form>
     </main>
   );

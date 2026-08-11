@@ -25,6 +25,8 @@ export function useCalendarEvents(
       clinicId > 0 &&
       branchId > 0,
 
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
 }

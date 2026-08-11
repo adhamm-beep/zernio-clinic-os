@@ -8,6 +8,7 @@ import {
 import {
   deleteAppointment,
 } from "../api/appointment.api";
+import { invalidateCustomerWorkspace } from "@/lib/query/invalidateCustomer";
 
 export function useDeleteAppointment() {
   const queryClient =
@@ -16,20 +17,11 @@ export function useDeleteAppointment() {
   return useMutation({
     mutationFn: deleteAppointment,
 
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [
-            "appointments",
-          ],
-        }),
-
-        queryClient.invalidateQueries({
-          queryKey: [
-            "calendar-events",
-          ],
-        }),
-      ]);
+    onSuccess: async (deletedAppointment) => {
+      await invalidateCustomerWorkspace(
+        queryClient,
+        deletedAppointment.customer_id
+      );
     },
   });
 }

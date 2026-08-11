@@ -9,10 +9,11 @@ import type {
 } from "../types/calendar";
 
 export function useCalendar(
-  events: CalendarEvent[]
+  events: CalendarEvent[],
+  initialView: CalendarView = "week"
 ) {
   const [view, setView] =
-    useState<CalendarView>("week");
+    useState<CalendarView>(initialView);
 
   const [currentDate, setCurrentDate] =
     useState(new Date());

@@ -1,1 +1,58 @@
-{"expo":{"name":"Panthera Clinics","slug":"zernio-patient","version":"1.0.0","orientation":"portrait","userInterfaceStyle":"light","newArchEnabled":true,"splash":{"image":"./assets/panthera-brand-transparent.png","resizeMode":"contain","backgroundColor":"#F4F4F2"},"ios":{"supportsTablet":true,"bundleIdentifier":"sa.panthera.patient"},"android":{"package":"sa.panthera.patient","adaptiveIcon":{"foregroundImage":"./assets/panthera-brand-transparent.png","backgroundColor":"#F4F4F2"}},"plugins":[]}}
+{
+  "expo": {
+    "name": "Panthera Clinics",
+    "slug": "zernio-patient",
+    "scheme": "panthera",
+    "version": "1.0.0",
+    "icon": "./assets/panthera-adaptive-icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/panthera-brand-transparent.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F4F2"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "sa.panthera.patient",
+      "infoPlist": {
+        "NSCalendarsFullAccessUsageDescription": "Panthera Clinics adds your confirmed appointments and reminders to your calendar.",
+        "NSFaceIDUsageDescription": "Use Face ID to protect your private Panthera health information."
+      }
+    },
+    "android": {
+      "package": "sa.panthera.patient",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/panthera-adaptive-icon.png",
+        "backgroundColor": "#F4F4F2"
+      },
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#52697A",
+          "defaultChannel": "patient-care"
+        }
+      ],
+      "expo-local-authentication",
+      "expo-calendar",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9a798893-c199-4792-961b-91cf1ed7fb20"
+      }
+    },
+    "owner": "zernio-clinic-os"
+  }
+}

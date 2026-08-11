@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import NativePickerEnhancer from "@/components/NativePickerEnhancer";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "Zernio Clinic OS",
-  description: "Clinic Operating System",
+  title: "Panthera Clinics OS",
+  description: "Panthera Clinics operating system",
 };
 
 export default function RootLayout({
@@ -14,9 +15,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="font-sans">
+    <html lang="ar" dir="rtl" suppressHydrationWarning className="font-sans">
       <body suppressHydrationWarning>
   <Providers>
+    <NativePickerEnhancer />
     {children}
     <Toaster richColors position="top-right" />
   </Providers>

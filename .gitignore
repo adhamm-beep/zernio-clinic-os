@@ -16,6 +16,10 @@
 # local analysis and generated review artifacts
 /.codex-tmp/
 /outputs/
+/project-structure.txt
+/supabase/.temp/
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
@@ -27,6 +31,9 @@
 # misc
 .DS_Store
 *.pem
+**/*firebase-adminsdk*.json
+**/firebase-service-account*.json
+**/google-service-account*.json
 
 # debug
 npm-debug.log*
@@ -36,6 +43,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 !mobile-patient/.env.example
 
 # vercel
@@ -44,3 +52,49 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Local Codex diagnostics
+.codex-git-diagnostic.*
+
+# Service-account credentials (never commit)
+*adminsdk*.json
+*service-account*.json
+*service_account*.json
+firebase-admin*.json
+# Local environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+!mobile-patient/.env.example
+
+# Local diagnostics
+.codex-git-diagnostic.*
+
+# Private service-account credentials
+*adminsdk*.json
+*service-account*.json
+*service_account*.json
+firebase-admin*.json
+# Codex local build and deployment logs
+.codex-*.log
+.codex-*-exit.txt
+# Local diagnostics and release artifacts
+.codex-git-diagnostic.*
+.release-status.*
+.codex-state.*
+
+# Private runtime configuration
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Never commit server/admin credentials
+*firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
+service-account*.json
+**/service-account*.json
+google-service-account*.json
+**/google-service-account*.json

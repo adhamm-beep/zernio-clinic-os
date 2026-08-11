@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import CalendarEventDialog from "./CalendarEventDialog";
-import DayColumn from "./DayColumn";
 import MonthView from "./MonthView";
 import WeekView from "./WeekView";
 
@@ -13,12 +12,16 @@ import type {
 } from "../types/calendar";
 
 type CalendarGridProps = {
+  clinicId: number;
+  branchId: number;
   view: CalendarView;
   currentDate: Date;
   events: CalendarEvent[];
 };
 
 export default function CalendarGrid({
+  clinicId,
+  branchId,
   view,
   currentDate,
   events,
@@ -35,11 +38,14 @@ export default function CalendarGrid({
   return (
     <>
       {view === "day" && (
-        <DayColumn
-          date={currentDate}
-          events={events}
-          onEventClick={handleEventClick}
-        />
+        <div className="overflow-x-auto">
+          <WeekView
+            currentDate={currentDate}
+            days={[currentDate]}
+            events={events}
+            onEventClick={handleEventClick}
+          />
+        </div>
       )}
 
       {view === "month" && (
@@ -61,6 +67,8 @@ export default function CalendarGrid({
       )}
 
       <CalendarEventDialog
+        clinicId={clinicId}
+        branchId={branchId}
         event={selectedEvent}
         open={selectedEvent !== null}
         onOpenChange={(open) => {

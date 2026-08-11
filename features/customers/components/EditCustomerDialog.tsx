@@ -19,12 +19,15 @@ import { Input } from "@/components/ui/input";
 
 import type { Customer } from "../types/customer";
 import { useUpdateCustomer } from "../hooks/useUpdateCustomer";
+import { useLocale } from "@/components/LocaleProvider";
 
 const schema = z.object({
   customer_code: z.string().min(1, "Customer code is required"),
   first_name: z.string().min(2, "First name is required"),
   last_name: z.string().optional(),
   phone: z.string().min(9, "Enter a valid phone number"),
+  national_id: z.string().optional(),
+  nationality: z.enum(["saudi", "non_saudi"]),
   email: z
     .string()
     .email("Enter a valid email")
@@ -46,6 +49,7 @@ export default function EditCustomerDialog({
 }: EditCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const updateCustomer = useUpdateCustomer();
+  const { text, isArabic } = useLocale();
 
   const {
     register,
@@ -59,6 +63,8 @@ export default function EditCustomerDialog({
       first_name: customer.first_name ?? "",
       last_name: customer.last_name ?? "",
       phone: customer.phone ?? "",
+      national_id: customer.national_id ?? "",
+      nationality: customer.nationality ?? "saudi",
       email: customer.email ?? "",
       gender: customer.gender ?? "",
       date_of_birth: customer.date_of_birth ?? "",
@@ -73,6 +79,8 @@ export default function EditCustomerDialog({
         first_name: customer.first_name ?? "",
         last_name: customer.last_name ?? "",
         phone: customer.phone ?? "",
+        national_id: customer.national_id ?? "",
+        nationality: customer.nationality ?? "saudi",
         email: customer.email ?? "",
         gender: customer.gender ?? "",
         date_of_birth: customer.date_of_birth ?? "",
@@ -88,14 +96,11 @@ export default function EditCustomerDialog({
         ...values,
       });
 
-      toast.success("Customer updated successfully");
+      toast.success(text("Customer updated successfully", "تم تحديث بيانات العميل بنجاح"));
       setOpen(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to update customer"
-      );
+      const message = error instanceof Error ? error.message : "Failed to update customer";
+      toast.error(isArabic ? localizeCustomerError(message) : message);
     }
   }
 
@@ -110,12 +115,12 @@ export default function EditCustomerDialog({
     />
   }
 >
-  Edit Customer
+  {text("Edit Customer", "تعديل العميل")}
 </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto" dir={isArabic ? "rtl" : "ltr"}>
         <DialogHeader>
-          <DialogTitle>Edit Customer</DialogTitle>
+          <DialogTitle>{text("Edit Customer", "تعديل العميل")}</DialogTitle>
         </DialogHeader>
 
         <form
@@ -124,7 +129,7 @@ export default function EditCustomerDialog({
         >
           <div>
             <Input
-              placeholder="Customer Code"
+              placeholder={text("File number", "رقم الملف")}
               {...register("customer_code")}
             />
             {errors.customer_code && (
@@ -136,7 +141,7 @@ export default function EditCustomerDialog({
 
           <div>
             <Input
-              placeholder="First Name"
+              placeholder={text("First name", "الاسم الأول")}
               {...register("first_name")}
             />
             {errors.first_name && (
@@ -147,13 +152,13 @@ export default function EditCustomerDialog({
           </div>
 
           <Input
-            placeholder="Last Name"
+            placeholder={text("Last name", "اسم العائلة")}
             {...register("last_name")}
           />
 
           <div>
             <Input
-              placeholder="Phone"
+              placeholder={text("Phone", "رقم الهاتف")}
               {...register("phone")}
             />
             {errors.phone && (
@@ -163,9 +168,19 @@ export default function EditCustomerDialog({
             )}
           </div>
 
+          <Input
+            placeholder={text("National ID / Iqama (optional)", "رقم الهوية / الإقامة (اختياري)")}
+            {...register("national_id")}
+          />
+
+          <select {...register("nationality")} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+            <option value="saudi">{text("Saudi", "سعودي")}</option>
+            <option value="non_saudi">{text("Non-Saudi", "غير سعودي")}</option>
+          </select>
+
           <div>
             <Input
-              placeholder="Email"
+              placeholder={text("Email", "البريد الإلكتروني")}
               {...register("email")}
             />
             {errors.email && (
@@ -176,7 +191,7 @@ export default function EditCustomerDialog({
           </div>
 
           <Input
-            placeholder="Gender"
+            placeholder={text("Gender", "الجنس")}
             {...register("gender")}
           />
 
@@ -189,8 +204,8 @@ export default function EditCustomerDialog({
             {...register("status")}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">{text("Active", "نشط")}</option>
+            <option value="inactive">{text("Inactive", "غير نشط")}</option>
           </select>
 
           <Button
@@ -199,11 +214,18 @@ export default function EditCustomerDialog({
             disabled={updateCustomer.isPending}
           >
             {updateCustomer.isPending
-              ? "Saving..."
-              : "Save Changes"}
+              ? text("Saving...", "جارٍ الحفظ...")
+              : text("Save Changes", "حفظ التغييرات")}
           </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
+}
+
+function localizeCustomerError(message: string) {
+  if (message.includes("file number")) return "رقم الملف مستخدم لعميل آخر بالفعل.";
+  if (message.includes("phone number")) return "يوجد عميل مسجل بنفس رقم الهاتف بالفعل.";
+  if (message.includes("national ID") || message.includes("Iqama")) return "يوجد عميل مسجل بنفس رقم الهوية أو الإقامة بالفعل.";
+  return "تعذر تحديث بيانات العميل. راجع البيانات وحاول مرة أخرى.";
 }

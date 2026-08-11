@@ -1,5 +1,22 @@
-import { useCallback, useEffect, useState, type ComponentProps } from "react";
-import { Alert, AppState, Image, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
+import {
+  Alert,
+  AppState,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import QRCode from "react-native-qrcode-svg";
@@ -11,108 +28,5406 @@ import drMaram from "./assets/dr-maram.jpg";
 import drFatimaAlsatouf from "./assets/dr-fatima-alsatouf.jpg";
 import { colors } from "./src/theme";
 import { supabase } from "./src/supabase";
-import { createAppointment, loadBeautyCalendar, loadBookingProviders, loadCareHub, loadDashboard, loadFinanceHealth, loadMembership, loadPatientExperience, loadPatientResults, loadProviderServices, requestMedicalUpdate, selectPaymentMethod, sendOtp, submitPatientFeedback, verifyOtp, type BeautyCalendarData, type BookingProvider, type FinanceHealthHub, type PatientCareHub, type PatientDashboard, type PatientExperience, type PatientMembership, type PatientResults, type ProviderService } from "./src/patient-api";
+import {
+  acceptPatientConsent,
+  createAppointment,
+  createOnlinePaymentCheckout,
+  loadBeautyCalendar,
+  loadBookingProviders,
+  loadCareHub,
+  loadDashboard,
+  loadFinanceHealth,
+  loadMembership,
+  loadPatientAvailableSlots,
+  loadPatientConcierge,
+  loadPatientExperience,
+  loadPatientResults,
+  loadProviderServices,
+  markPatientNotificationsRead,
+  openGoogleReview,
+  requestAppointmentAction,
+  requestMedicalUpdate,
+  selectPaymentMethod,
+  sendOtp,
+  sendPatientMessage,
+  setPatientLanguage,
+  submitPrivacyRequest,
+  verifyOtp,
+  type BeautyCalendarData,
+  type BookingProvider,
+  type FinanceHealthHub,
+  type PatientAvailableSlot,
+  type PatientCareHub,
+  type PatientConcierge,
+  type PatientDashboard,
+  type PatientExperience,
+  type PatientMembership,
+  type PatientResults,
+  type ProviderService,
+} from "./src/patient-api";
 import { translate, type Language } from "./src/i18n";
+import {
+  addPatientAppointmentToCalendar,
+  registerPatientPushNotifications,
+  subscribeToPatientNotifications,
+  unlockWithBiometrics,
+} from "./src/device-capabilities";
+import { legalVersion, privacySections, termsSections } from "./src/legal";
 
-type Tab = "home" | "book" | "appointments" | "care" | "profile" | "medical" | "wallet" | "membership" | "results" | "beauty" | "experience" | "support" | "notifications";
+type Tab =
+  | "home"
+  | "book"
+  | "appointments"
+  | "care"
+  | "profile"
+  | "medical"
+  | "wallet"
+  | "membership"
+  | "results"
+  | "beauty"
+  | "experience"
+  | "support"
+  | "notifications"
+  | "concierge"
+  | "privacy";
 type IconName = ComponentProps<typeof Ionicons>["name"];
-const Icon = ({ name = "ellipse", color = colors.muted, size = 22 }: { name?: string; color?: string; size?: number }) => <Ionicons name={name as IconName} color={color} size={size} />;
+const notificationTab = (
+  notification: Pick<PatientDashboard["notifications"][number], "notification_type" | "action_tab">,
+): Tab => {
+  const explicit = notification.action_tab as Tab | null | undefined;
+  if (explicit && ["appointments", "care", "medical", "wallet", "membership", "results", "experience", "support", "concierge"].includes(explicit)) return explicit;
+  const type = notification.notification_type.toLowerCase();
+  if (type.includes("review") || type.includes("feedback")) return "experience";
+  if (type.includes("payment") || type.includes("invoice") || type.includes("balance")) return "wallet";
+  if (type.includes("aftercare") || type.includes("treatment") || type.includes("medical") || type.includes("staff")) return "care";
+  if (type.includes("appointment") || type.includes("booking")) return "appointments";
+  if (type.includes("membership") || type.includes("loyalty")) return "membership";
+  if (type.includes("message") || type.includes("support")) return "concierge";
+  return "notifications";
+};
+
+const isMedicalStaffNotification = (type: string) =>
+  ["aftercare", "treatment", "medical", "care_team", "staff_message", "doctor_message"].some((part) =>
+    type.toLowerCase().includes(part),
+  );
+const Icon = ({
+  name = "ellipse",
+  color = colors.muted,
+  size = 22,
+}: {
+  name?: string;
+  color?: string;
+  size?: number;
+}) => <Ionicons name={name as IconName} color={color} size={size} />;
 const doctorPortrait = (name: string) => {
   const normalized = name.toLowerCase();
   if (normalized.includes("maram")) return drMaram;
-  if (normalized.includes("alsatouf") || normalized.includes("الصطوف")) return drFatimaAlsatouf;
+  if (normalized.includes("alsatouf") || normalized.includes("الصطوف"))
+    return drFatimaAlsatouf;
   return null;
 };
 
 const appointmentStatusLabel = (status: string, ar: boolean) => {
   if (!ar) return status.replaceAll("_", " ");
-  return ({ requested:"قيد المراجعة", booked:"تم الحجز", confirmed:"مؤكد", arrived:"تم الوصول", completed:"مكتمل", cancelled:"ملغي", no_show:"لم يحضر" } as Record<string,string>)[status] ?? status;
+  return (
+    (
+      {
+        requested: "قيد المراجعة",
+        booked: "تم الحجز",
+        confirmed: "مؤكد",
+        arrived: "تم الوصول",
+        completed: "مكتمل",
+        cancelled: "ملغي",
+        no_show: "لم يحضر",
+      } as Record<string, string>
+    )[status] ?? status
+  );
 };
+
+const appointmentService = (appointment: {service:string|null;serviceEn?:string|null;serviceAr?:string|null}, ar: boolean) =>
+  (ar ? appointment.serviceAr : appointment.serviceEn) || appointment.service;
+
+const appointmentProvider = (appointment: {provider:string|null;providerEn?:string|null;providerAr?:string|null}, ar: boolean) =>
+  (ar ? appointment.providerAr : appointment.providerEn) || appointment.provider;
 
 const localizedNotification = (title: string, message: string, ar: boolean) => {
   if (!ar) return { title, message };
   const value = `${title} ${message}`.toLowerCase();
-  if (value.includes("confirm")) return { title:"تم تأكيد موعدك", message:"تم قبول حجزك وتأكيد الموعد. ستجد التفاصيل في صفحة مواعيدي." };
-  if (value.includes("cancel")) return { title:"تم إلغاء الموعد", message:"تم تحديث حجزك إلى ملغي. يمكنك حجز موعد جديد من التطبيق." };
-  if (value.includes("complete")) return { title:"اكتملت الزيارة", message:"تم تسجيل زيارتك كمكتملة. نتمنى لك دوام الصحة." };
-  if (value.includes("book") || value.includes("request")) return { title:"تم استلام طلب الحجز", message:"وصل طلبك إلى العيادة وسيصلك إشعار فور تأكيده." };
+  if (value.includes("confirm"))
+    return {
+      title: "تم تأكيد موعدك",
+      message: "تم قبول حجزك وتأكيد الموعد. ستجد التفاصيل في صفحة مواعيدي.",
+    };
+  if (value.includes("cancel"))
+    return {
+      title: "تم إلغاء الموعد",
+      message: "تم تحديث حجزك إلى ملغي. يمكنك حجز موعد جديد من التطبيق.",
+    };
+  if (value.includes("complete"))
+    return {
+      title: "اكتملت الزيارة",
+      message: "تم تسجيل زيارتك كمكتملة. نتمنى لك دوام الصحة.",
+    };
+  if (value.includes("book") || value.includes("request"))
+    return {
+      title: "تم استلام طلب الحجز",
+      message: "وصل طلبك إلى العيادة وسيصلك إشعار فور تأكيده.",
+    };
   return { title, message };
 };
 
-function Header({ title, subtitle, back }: { title: string; subtitle?: string; back?: () => void }) {
-  return <View style={s.header}>{back && <TouchableOpacity style={s.backIcon} onPress={back}><Icon name="arrow-back" color={colors.text} /></TouchableOpacity>}<View style={s.grow}><Text style={s.eyebrow}>PANTHERA CLINICS · عيادات بانثيرا</Text><Text style={s.title}>{title}</Text>{subtitle && <Text style={s.subtitle}>{subtitle}</Text>}</View><View style={s.avatar}><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:86,height:58}} resizeMode="cover" /></View></View>;
+const localizedError = (error: unknown, ar: boolean, fallback = "") => {
+  const message = error instanceof Error ? error.message : String(error || fallback);
+  if (!ar) return message || fallback;
+  const exact: Record<string, string> = {
+    "Push notifications require the installed mobile app.": "الإشعارات الفورية تحتاج إلى تطبيق بانثيرا المثبت على الهاتف.",
+    "Push notifications require a physical device.": "الإشعارات الفورية تحتاج إلى هاتف فعلي.",
+    "Notification permission is disabled. Enable it in Android Settings, then reopen Panthera.": "إذن الإشعارات متوقف. فعّله من إعدادات الهاتف ثم افتح تطبيق بانثيرا مرة أخرى.",
+    "The Expo project ID is missing from this build.": "إعداد الإشعارات غير مكتمل في هذا الإصدار.",
+    "Calendar integration is available in the mobile app.": "إضافة الموعد للتقويم متاحة داخل تطبيق الهاتف.",
+    "Calendar permission is required.": "يلزم السماح بالوصول إلى التقويم.",
+    "No writable calendar was found.": "لم يتم العثور على تقويم متاح للإضافة.",
+    "Enter the 6-digit verification code.": "أدخل رمز التحقق المكون من 6 أرقام.",
+    "Google review link is unavailable.": "رابط تقييم Google غير متاح حاليًا.",
+    "Please sign in again.": "يرجى تسجيل الدخول مرة أخرى.",
+    "Unable to start online payment": "تعذر بدء الدفع الإلكتروني.",
+  };
+  return exact[message] ?? (message || fallback);
+};
+
+function Header({
+  title,
+  subtitle,
+  back,
+}: {
+  title: string;
+  subtitle?: string;
+  back?: () => void;
+}) {
+  return (
+    <View style={s.header}>
+      {back && (
+        <TouchableOpacity style={s.backIcon} onPress={back}>
+          <Icon name="arrow-back" color={colors.text} />
+        </TouchableOpacity>
+      )}
+      <View style={s.grow}>
+        <Text style={s.eyebrow}>{/[\u0600-\u06ff]/u.test(`${title} ${subtitle ?? ""}`) ? "عيادات بانثيرا" : "PANTHERA CLINICS"}</Text>
+        <Text style={s.title}>{title}</Text>
+        {subtitle && <Text style={s.subtitle}>{subtitle}</Text>}
+      </View>
+      <View style={s.avatar}>
+        <Image
+          alt="Panthera Clinics"
+          source={pantheraBrand}
+          style={{ width: 86, height: 58 }}
+          resizeMode="cover"
+        />
+      </View>
+    </View>
+  );
 }
 
-function Login({language,toggleLanguage}:{language:Language;toggleLanguage:()=>void}) {
-  const ar=language==="ar";
-  const [phone, setPhone] = useState("+966"), [token,setToken]=useState(""), [sent,setSent]=useState(false), [busy,setBusy]=useState(false), [error,setError]=useState("");
-  const submit=async()=>{setBusy(true);setError("");try{if(!sent){await sendOtp(phone.replace(/\s/g,""));setSent(true);}else await verifyOtp(phone.replace(/\s/g,""),token);}catch(e){setError(e instanceof Error?e.message:"Unable to sign in");}finally{setBusy(false);}};
-  return <LinearGradient colors={["#F7F5F1", "#E7EEF1", "#F7F5F1"]} style={s.login}><TouchableOpacity onPress={toggleLanguage} style={{position:"absolute",top:55,right:24,backgroundColor:"#fff",paddingHorizontal:14,paddingVertical:9,borderRadius:14}}><Text style={s.link}>{ar?"English":"العربية"}</Text></TouchableOpacity><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:"100%",height:120}} resizeMode="contain" /><Text style={s.loginBrand}>PANTHERA CLINICS</Text><Text style={s.loginClinic}>عيادات بانثيرا · رعاية تليق بك</Text><Text style={[s.loginTitle,ar&&{textAlign:"right"}]}>{sent?(ar?"أدخل رمز التحقق":"Enter verification code"):(ar?"رعايتك كلها في مكان واحد":"Your care, in one place.")}</Text><Text style={[s.loginCopy,ar&&{textAlign:"right"}]}>{sent?(ar?`أرسلنا الرمز إلى ${phone}`:`We sent a code to ${phone}.`):(ar?"احجز مواعيدك وتابع زياراتك وبياناتك الطبية بسهولة.":"Book appointments, follow your visits and keep your medical information close.")}</Text><View style={s.loginCard}><Text style={[s.fieldLabel,ar&&{textAlign:"right"}]}>{sent?(ar?"رمز التحقق":"Verification code"):(ar?"رقم الجوال":"Mobile number")}</Text><View style={s.inputWrap}><Icon name={sent?"keypad-outline":"call-outline"}/><TextInput value={sent?token:phone} onChangeText={sent?setToken:setPhone} keyboardType="phone-pad" placeholder={sent?"6-digit code":"+966 5X XXX XXXX"} maxLength={sent?6:16} style={s.input}/></View>{error?<Text style={s.error}>{error}</Text>:null}<TouchableOpacity style={[s.primary,busy&&s.disabled]} disabled={busy} onPress={submit}><Text style={s.primaryText}>{busy?(ar?"انتظر…":"Please wait…"):sent?(ar?"تحقق ومتابعة":"Verify and continue"):(ar?"إرسال رمز التحقق":"Send verification code")}</Text></TouchableOpacity>{sent?<TouchableOpacity onPress={()=>{setSent(false);setToken("");setError("");}}><Text style={s.back}>{ar?"تغيير رقم الجوال":"Change mobile number"}</Text></TouchableOpacity>:<Text style={s.legal}>{ar?"سنرسل رمز تحقق لمرة واحدة.":"We will send a one-time verification code."}</Text>}</View></LinearGradient>;
+function LegalDocument({
+  type,
+  language,
+  back,
+}: {
+  type: "privacy" | "terms";
+  language: Language;
+  back: () => void;
+}) {
+  const ar = language === "ar",
+    sections =
+      type === "privacy" ? privacySections[language] : termsSections[language];
+  return (
+    <SafeAreaView style={s.safe}>
+      <ScrollView contentContainerStyle={s.page}>
+        <Header
+          title={
+            type === "privacy"
+              ? ar
+                ? "سياسة الخصوصية"
+                : "Privacy policy"
+              : ar
+                ? "الشروط والأحكام"
+                : "Terms & conditions"
+          }
+          subtitle={`${ar ? "الإصدار" : "Version"} ${legalVersion}`}
+          back={back}
+        />
+        {sections.map(([title, body]) => (
+          <View
+            key={title}
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 20,
+              padding: 18,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {title}
+            </Text>
+            <Text
+              style={[
+                s.cardMuted,
+                { lineHeight: 22, marginTop: 8 },
+                ar && { textAlign: "right" },
+              ]}
+            >
+              {body}
+            </Text>
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
-
-function Booking({ refresh,language }: { refresh:()=>Promise<void>;language:Language }) {
-  const t=translate(language),rtl=language==="ar";
-  const [step,setStep]=useState(1),[goal,setGoal]=useState(""),[providers,setProviders]=useState<BookingProvider[]>([]),[provider,setProvider]=useState<BookingProvider>(),[providerServices,setProviderServices]=useState<ProviderService[]>([]),[service,setService]=useState<ProviderService>(),[day,setDay]=useState(0),[time,setTime]=useState("6:30 PM"),[busy,setBusy]=useState(false),[appointmentId,setAppointmentId]=useState<number>(),[paymentMethod,setPaymentMethod]=useState<"pay_at_clinic"|"online">("pay_at_clinic");
-  useEffect(()=>{void loadBookingProviders().then(setProviders).catch(e=>Alert.alert(rtl?"تعذر تحميل مقدمي الخدمة":"Unable to load providers",e instanceof Error?e.message:(rtl?"حاول مرة أخرى.":"Please try again.")));},[rtl]);
-  const chooseProvider=async(x:BookingProvider)=>{setProvider(x);setService(undefined);setBusy(true);try{setProviderServices(await loadProviderServices(x.id));setStep(2);}catch(e){Alert.alert(rtl?"تعذر تحميل الخدمات":"Unable to load services",e instanceof Error?e.message:(rtl?"حاول مرة أخرى.":"Please try again."));}finally{setBusy(false);}};
-  const goals=[{id:"consult",icon:"chatbubble-ellipses",ar:"استشارة طبيبة",en:"Doctor consultation"},{id:"skin",icon:"sparkles",ar:"البشرة والعناية",en:"Skin & facial care"},{id:"laser",icon:"flash",ar:"إزالة الشعر بالليزر",en:"Laser hair removal"},{id:"aesthetic",icon:"diamond",ar:"التجميل والحقن",en:"Aesthetic treatments"},{id:"unsure",icon:"help-circle",ar:"لست متأكدة",en:"I'm not sure"}],visibleProvider=(x:BookingProvider)=>goal==="laser"?x.role!=="doctor"&&x.name.toLowerCase().includes("laser"):goal==="skin"?x.role!=="doctor"&&!x.name.toLowerCase().includes("laser"):goal==="consult"||goal==="aesthetic"||goal==="unsure"?x.role==="doctor":false;
-  const days=Array.from({length:10},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);return d;}).filter(d=>d.getDay()!==5).slice(0,4),times=["2:00 PM","3:30 PM","5:00 PM","6:30 PM","8:00 PM","9:30 PM"],selectedDate=days[day]??days[0];
-  const appointmentAt=()=>{if(!selectedDate)return null;const [clock="6:30",period="PM"]=time.split(" "),[rawHour=6,minute=30]=clock.split(":").map(Number),at=new Date(selectedDate);at.setHours((rawHour%12)+(period==="PM"?12:0),minute,0,0);return at;};
-  const reserve=async()=>{const at=appointmentAt();if(!provider||!service||!at)return;setBusy(true);try{setAppointmentId(await createAppointment(service.id,provider.id,at.toISOString()));setStep(5);await refresh();}catch(e){Alert.alert(rtl?"تعذر إتمام الحجز":"Unable to reserve",e instanceof Error?e.message:(rtl?"اختر وقتًا آخر.":"Please select another time."));}finally{setBusy(false);}};
-  const finishPayment=async()=>{if(!appointmentId||paymentMethod==="online")return;setBusy(true);try{await selectPaymentMethod(appointmentId,paymentMethod,service?.price_from);await refresh();setStep(6);}catch(e){Alert.alert(rtl?"تعذر حفظ طريقة الدفع":"Unable to save payment",e instanceof Error?e.message:(rtl?"حاول مرة أخرى.":"Please try again."));}finally{setBusy(false);}};
-  return <ScrollView contentContainerStyle={s.page}><Header title={t.bookAppointment} subtitle={step===6?(rtl?"اكتمل الحجز":"Booking complete"):`${t.step} ${step} / 5`}/><View style={s.progress}><View style={[s.progressFill,{width:`${Math.min(step,5)/5*100}%`}]}/></View>
-  {step===1&&<><Text style={[s.sectionTitle,rtl&&{textAlign:"right"}]}>{rtl?"ما الذي تريدين الاهتمام به اليوم؟":"What would you like to care for today?"}</Text><Text style={[s.cardMuted,{marginBottom:16},rtl&&{textAlign:"right"}]}>{rtl?"اختاري الهدف، وسنعرض لك الخيارات المناسبة فقط.":"Choose a goal and we will show only the right options."}</Text><View style={{flexDirection:rtl?"row-reverse":"row",flexWrap:"wrap",gap:10,marginBottom:22}}>{goals.map(item=><TouchableOpacity key={item.id} onPress={()=>setGoal(item.id)} style={{width:"48%",minHeight:104,borderRadius:22,padding:15,backgroundColor:goal===item.id?colors.navy:"#fff",borderWidth:1,borderColor:goal===item.id?colors.navy:colors.border}}><Icon name={item.icon} color={goal===item.id?"#fff":colors.navy}/><Text style={{fontSize:13,fontWeight:"900",color:goal===item.id?"#fff":colors.text,marginTop:12,textAlign:rtl?"right":"left"}}>{rtl?item.ar:item.en}</Text></TouchableOpacity>)}</View>{goal&&<><Text style={[s.sectionTitle,rtl&&{textAlign:"right"}]}>{t.chooseProvider}</Text><Text style={[s.eyebrow,rtl&&{textAlign:"right"}]}>{t.doctors}</Text><View style={{flexDirection:"row",flexWrap:"wrap",gap:12,marginTop:12,marginBottom:24}}>{providers.filter(x=>visibleProvider(x)&&x.role==="doctor").map(x=>{const portrait=doctorPortrait(x.name);return <TouchableOpacity key={x.id} style={{width:"48%"}} onPress={()=>void chooseProvider(x)}><LinearGradient colors={["#FFFFFF","#E7EEF1"]} style={{padding:0,borderRadius:26,borderWidth:1,borderColor:colors.border,minHeight:220,overflow:"hidden"}}>{portrait?<Image alt={x.name} source={portrait} style={{width:"100%",height:126}} resizeMode="cover"/>:<View style={{height:126,alignItems:"center",justifyContent:"center",backgroundColor:colors.violetSoft}}><Icon name="person" color={colors.violet} size={44}/></View>}<View style={{padding:16}}><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{x.name}</Text><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.doctorConsultation}</Text></View><View style={{position:"absolute",right:14,bottom:14}}><Icon name={rtl?"arrow-back":"arrow-forward"} color={colors.violet}/></View></LinearGradient></TouchableOpacity>})}</View><Text style={[s.eyebrow,rtl&&{textAlign:"right"}]}>{t.clinicServices}</Text>{providers.filter(x=>visibleProvider(x)&&x.role!=="doctor").map((x,i)=><TouchableOpacity key={x.id} onPress={()=>void chooseProvider(x)}><LinearGradient colors={i===0?["#F3ECE3","#FFFFFF"]:i===1?["#E8EFF2","#FFFFFF"]:["#EDF1EC","#FFFFFF"]} style={{flexDirection:rtl?"row-reverse":"row",alignItems:"center",gap:16,padding:18,borderRadius:22,borderWidth:1,borderColor:colors.border,marginTop:12}}><View style={[s.quickIcon,{backgroundColor:"#FFFFFF"}]}><Icon name={i===0?"color-wand":i===1?"sparkles":"water"} color={i===0?colors.amber:i===1?colors.violet:colors.cyan}/></View><View style={s.grow}><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{x.name}</Text><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.serviceBooking}</Text></View><Icon name={rtl?"chevron-back":"chevron-forward"}/></LinearGradient></TouchableOpacity>)}</>}</>}
-  {step===2&&<><Text style={s.status}>{provider?.name}</Text>{provider?.role==="doctor"&&<View style={{backgroundColor:"#F3ECE3",borderColor:"#D5C2A8",borderWidth:1,borderRadius:18,padding:16,marginTop:16}}><View style={{flexDirection:rtl?"row-reverse":"row",alignItems:"center",gap:10}}><Icon name="information-circle" color={colors.amber}/><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{t.consultationNoticeTitle}</Text></View><Text style={[s.cardMuted,{marginTop:8},rtl&&{textAlign:"right"}]}>{t.consultationNotice}</Text></View>}<Text style={[s.sectionTitle,rtl&&{textAlign:"right"}]}>{t.chooseService}</Text>{providerServices.map((x,i)=><TouchableOpacity key={x.id} onPress={()=>{setService(x);setStep(3);}}><LinearGradient colors={i%2===0?["#FFFFFF","#E7EEF1"]:["#FFFFFF","#EEE8E0"]} style={{flexDirection:rtl?"row-reverse":"row",alignItems:"center",gap:15,padding:18,borderRadius:22,borderWidth:1,borderColor:colors.border,marginBottom:12}}><View style={[s.quickIcon,{backgroundColor:"#fff"}]}><Icon name="medical" color={i%2===0?colors.violet:colors.cyan}/></View><View style={s.grow}><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{x.name}</Text><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{x.duration_minutes} {t.duration}</Text>{x.price_from!=null&&<Text style={[s.duration,rtl&&{textAlign:"right"}]}>{provider?.role==="doctor"?t.consultationFee:t.fullPrice}: SAR {x.price_from}</Text>}</View><Icon name={rtl?"arrow-back":"arrow-forward"} color={colors.violet}/></LinearGradient></TouchableOpacity>)}</>}
-  {step===3&&<><Text style={s.status}>{provider?.name} · {service?.name}</Text><Text style={[s.sectionTitle,rtl&&{textAlign:"right"}]}>{t.chooseDateTime}</Text><View style={s.dateRow}>{days.map((x,i)=><TouchableOpacity key={x.toISOString()} onPress={()=>setDay(i)} style={[s.dateCard,i===day&&s.dateActive]}><Text style={[s.dateText,i===day&&{color:"#fff"}]}>{x.toLocaleDateString(rtl?"ar-SA":"en",{weekday:"short"}).toUpperCase()}{"\n"}{x.getDate()}</Text></TouchableOpacity>)}</View><Text style={[s.sectionTitle,rtl&&{textAlign:"right"}]}>{t.availableTime}</Text><View style={s.times}>{times.map(x=><TouchableOpacity key={x} onPress={()=>{setTime(x);setStep(4);}} style={[s.time,x===time&&s.timeActive]}><Text style={x===time?s.timeActiveText:s.timeText}>{x}</Text></TouchableOpacity>)}</View><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.appointmentDuration}: {service?.duration_minutes} {t.duration}</Text></>}
-  {step===4&&<TouchableOpacity activeOpacity={0.96} onPress={()=>void reserve()} disabled={busy}><View style={s.confirm}><Icon name="calendar" color={colors.cyan} size={48}/><Text style={s.confirmTitle}>{t.reviewAppointment}</Text><Text style={s.confirmText}>{provider?.name}{"\n"}{service?.name}{"\n"}{appointmentAt()?.toLocaleDateString(rtl?"ar-SA":"en",{weekday:"long",day:"numeric",month:"long"})} · {time}{"\n"}{service?.duration_minutes} {t.duration}</Text>{service?.price_from!=null&&<Text style={s.profileName}>SAR {service.price_from}</Text>}{provider?.role==="doctor"&&<Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.consultationNotice}</Text>}<Text style={[s.link,{marginTop:16}]}>{busy?t.wait:t.reservePayment}</Text></View></TouchableOpacity>}
-  {step===5&&<><View style={s.confirm}><Icon name="card" color={colors.violet} size={48}/><Text style={s.confirmTitle}>{t.payment}</Text><Text style={s.confirmText}>{service?.name}{"\n"}{provider?.name}</Text>{service?.price_from!=null&&<Text style={s.profileName}>SAR {service.price_from}</Text>}<Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{provider?.role==="doctor"?t.consultationNotice:t.fullPrice}</Text></View><TouchableOpacity style={[s.listCard,paymentMethod==="pay_at_clinic"&&s.selected,rtl&&{flexDirection:"row-reverse"}]} onPress={()=>setPaymentMethod("pay_at_clinic")}><Icon name="storefront-outline" color={colors.violet}/><View style={s.grow}><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{t.payAtClinic}</Text><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.payAtClinicHint}</Text></View><Icon name={paymentMethod==="pay_at_clinic"?"radio-button-on":"radio-button-off"} color={colors.violet}/></TouchableOpacity><View style={[s.listCard,s.disabled,rtl&&{flexDirection:"row-reverse"}]}><Icon name="card-outline"/><View style={s.grow}><Text style={[s.cardTitle,rtl&&{textAlign:"right"}]}>{t.onlinePayment}</Text><Text style={[s.cardMuted,rtl&&{textAlign:"right"}]}>{t.onlineSoon}</Text></View><Text style={s.status}>{t.soon}</Text></View></>}
-  {step===6&&<View style={{backgroundColor:"#E5F4EA",borderRadius:34,padding:30,alignItems:"center",borderWidth:1,borderColor:"#9BC9A8"}}><View style={{width:82,height:82,borderRadius:41,backgroundColor:"#2F8A54",alignItems:"center",justifyContent:"center"}}><Icon name="checkmark" color="#fff" size={46}/></View><Text style={{fontSize:26,fontWeight:"900",color:"#205F3A",marginTop:22,textAlign:"center"}}>{rtl?"تم حجز موعدك بنجاح":"Your appointment is booked"}</Text><Text style={{fontSize:14,lineHeight:22,color:"#49745A",textAlign:"center",marginTop:10}}>{rtl?"وصل طلبك إلى عيادات بانثيرا. سنرسل لك إشعارًا فور تأكيد الموعد.":"Your request reached Panthera Clinics. We will notify you as soon as it is confirmed."}</Text><View style={{width:"100%",backgroundColor:"#FFFFFFAA",borderRadius:22,padding:18,marginTop:22}}><Text style={{fontWeight:"900",color:colors.ink,textAlign:"center"}}>{provider?.name}</Text><Text style={{color:colors.muted,textAlign:"center",marginTop:5}}>{service?.name} · {time}</Text></View><TouchableOpacity style={{backgroundColor:"#205F3A",borderRadius:18,padding:16,alignItems:"center",width:"100%",marginTop:22}} onPress={()=>{setStep(1);setGoal("");setProvider(undefined);setService(undefined);setAppointmentId(undefined);}}><Text style={{color:"#fff",fontWeight:"900"}}>{rtl?"العودة للرئيسية":"Back to home"}</Text></TouchableOpacity></View>}
-  {step===5&&<TouchableOpacity style={[s.primary,busy&&s.disabled]} disabled={busy} onPress={()=>void finishPayment()}><Text style={s.primaryText}>{busy?t.saving:t.confirmPayment}</Text></TouchableOpacity>}{step>1&&step<5&&<TouchableOpacity onPress={()=>setStep(step-1)}><Text style={s.back}>{t.back}</Text></TouchableOpacity>}</ScrollView>;
+function Login({
+  language,
+  toggleLanguage,
+}: {
+  language: Language;
+  toggleLanguage: () => void;
+}) {
+  const ar = language === "ar";
+  const [mode, setMode] = useState<"existing" | "new">("existing"),
+    [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
+  const [phone, setPhone] = useState("+966"),
+    [token, setToken] = useState(""),
+    [firstName, setFirstName] = useState(""),
+    [lastName, setLastName] = useState(""),
+    [email, setEmail] = useState(""),
+    [accepted, setAccepted] = useState(false),
+    [sent, setSent] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  if (legal)
+    return (
+      <LegalDocument
+        type={legal}
+        language={language}
+        back={() => setLegal(null)}
+      />
+    );
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      if (!sent) {
+        if (mode === "new" && (!accepted || firstName.trim().length < 2))
+          throw new Error(
+            ar
+              ? "أدخل الاسم ووافق على سياسة الخصوصية والشروط."
+              : "Enter your name and accept the privacy policy and terms.",
+          );
+        await sendOtp(phone);
+        setSent(true);
+      } else
+        await verifyOtp(
+          phone,
+          token,
+          mode === "new"
+            ? {
+                firstName,
+                lastName,
+                email,
+                language,
+                documentVersion: legalVersion,
+              }
+            : undefined,
+        );
+    } catch (e) {
+      setError(localizedError(e, ar, ar ? "تعذر المتابعة" : "Unable to continue"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <LinearGradient colors={["#F7F5F1", "#E7EEF1", "#F7F5F1"]} style={s.login}>
+      <ScrollView
+        contentContainerStyle={{ paddingVertical: 44 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity
+          onPress={toggleLanguage}
+          style={{
+            alignSelf: "flex-end",
+            backgroundColor: "#fff",
+            paddingHorizontal: 14,
+            paddingVertical: 9,
+            borderRadius: 14,
+          }}
+        >
+          <Text style={s.link}>{ar ? "EN" : "عربي"}</Text>
+        </TouchableOpacity>
+        <Image
+          alt="Panthera Clinics"
+          source={pantheraBrand}
+          style={{ width: "100%", height: 100 }}
+          resizeMode="contain"
+        />
+        <Text style={[s.loginTitle, ar && { textAlign: "right" }]}>
+          {sent
+            ? ar
+              ? "أدخل رمز التحقق"
+              : "Enter verification code"
+            : ar
+              ? "مرحبًا بك في بانثيرا"
+              : "Welcome to Panthera"}
+        </Text>
+        <Text style={[s.loginCopy, ar && { textAlign: "right" }]}>
+          {sent
+            ? ar
+              ? `أرسلنا الرمز إلى ${phone}`
+              : `We sent a code to ${phone}.`
+            : ar
+              ? "ادخل إلى ملفك أو أنشئ ملف مريض جديد."
+              : "Access your record or create a new patient profile."}
+        </Text>
+        <View style={s.loginCard}>
+          {!sent && (
+            <View
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                gap: 8,
+                marginBottom: 18,
+              }}
+            >
+              {(["existing", "new"] as const).map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => {
+                    setMode(item);
+                    setError("");
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: 13,
+                    borderRadius: 14,
+                    backgroundColor:
+                      mode === item ? colors.navy : colors.violetSoft,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "900",
+                      textAlign: "center",
+                      color: mode === item ? "#fff" : colors.text,
+                    }}
+                  >
+                    {item === "existing"
+                      ? ar
+                        ? "لدي ملف في العيادة"
+                        : "Existing patient"
+                      : ar
+                        ? "عميل جديد"
+                        : "New patient"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {!sent && mode === "new" && (
+            <>
+              <TextInput
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder={ar ? "الاسم الأول *" : "First name *"}
+                style={[
+                  s.inputWrap,
+                  { marginBottom: 10, textAlign: ar ? "right" : "left" },
+                ]}
+              />
+              <TextInput
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder={ar ? "اسم العائلة" : "Last name"}
+                style={[
+                  s.inputWrap,
+                  { marginBottom: 10, textAlign: ar ? "right" : "left" },
+                ]}
+              />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={
+                  ar ? "البريد الإلكتروني (اختياري)" : "Email (optional)"
+                }
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={[
+                  s.inputWrap,
+                  { marginBottom: 10, textAlign: ar ? "right" : "left" },
+                ]}
+              />
+            </>
+          )}
+          <Text style={[s.fieldLabel, ar && { textAlign: "right" }]}>
+            {sent
+              ? ar
+                ? "رمز التحقق"
+                : "Verification code"
+              : ar
+                ? "رقم الجوال"
+                : "Mobile number"}
+          </Text>
+          <View style={s.inputWrap}>
+            <Icon name={sent ? "keypad-outline" : "call-outline"} />
+            <TextInput
+              value={sent ? token : phone}
+              onChangeText={sent ? setToken : setPhone}
+              keyboardType="phone-pad"
+              placeholder={
+                sent
+                  ? ar
+                    ? "رمز من 6 أرقام"
+                    : "6-digit code"
+                  : "+966 5X XXX XXXX"
+              }
+              maxLength={sent ? 6 : 16}
+              style={s.input}
+            />
+          </View>
+          {!sent && mode === "new" && (
+            <TouchableOpacity
+              onPress={() => setAccepted((value) => !value)}
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                gap: 10,
+                alignItems: "flex-start",
+                marginTop: 16,
+              }}
+            >
+              <Icon
+                name={accepted ? "checkbox" : "square-outline"}
+                color={colors.navy}
+              />
+              <Text
+                style={[
+                  s.cardMuted,
+                  { flex: 1, marginTop: 0 },
+                  ar && { textAlign: "right" },
+                ]}
+              >
+                {ar
+                  ? "أوافق على سياسة الخصوصية والشروط والأحكام"
+                  : "I agree to the Privacy Policy and Terms & Conditions"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {!sent && (
+            <View
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                justifyContent: "center",
+                gap: 18,
+                marginTop: 13,
+              }}
+            >
+              <TouchableOpacity onPress={() => setLegal("privacy")}>
+                <Text style={s.link}>
+                  {ar ? "سياسة الخصوصية" : "Privacy policy"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setLegal("terms")}>
+                <Text style={s.link}>{ar ? "الشروط والأحكام" : "Terms"}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {error ? <Text style={s.error}>{error}</Text> : null}
+          <TouchableOpacity
+            style={[
+              s.primary,
+              (busy || (mode === "new" && !sent && !accepted)) && s.disabled,
+            ]}
+            disabled={busy || (mode === "new" && !sent && !accepted)}
+            onPress={submit}
+          >
+            <Text style={s.primaryText}>
+              {busy
+                ? ar
+                  ? "انتظر…"
+                  : "Please wait…"
+                : sent
+                  ? ar
+                    ? "تحقق ومتابعة"
+                    : "Verify and continue"
+                  : ar
+                    ? "إرسال رمز التحقق"
+                    : "Send verification code"}
+            </Text>
+          </TouchableOpacity>
+          {sent && (
+            <TouchableOpacity
+              onPress={() => {
+                setSent(false);
+                setToken("");
+                setError("");
+              }}
+            >
+              <Text style={s.back}>
+                {ar
+                  ? "تعديل البيانات أو رقم الجوال"
+                  : "Edit details or mobile number"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    </LinearGradient>
+  );
 }
 
-function Appointments({data,language}:{data:PatientDashboard["appointments"];language:Language}) {const ar=language==="ar";return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"رحلة العناية":"Your care journey"} subtitle={ar?"كل زيارة، في قصة واحدة":"Every visit, one continuous story"}/>{data.length?data.map((x,index)=>{const d=new Date(x.appointmentAt),future=d>new Date();return <View key={x.id} style={{flexDirection:ar?"row-reverse":"row",gap:16}}><View style={{alignItems:"center"}}><View style={{width:58,height:58,borderRadius:22,backgroundColor:future?colors.navy:colors.violetSoft,alignItems:"center",justifyContent:"center"}}><Text style={{fontSize:20,fontWeight:"900",color:future?"#fff":colors.navy}}>{d.getDate()}</Text><Text style={{fontSize:9,fontWeight:"900",color:future?"#fff":colors.navy}}>{d.toLocaleDateString(ar?"ar-SA":"en",{month:"short"})}</Text></View>{index<data.length-1?<View style={{width:1,height:105,backgroundColor:colors.border}}/>:null}</View><View style={{flex:1,backgroundColor:colors.card,borderRadius:28,padding:20,marginBottom:16,borderWidth:1,borderColor:future?colors.navy:colors.border}}><View style={{flexDirection:ar?"row-reverse":"row",justifyContent:"space-between"}}><Text style={{fontSize:18,fontWeight:"900",color:colors.text}}>{x.service}</Text><Text style={s.status}>{appointmentStatusLabel(x.status,ar)}</Text></View><Text style={{color:colors.muted,marginTop:9,textAlign:ar?"right":"left"}}>{x.provider??x.room}</Text><Text style={{color:colors.navy,fontWeight:"800",marginTop:14,textAlign:ar?"right":"left"}}>{d.toLocaleTimeString(ar?"ar-SA":"en",{hour:"numeric",minute:"2-digit"})}</Text></View></View>}):<Empty text={ar?"رحلتك تبدأ من أول موعد":"Your journey begins with your first appointment"}/>}</ScrollView>; }
+function Booking({
+  refresh,
+  language,
+}: {
+  refresh: () => Promise<void>;
+  language: Language;
+}) {
+  const t = translate(language),
+    rtl = language === "ar";
+  const bookingScrollRef = useRef<ScrollView>(null);
+  const providerSectionY = useRef(0);
+  const [step, setStep] = useState(1),
+    [goal, setGoal] = useState(""),
+    [providers, setProviders] = useState<BookingProvider[]>([]),
+    [provider, setProvider] = useState<BookingProvider>(),
+    [providerServices, setProviderServices] = useState<ProviderService[]>([]),
+    [service, setService] = useState<ProviderService>(),
+    [day, setDay] = useState(0),
+    [time, setTime] = useState(""),
+    [slots, setSlots] = useState<PatientAvailableSlot[]>([]),
+    [busy, setBusy] = useState(false),
+    [appointmentId, setAppointmentId] = useState<number>(),
+    [paymentMethod, setPaymentMethod] = useState<"pay_at_clinic" | "online">(
+      "pay_at_clinic",
+    );
+  useEffect(() => {
+    void loadBookingProviders(language)
+      .then(setProviders)
+      .catch((e) =>
+        Alert.alert(
+          rtl ? "تعذر تحميل مقدمي الخدمة" : "Unable to load providers",
+          localizedError(e, rtl, rtl ? "حاول مرة أخرى." : "Please try again."),
+        ),
+      );
+  }, [language, rtl]);
+  const chooseProvider = async (x: BookingProvider) => {
+    setProvider(x);
+    setService(undefined);
+    setBusy(true);
+    try {
+      setProviderServices(await loadProviderServices(x.id, language));
+      setStep(2);
+    } catch (e) {
+      Alert.alert(
+        rtl ? "تعذر تحميل الخدمات" : "Unable to load services",
+        localizedError(e, rtl, rtl ? "حاول مرة أخرى." : "Please try again."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const goals = [
+      {
+        id: "consult",
+        icon: "chatbubble-ellipses",
+        ar: "استشارة طبيبة",
+        en: "Doctor consultation",
+      },
+      {
+        id: "skin",
+        icon: "sparkles",
+        ar: "البشرة والعناية",
+        en: "Skin & facial care",
+      },
+      {
+        id: "laser",
+        icon: "flash",
+        ar: "إزالة الشعر بالليزر",
+        en: "Laser hair removal",
+      },
+      {
+        id: "aesthetic",
+        icon: "diamond",
+        ar: "التجميل والحقن",
+        en: "Aesthetic treatments",
+      },
+      {
+        id: "unsure",
+        icon: "help-circle",
+        ar: "لست متأكدة",
+        en: "I'm not sure",
+      },
+    ];
+  const providerKind = (x: BookingProvider) => {
+      const identity = `${x.id} ${x.name} ${x.role}`.toLowerCase();
+      if (x.id === -101 || x.id === -1 || /laser|\u0644\u064a\u0632\u0631/.test(identity)) return "laser";
+      if (x.id === -102 || /profacial|pro facial|\u0628\u0631\u0648\u0641\u0627\u0634/.test(identity)) return "profacial";
+      if (x.id === -103 || /bleach|\u062a\u0634\u0642\u064a\u0631/.test(identity)) return "bleaching";
+      return x.role === "doctor" ? "doctor" : "other";
+    },
+    visibleProvider = (x: BookingProvider) => {
+      const kind = providerKind(x);
+      if (goal === "laser") return kind === "laser";
+      if (goal === "skin") return kind === "profacial" || kind === "bleaching";
+      if (goal === "consult" || goal === "aesthetic" || goal === "unsure") {
+        return kind === "doctor";
+      }
+      return false;
+    },
+    chooseGoal = (nextGoal: string) => {
+      setGoal(nextGoal);
+      setProvider(undefined);
+      setService(undefined);
+      setProviderServices([]);
+      setTimeout(() => {
+        bookingScrollRef.current?.scrollTo({
+          y: Math.max(providerSectionY.current - 12, 0),
+          animated: true,
+        });
+      }, 120);
+    };
+  const days = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() + i + 1);
+      return d;
+    })
+      .filter((d) => d.getDay() !== 5)
+      .slice(0, 6),
+    selectedDate = days[day] ?? days[0],
+    selectedDateKey = selectedDate
+      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
+      : "";
+  useEffect(() => {
+    if (!provider || !service || !selectedDateKey) return;
+    let active = true;
+    void loadPatientAvailableSlots(provider.id, service.id, selectedDateKey)
+      .then((value) => {
+        if (active) setSlots(value);
+      })
+      .catch((e) => {
+        if (active) {
+          setSlots([]);
+          Alert.alert(
+            rtl
+              ? "تعذر تحميل الأوقات المتاحة"
+              : "Unable to load available times",
+            localizedError(e, rtl),
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [provider, service, selectedDateKey, rtl]);
+  const times = slots.map((slot) => slot.label),
+    selectedSlot = slots.find((slot) => slot.label === time),
+    appointmentAt = () =>
+      selectedSlot ? new Date(selectedSlot.appointment_at) : null;
+  const reserve = async () => {
+    const at = appointmentAt();
+    if (!provider || !service || !at) return;
+    setBusy(true);
+    try {
+      setAppointmentId(
+        await createAppointment(service.id, provider.id, at.toISOString()),
+      );
+      setStep(5);
+      await refresh();
+    } catch (e) {
+      Alert.alert(
+        rtl ? "تعذر إتمام الحجز" : "Unable to reserve",
+        localizedError(e, rtl, rtl ? "اختر وقتًا آخر." : "Please select another time."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const finishPayment = async () => {
+    if (!appointmentId) return;
+    setBusy(true);
+    try {
+      await selectPaymentMethod(
+        appointmentId,
+        paymentMethod,
+        service?.price_from,
+      );
+      if (paymentMethod === "online") {
+        const checkout = await createOnlinePaymentCheckout(appointmentId);
+        await Linking.openURL(checkout);
+      }
+      await refresh();
+      setStep(6);
+    } catch (e) {
+      Alert.alert(
+        rtl ? "تعذر بدء الدفع" : "Unable to start payment",
+        localizedError(e, rtl, rtl ? "حاول مرة أخرى." : "Please try again."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <ScrollView ref={bookingScrollRef} contentContainerStyle={s.page}>
+      <Header
+        title={t.bookAppointment}
+        subtitle={
+          step === 6
+            ? rtl
+              ? "اكتمل الحجز"
+              : "Booking complete"
+            : `${t.step} ${step} / 5`
+        }
+      />
+      <View style={s.progress}>
+        <View
+          style={[
+            s.progressFill,
+            { width: `${(Math.min(step, 5) / 5) * 100}%` },
+          ]}
+        />
+      </View>
+      {step === 1 && (
+        <>
+          <Text style={[s.sectionTitle, rtl && { textAlign: "right" }]}>
+            {rtl
+              ? "ما الذي تريدين الاهتمام به اليوم؟"
+              : "What would you like to care for today?"}
+          </Text>
+          <Text
+            style={[
+              s.cardMuted,
+              { marginBottom: 16 },
+              rtl && { textAlign: "right" },
+            ]}
+          >
+            {rtl
+              ? "اختاري الهدف، وسنعرض لك الخيارات المناسبة فقط."
+              : "Choose a goal and we will show only the right options."}
+          </Text>
+          <View
+            style={{
+              flexDirection: rtl ? "row-reverse" : "row",
+              flexWrap: "wrap",
+              gap: 10,
+              marginBottom: 22,
+            }}
+          >
+            {goals.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => chooseGoal(item.id)}
+                style={{
+                  width: "48%",
+                  minHeight: 104,
+                  borderRadius: 22,
+                  padding: 15,
+                  backgroundColor: goal === item.id ? colors.navy : "#fff",
+                  borderWidth: 1,
+                  borderColor: goal === item.id ? colors.navy : colors.border,
+                }}
+              >
+                <Icon
+                  name={item.icon}
+                  color={goal === item.id ? "#fff" : colors.navy}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "900",
+                    color: goal === item.id ? "#fff" : colors.text,
+                    marginTop: 12,
+                    textAlign: rtl ? "right" : "left",
+                  }}
+                >
+                  {rtl ? item.ar : item.en}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {goal && (
+            <View
+              onLayout={(layoutEvent) => {
+                providerSectionY.current = layoutEvent.nativeEvent.layout.y;
+              }}
+            >
+              <Text style={[s.sectionTitle, rtl && { textAlign: "right" }]}>
+                {t.chooseProvider}
+              </Text>
+              <Text style={[s.eyebrow, rtl && { textAlign: "right" }]}>
+                {t.doctors}
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 12,
+                  marginBottom: 24,
+                }}
+              >
+                {providers
+                  .filter((x) => visibleProvider(x) && x.role === "doctor")
+                  .map((x) => {
+                    const portrait = doctorPortrait(x.name);
+                    return (
+                      <TouchableOpacity
+                        key={x.id}
+                        style={{ width: "48%" }}
+                        onPress={() => void chooseProvider(x)}
+                      >
+                        <LinearGradient
+                          colors={["#FFFFFF", "#E7EEF1"]}
+                          style={{
+                            padding: 0,
+                            borderRadius: 26,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            minHeight: 220,
+                            overflow: "hidden",
+                          }}
+                        >
+                          {portrait ? (
+                            <Image
+                              alt={x.name}
+                              source={portrait}
+                              style={{ width: "100%", height: 126 }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View
+                              style={{
+                                height: 126,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: colors.violetSoft,
+                              }}
+                            >
+                              <Icon
+                                name="person"
+                                color={colors.violet}
+                                size={44}
+                              />
+                            </View>
+                          )}
+                          <View style={{ padding: 16 }}>
+                            <Text
+                              style={[
+                                s.cardTitle,
+                                rtl && { textAlign: "right" },
+                              ]}
+                            >
+                              {x.name}
+                            </Text>
+                            <Text
+                              style={[
+                                s.cardMuted,
+                                rtl && { textAlign: "right" },
+                              ]}
+                            >
+                              {t.doctorConsultation}
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              position: "absolute",
+                              right: 14,
+                              bottom: 14,
+                            }}
+                          >
+                            <Icon
+                              name={rtl ? "arrow-back" : "arrow-forward"}
+                              color={colors.violet}
+                            />
+                          </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </View>
+              <Text style={[s.eyebrow, rtl && { textAlign: "right" }]}>
+                {t.clinicServices}
+              </Text>
+              {providers
+                .filter((x) => visibleProvider(x) && x.role !== "doctor")
+                .map((x, i) => (
+                  <TouchableOpacity
+                    key={x.id}
+                    onPress={() => void chooseProvider(x)}
+                  >
+                    <LinearGradient
+                      colors={
+                        i === 0
+                          ? ["#F3ECE3", "#FFFFFF"]
+                          : i === 1
+                            ? ["#E8EFF2", "#FFFFFF"]
+                            : ["#EDF1EC", "#FFFFFF"]
+                      }
+                      style={{
+                        flexDirection: rtl ? "row-reverse" : "row",
+                        alignItems: "center",
+                        gap: 16,
+                        padding: 18,
+                        borderRadius: 22,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        marginTop: 12,
+                      }}
+                    >
+                      <View
+                        style={[s.quickIcon, { backgroundColor: "#FFFFFF" }]}
+                      >
+                        <Icon
+                          name={
+                            i === 0
+                              ? "color-wand"
+                              : i === 1
+                                ? "sparkles"
+                                : "water"
+                          }
+                          color={
+                            i === 0
+                              ? colors.amber
+                              : i === 1
+                                ? colors.violet
+                                : colors.cyan
+                          }
+                        />
+                      </View>
+                      <View style={s.grow}>
+                        <Text
+                          style={[s.cardTitle, rtl && { textAlign: "right" }]}
+                        >
+                          {x.name}
+                        </Text>
+                        <Text
+                          style={[s.cardMuted, rtl && { textAlign: "right" }]}
+                        >
+                          {t.serviceBooking}
+                        </Text>
+                      </View>
+                      <Icon name={rtl ? "chevron-back" : "chevron-forward"} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          )}
+        </>
+      )}
+      {step === 2 && (
+        <>
+          <Text style={s.status}>{provider?.name}</Text>
+          {provider?.role === "doctor" && (
+            <View
+              style={{
+                backgroundColor: "#F3ECE3",
+                borderColor: "#D5C2A8",
+                borderWidth: 1,
+                borderRadius: 18,
+                padding: 16,
+                marginTop: 16,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: rtl ? "row-reverse" : "row",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <Icon name="information-circle" color={colors.amber} />
+                <Text style={[s.cardTitle, rtl && { textAlign: "right" }]}>
+                  {t.consultationNoticeTitle}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  s.cardMuted,
+                  { marginTop: 8 },
+                  rtl && { textAlign: "right" },
+                ]}
+              >
+                {t.consultationNotice}
+              </Text>
+            </View>
+          )}
+          <Text style={[s.sectionTitle, rtl && { textAlign: "right" }]}>
+            {t.chooseService}
+          </Text>
+          {providerServices.map((x, i) => (
+            <TouchableOpacity
+              key={x.id}
+              onPress={() => {
+                setService(x);
+                setStep(3);
+              }}
+            >
+              <LinearGradient
+                colors={
+                  i % 2 === 0 ? ["#FFFFFF", "#E7EEF1"] : ["#FFFFFF", "#EEE8E0"]
+                }
+                style={{
+                  flexDirection: rtl ? "row-reverse" : "row",
+                  alignItems: "center",
+                  gap: 15,
+                  padding: 18,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  marginBottom: 12,
+                }}
+              >
+                <View style={[s.quickIcon, { backgroundColor: "#fff" }]}>
+                  <Icon
+                    name="medical"
+                    color={i % 2 === 0 ? colors.violet : colors.cyan}
+                  />
+                </View>
+                <View style={s.grow}>
+                  <Text style={[s.cardTitle, rtl && { textAlign: "right" }]}>
+                    {x.name}
+                  </Text>
+                  <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+                    {x.duration_minutes} {t.duration}
+                  </Text>
+                  {x.price_from != null && (
+                    <Text style={[s.duration, rtl && { textAlign: "right" }]}>
+                      {provider?.role === "doctor"
+                        ? t.consultationFee
+                        : t.fullPrice}
+                      : SAR {x.price_from}
+                    </Text>
+                  )}
+                </View>
+                <Icon
+                  name={rtl ? "arrow-back" : "arrow-forward"}
+                  color={colors.violet}
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </>
+      )}
+      {step === 3 && (
+        <>
+          <Text style={s.status}>
+            {provider?.name} · {service?.name}
+          </Text>
+          <Text style={[s.sectionTitle, rtl && { textAlign: "right" }]}>
+            {t.chooseDateTime}
+          </Text>
+          <View style={s.dateRow}>
+            {days.map((x, i) => (
+              <TouchableOpacity
+                key={x.toISOString()}
+                onPress={() => setDay(i)}
+                style={[s.dateCard, i === day && s.dateActive]}
+              >
+                <Text style={[s.dateText, i === day && { color: "#fff" }]}>
+                  {x
+                    .toLocaleDateString(rtl ? "ar-SA" : "en", {
+                      weekday: "short",
+                    })
+                    .toUpperCase()}
+                  {"\n"}
+                  {x.getDate()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={[s.sectionTitle, rtl && { textAlign: "right" }]}>
+            {t.availableTime}
+          </Text>
+          <View style={s.times}>
+            {times.map((x) => (
+              <TouchableOpacity
+                key={x}
+                onPress={() => {
+                  setTime(x);
+                  setStep(4);
+                }}
+                style={[s.time, x === time && s.timeActive]}
+              >
+                <Text style={x === time ? s.timeActiveText : s.timeText}>
+                  {x}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+            {t.appointmentDuration}: {service?.duration_minutes} {t.duration}
+          </Text>
+        </>
+      )}
+      {step === 4 && (
+        <TouchableOpacity
+          activeOpacity={0.96}
+          onPress={() => void reserve()}
+          disabled={busy}
+        >
+          <View style={s.confirm}>
+            <Icon name="calendar" color={colors.cyan} size={48} />
+            <Text style={s.confirmTitle}>{t.reviewAppointment}</Text>
+            <Text style={s.confirmText}>
+              {provider?.name}
+              {"\n"}
+              {service?.name}
+              {"\n"}
+              {appointmentAt()?.toLocaleDateString(rtl ? "ar-SA" : "en", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}{" "}
+              · {time}
+              {"\n"}
+              {service?.duration_minutes} {t.duration}
+            </Text>
+            {service?.price_from != null && (
+              <Text style={s.profileName}>SAR {service.price_from}</Text>
+            )}
+            {provider?.role === "doctor" && (
+              <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+                {t.consultationNotice}
+              </Text>
+            )}
+            <Text style={[s.link, { marginTop: 16 }]}>
+              {busy ? t.wait : t.reservePayment}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
+      {step === 5 && (
+        <>
+          <View style={s.confirm}>
+            <Icon name="card" color={colors.violet} size={48} />
+            <Text style={s.confirmTitle}>{t.payment}</Text>
+            <Text style={s.confirmText}>
+              {service?.name}
+              {"\n"}
+              {provider?.name}
+            </Text>
+            {service?.price_from != null && (
+              <Text style={s.profileName}>SAR {service.price_from}</Text>
+            )}
+            <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+              {provider?.role === "doctor" ? t.consultationNotice : t.fullPrice}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              s.listCard,
+              paymentMethod === "pay_at_clinic" && s.selected,
+              rtl && { flexDirection: "row-reverse" },
+            ]}
+            onPress={() => setPaymentMethod("pay_at_clinic")}
+          >
+            <Icon name="storefront-outline" color={colors.violet} />
+            <View style={s.grow}>
+              <Text style={[s.cardTitle, rtl && { textAlign: "right" }]}>
+                {t.payAtClinic}
+              </Text>
+              <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+                {t.payAtClinicHint}
+              </Text>
+            </View>
+            <Icon
+              name={
+                paymentMethod === "pay_at_clinic"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
+              color={colors.violet}
+            />
+          </TouchableOpacity>
+          <View
+            style={[
+              s.listCard,
+              s.disabled,
+              rtl && { flexDirection: "row-reverse" },
+            ]}
+          >
+            <Icon name="card-outline" />
+            <View style={s.grow}>
+              <Text style={[s.cardTitle, rtl && { textAlign: "right" }]}>
+                {t.onlinePayment}
+              </Text>
+              <Text style={[s.cardMuted, rtl && { textAlign: "right" }]}>
+                {t.onlineSoon}
+              </Text>
+            </View>
+            <Text style={s.status}>{t.soon}</Text>
+          </View>
+        </>
+      )}
+      {step === 6 && (
+        <View
+          style={{
+            backgroundColor: "#E5F4EA",
+            borderRadius: 34,
+            padding: 30,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: "#9BC9A8",
+          }}
+        >
+          <View
+            style={{
+              width: 82,
+              height: 82,
+              borderRadius: 41,
+              backgroundColor: "#2F8A54",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="checkmark" color="#fff" size={46} />
+          </View>
+          <Text
+            style={{
+              fontSize: 26,
+              fontWeight: "900",
+              color: "#205F3A",
+              marginTop: 22,
+              textAlign: "center",
+            }}
+          >
+            {rtl ? "تم حجز موعدك بنجاح" : "Your appointment is booked"}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              lineHeight: 22,
+              color: "#49745A",
+              textAlign: "center",
+              marginTop: 10,
+            }}
+          >
+            {rtl
+              ? "وصل طلبك إلى عيادات بانثيرا. سنرسل لك إشعارًا فور تأكيد الموعد."
+              : "Your request reached Panthera Clinics. We will notify you as soon as it is confirmed."}
+          </Text>
+          <View
+            style={{
+              width: "100%",
+              backgroundColor: "#FFFFFFAA",
+              borderRadius: 22,
+              padding: 18,
+              marginTop: 22,
+            }}
+          >
+            <Text
+              style={{
+                fontWeight: "900",
+                color: colors.ink,
+                textAlign: "center",
+              }}
+            >
+              {provider?.name}
+            </Text>
+            <Text
+              style={{ color: colors.muted, textAlign: "center", marginTop: 5 }}
+            >
+              {service?.name} · {time}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#205F3A",
+              borderRadius: 18,
+              padding: 16,
+              alignItems: "center",
+              width: "100%",
+              marginTop: 22,
+            }}
+            onPress={() => {
+              setStep(1);
+              setGoal("");
+              setProvider(undefined);
+              setService(undefined);
+              setAppointmentId(undefined);
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "900" }}>
+              {rtl ? "العودة للرئيسية" : "Back to home"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {step === 5 && (
+        <>
+          <TouchableOpacity
+            style={[s.secondary, paymentMethod === "online" && s.selected]}
+            onPress={() =>
+              setPaymentMethod(
+                paymentMethod === "online" ? "pay_at_clinic" : "online",
+              )
+            }
+          >
+            <Text style={s.secondaryText}>
+              {paymentMethod === "online"
+                ? rtl
+                  ? "✓ الدفع الإلكتروني محدد"
+                  : "✓ Online payment selected"
+                : rtl
+                  ? "الدفع الإلكتروني الآمن بمدى أو البطاقة"
+                  : "Secure online payment with Mada or card"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.primary, busy && s.disabled]}
+            disabled={busy}
+            onPress={() => void finishPayment()}
+          >
+            <Text style={s.primaryText}>
+              {busy ? t.saving : t.confirmPayment}
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+      {step > 1 && step < 5 && (
+        <TouchableOpacity onPress={() => setStep(step - 1)}>
+          <Text style={s.back}>{t.back}</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
+  );
+}
 
-function Care({data,language}:{data:PatientCareHub;language:Language}) {const ar=language==="ar",steps=ar?["تم الطلب","تم التأكيد","موعدك","اكتملت الزيارة"]:["Requested","Confirmed","Your visit","Completed"],progress=(status:string)=>({pending:0,requested:0,confirmed:1,booked:1,completed:3}[status.toLowerCase()]??2),green="#4F9A72";return <ScrollView contentContainerStyle={{padding:22,paddingBottom:130}}><Header title={ar?"رحلتي مع بانثيرا":"My Panthera journey"} subtitle={ar?"خطتك، مواعيدك، وتعليمات العناية في مكان واحد":"Your plan, visits and aftercare in one place"}/><View style={{borderRadius:30,padding:24,backgroundColor:colors.navy,overflow:"hidden"}}><Text style={{color:"#BFD5DF",fontWeight:"800",textAlign:ar?"right":"left"}}>{ar?"خطة العناية الحالية":"ACTIVE CARE PLAN"}</Text><Text style={{color:"#fff",fontSize:25,fontWeight:"900",marginTop:10,textAlign:ar?"right":"left"}}>{data.activePlan?.service??data.activePlan?.treatmentPlan??(ar?"لا توجد خطة نشطة حالياً":"No active plan yet")}</Text><Text style={{color:"#D7E3E8",marginTop:8,textAlign:ar?"right":"left"}}>{data.activePlan?.doctor??(ar?"ابدئي بحجز استشارة لبناء خطتك الشخصية":"Book a consultation to build your personal plan")}</Text></View><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"متابعة المواعيد":"Appointment tracking"}</Text>{data.appointmentTracking.length?data.appointmentTracking.map(item=>{const current=progress(item.status);return <View key={item.id} style={{backgroundColor:colors.card,borderRadius:26,padding:20,marginBottom:14,borderWidth:1,borderColor:colors.border}}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><View style={{flex:1}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{item.service??(ar?"موعد بانثيرا":"Panthera appointment")}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{new Date(item.appointmentAt).toLocaleString(ar?"ar-SA":"en-US",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}</Text></View><View style={{width:36,height:36,borderRadius:18,backgroundColor:"#E5F7ED",alignItems:"center",justifyContent:"center"}}><Icon name="checkmark" color={green}/></View></View><View style={{flexDirection:ar?"row-reverse":"row",marginTop:20}}>{steps.map((label,index)=><View key={label} style={{flex:1,alignItems:"center"}}><View style={{height:4,width:"100%",backgroundColor:index<=current?green:colors.border}}/><View style={{width:13,height:13,borderRadius:7,backgroundColor:index<=current?green:colors.border,marginTop:-8,borderWidth:2,borderColor:"#fff"}}/><Text numberOfLines={1} style={{fontSize:9,fontWeight:"800",color:index<=current?colors.text:colors.muted,marginTop:7}}>{label}</Text></View>)}</View></View>}):<Empty text={ar?"لا توجد مواعيد للمتابعة":"No appointments to track"}/>}<Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"مركز تعليمات العناية":"Aftercare center"}</Text>{data.history.length?data.history.slice(0,4).map(session=><View key={session.id} style={[s.menu,ar&&{flexDirection:"row-reverse"}]}><View style={[s.quickIcon,{backgroundColor:"#EAF4F7"}]}><Icon name="sparkles" color={colors.cyan}/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{session.service??(ar?"جلسة عناية":"Care session")}</Text><Text numberOfLines={2} style={[s.cardMuted,ar&&{textAlign:"right"}]}>{session.aftercare||(ar?"ستظهر تعليمات الطبيبة هنا بعد الزيارة":"Your doctor's instructions will appear here after the visit")}</Text></View><Icon name={ar?"chevron-back":"chevron-forward"}/></View>):<Empty text={ar?"تعليماتك ستظهر هنا بعد أول إجراء":"Your aftercare instructions will appear after your first procedure"}/>}</ScrollView>; }
+function Appointments({
+  data,
+  language,
+}: {
+  data: PatientDashboard["appointments"];
+  language: Language;
+}) {
+  const ar = language === "ar";
+  const newestBookings = [...data].sort((a, b) => {
+    const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : a.id;
+    const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : b.id;
+    return bCreated - aCreated;
+  });
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "رحلة العناية" : "Your care journey"}
+        subtitle={
+          ar ? "كل زيارة، في قصة واحدة" : "Every visit, one continuous story"
+        }
+      />
+      {newestBookings.length ? (
+        newestBookings.map((x, index) => {
+          const d = new Date(x.appointmentAt),
+            future = d > new Date();
+          return (
+            <View
+              key={x.id}
+              style={{ flexDirection: ar ? "row-reverse" : "row", gap: 16 }}
+            >
+              <View style={{ alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 58,
+                    height: 58,
+                    borderRadius: 22,
+                    backgroundColor: future ? colors.navy : colors.violetSoft,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "900",
+                      color: future ? "#fff" : colors.navy,
+                    }}
+                  >
+                    {d.getDate()}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 9,
+                      fontWeight: "900",
+                      color: future ? "#fff" : colors.navy,
+                    }}
+                  >
+                    {d.toLocaleDateString(ar ? "ar-SA" : "en", {
+                      month: "short",
+                    })}
+                  </Text>
+                </View>
+                {index < newestBookings.length - 1 ? (
+                  <View
+                    style={{
+                      width: 1,
+                      height: 105,
+                      backgroundColor: colors.border,
+                    }}
+                  />
+                ) : null}
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.card,
+                  borderRadius: 28,
+                  padding: 20,
+                  marginBottom: 16,
+                  borderWidth: 1,
+                  borderColor: future ? colors.navy : colors.border,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: ar ? "row-reverse" : "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "900",
+                      color: colors.text,
+                    }}
+                  >
+                    {x.service}
+                  </Text>
+                  <Text style={s.status}>
+                    {appointmentStatusLabel(x.status, ar)}
+                  </Text>
+                </View>
+                <Text
+                  style={{
+                    color: colors.muted,
+                    marginTop: 9,
+                    textAlign: ar ? "right" : "left",
+                  }}
+                >
+                  {x.provider ?? x.room}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.navy,
+                    fontWeight: "800",
+                    marginTop: 14,
+                    textAlign: ar ? "right" : "left",
+                  }}
+                >
+                  {d.toLocaleTimeString(ar ? "ar-SA" : "en", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+            </View>
+          );
+        })
+      ) : (
+        <Empty
+          text={
+            ar
+              ? "رحلتك تبدأ من أول موعد"
+              : "Your journey begins with your first appointment"
+          }
+        />
+      )}
+    </ScrollView>
+  );
+}
 
+function Care({
+  data,
+  language,
+}: {
+  data: PatientCareHub;
+  language: Language;
+}) {
+  const ar = language === "ar",
+    newestBookings = [...data.appointmentTracking].sort((a, b) => {
+      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : a.id;
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : b.id;
+      return bCreated - aCreated;
+    }),
+    steps = ar
+      ? ["تم الطلب", "تم التأكيد", "موعدك", "اكتملت الزيارة"]
+      : ["Requested", "Confirmed", "Your visit", "Completed"],
+    progress = (status: string) =>
+      ({ pending: 0, requested: 0, confirmed: 1, booked: 1, completed: 3 })[
+        status.toLowerCase()
+      ] ?? 2,
+    green = "#4F9A72";
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 130 }}>
+      <Header
+        title={ar ? "رحلتي مع بانثيرا" : "My Panthera journey"}
+        subtitle={
+          ar
+            ? "خطتك، مواعيدك، وتعليمات العناية في مكان واحد"
+            : "Your plan, visits and aftercare in one place"
+        }
+      />
+      <View
+        style={{
+          borderRadius: 30,
+          padding: 24,
+          backgroundColor: colors.navy,
+          overflow: "hidden",
+        }}
+      >
+        <Text
+          style={{
+            color: "#BFD5DF",
+            fontWeight: "800",
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {ar ? "خطة العناية الحالية" : "ACTIVE CARE PLAN"}
+        </Text>
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 25,
+            fontWeight: "900",
+            marginTop: 10,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {data.activePlan?.service ??
+            data.activePlan?.treatmentPlan ??
+            (ar ? "لا توجد خطة نشطة حالياً" : "No active plan yet")}
+        </Text>
+        <Text
+          style={{
+            color: "#D7E3E8",
+            marginTop: 8,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {data.activePlan?.doctor ??
+            (ar
+              ? "ابدئي بحجز استشارة لبناء خطتك الشخصية"
+              : "Book a consultation to build your personal plan")}
+        </Text>
+      </View>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "متابعة المواعيد" : "Appointment tracking"}
+      </Text>
+      {newestBookings.length ? (
+        newestBookings.map((item) => {
+          const current = progress(item.status);
+          return (
+            <View
+              key={item.id}
+              style={{
+                backgroundColor: colors.card,
+                borderRadius: 26,
+                padding: 20,
+                marginBottom: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <View
+                style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                    {item.service ??
+                      (ar ? "موعد بانثيرا" : "Panthera appointment")}
+                  </Text>
+                  <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                    {new Date(item.appointmentAt).toLocaleString(
+                      ar ? "ar-SA" : "en-US",
+                      {
+                        day: "numeric",
+                        month: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: "#E5F7ED",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon name="checkmark" color={green} />
+                </View>
+              </View>
+              <View
+                style={{
+                  flexDirection: ar ? "row-reverse" : "row",
+                  marginTop: 20,
+                }}
+              >
+                {steps.map((label, index) => (
+                  <View key={label} style={{ flex: 1, alignItems: "center" }}>
+                    <View
+                      style={{
+                        height: 4,
+                        width: "100%",
+                        backgroundColor:
+                          index <= current ? green : colors.border,
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: 13,
+                        height: 13,
+                        borderRadius: 7,
+                        backgroundColor:
+                          index <= current ? green : colors.border,
+                        marginTop: -8,
+                        borderWidth: 2,
+                        borderColor: "#fff",
+                      }}
+                    />
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: index <= current ? colors.text : colors.muted,
+                        marginTop: 7,
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })
+      ) : (
+        <Empty
+          text={ar ? "لا توجد مواعيد للمتابعة" : "No appointments to track"}
+        />
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "مركز تعليمات العناية" : "Aftercare center"}
+      </Text>
+      {data.history.length ? (
+        data.history.slice(0, 4).map((session) => (
+          <View
+            key={session.id}
+            style={[s.menu, ar && { flexDirection: "row-reverse" }]}
+          >
+            <View style={[s.quickIcon, { backgroundColor: "#EAF4F7" }]}>
+              <Icon name="sparkles" color={colors.cyan} />
+            </View>
+            <View style={s.grow}>
+              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                {session.service ?? (ar ? "جلسة عناية" : "Care session")}
+              </Text>
+              <Text
+                numberOfLines={2}
+                style={[s.cardMuted, ar && { textAlign: "right" }]}
+              >
+                {session.aftercare ||
+                  (ar
+                    ? "ستظهر تعليمات الطبيبة هنا بعد الزيارة"
+                    : "Your doctor's instructions will appear here after the visit")}
+              </Text>
+            </View>
+            <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+          </View>
+        ))
+      ) : (
+        <Empty
+          text={
+            ar
+              ? "تعليماتك ستظهر هنا بعد أول إجراء"
+              : "Your aftercare instructions will appear after your first procedure"
+          }
+        />
+      )}
+    </ScrollView>
+  );
+}
 
-function Notifications({back,data,language}:{back:()=>void;data:PatientDashboard["notifications"];language:Language}) {const ar=language==="ar";return <ScrollView contentContainerStyle={s.page}><Header title={ar?"الإشعارات":"Notifications"} subtitle={ar?"آخر تحديثات عيادات بانثيرا":"Updates from Panthera Clinics"} back={back}/>{data.length?data.map((n,i)=>{const copy=localizedNotification(n.title,n.message,ar);return <View key={n.id} style={[s.notice,ar&&{flexDirection:"row-reverse"}]}><View style={[s.quickIcon,i===0&&{backgroundColor:"#EEE8E0"}]}><Icon name="notifications" color={i===0?colors.cyan:colors.violet}/></View><View style={s.grow}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{copy.title}</Text><Text style={s.noticeTime}>{new Date(n.created_at).toLocaleDateString(ar?"ar-SA":"en-US")}</Text></View><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{copy.message}</Text></View></View>}):<Empty text={ar?"لا توجد إشعارات جديدة":"You're all caught up"}/>}</ScrollView>; }
+function Notifications({
+  back,
+  data,
+  language,
+  open,
+}: {
+  back: () => void;
+  data: PatientDashboard["notifications"];
+  language: Language;
+  open: (notification: PatientDashboard["notifications"][number]) => void;
+}) {
+  const ar = language === "ar";
+  return (
+    <ScrollView contentContainerStyle={s.page}>
+      <Header
+        title={ar ? "الإشعارات" : "Notifications"}
+        subtitle={
+          ar ? "آخر تحديثات عيادات بانثيرا" : "Updates from Panthera Clinics"
+        }
+        back={back}
+      />
+      {data.length ? (
+        data.map((n) => {
+          const fallback = localizedNotification(n.title, n.message, ar);
+          const copy = ar
+            ? {
+                title: n.title_ar || fallback.title,
+                message: n.message_ar || fallback.message,
+              }
+            : {
+                title: n.title_en || n.title,
+                message: n.message_en || n.message,
+              };
+          return (
+            <TouchableOpacity
+              key={n.id}
+              style={[s.notice, ar && { flexDirection: "row-reverse" }]}
+              onPress={() => open(n)}
+              accessibilityRole="button"
+            >
+              <View
+                style={[
+                  s.quickIcon,
+                  !n.is_read && { backgroundColor: "#EEE8E0" },
+                ]}
+              >
+                <Icon
+                  name="notifications"
+                  color={!n.is_read ? colors.cyan : colors.violet}
+                />
+              </View>
+              <View style={s.grow}>
+                <View
+                  style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}
+                >
+                  <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                    {copy.title}
+                  </Text>
+                  <Text style={s.noticeTime}>
+                    {new Date(n.created_at).toLocaleDateString(
+                      ar ? "ar-SA" : "en-US",
+                    )}
+                  </Text>
+                </View>
+                <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                  {copy.message}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })
+      ) : (
+        <Empty text={ar ? "لا توجد إشعارات" : "You're all caught up"} />
+      )}
+    </ScrollView>
+  );
+}
 
-function Membership({back,data,language}:{back:()=>void;data:PatientMembership|null;language:Language}) {const ar=language==="ar",tier=data?.tier??"silver",tierLabel=ar?({silver:"فضية",gold:"ذهبية",platinum:"بلاتينية"} as Record<string,string>)[tier]:tier.charAt(0).toUpperCase()+tier.slice(1),benefitAr:Record<string,string>={"Priority booking":"أولوية في الحجز","Exclusive offers":"عروض حصرية","Birthday benefit":"ميزة خاصة في عيد الميلاد","Dedicated care support":"دعم عناية مخصص","Member offers":"عروض خاصة للأعضاء","Earn points on paid visits":"نقاط على كل زيارة مدفوعة","Member-only offers":"عروض مخصصة للأعضاء"},target=Math.max(data?.nextTierPoints??1,1),ratio=Math.min(1,(data?.lifetimePoints??0)/target);return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"عضوية بانثيرا":"Panthera Membership"} subtitle={ar?"مزاياك ونقاطك وبطاقة عضويتك":"Your points, benefits and digital card"} back={back}/>{data?<><LinearGradient colors={tier==="platinum"?["#243A49","#516E84"]:tier==="gold"?["#8B7450","#C6AC78"]:["#516E84","#91A3AE"]} style={{borderRadius:32,padding:24,overflow:"hidden"}}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:105,height:55,tintColor:"#fff"}} resizeMode="contain"/><View style={{backgroundColor:"#FFFFFF24",paddingHorizontal:12,paddingVertical:7,borderRadius:20}}><Text style={{color:"#fff",fontWeight:"900"}}>{tierLabel}</Text></View></View><Text style={{color:"#fff",fontSize:23,fontWeight:"900",marginTop:30,textAlign:ar?"right":"left"}}>{data.name}</Text><Text style={{color:"#E7EEF1",marginTop:4,textAlign:ar?"right":"left"}}>#{data.customerCode??data.customerId}</Text><View style={[s.rowBetween,{marginTop:24},ar&&{flexDirection:"row-reverse"}]}><View><Text style={{color:"#E7EEF1",fontSize:11,textAlign:ar?"right":"left"}}>{ar?"رصيد النقاط":"POINTS BALANCE"}</Text><Text style={{color:"#fff",fontSize:28,fontWeight:"900"}}>{data.points.toLocaleString(ar?"ar-SA":"en-US")}</Text></View><View style={{backgroundColor:"#fff",padding:8,borderRadius:16}}><QRCode value={data.qrValue} size={76} color={colors.ink} backgroundColor="#FFFFFF"/></View></View></LinearGradient><View style={{backgroundColor:colors.card,borderRadius:26,padding:20,marginTop:16,borderWidth:1,borderColor:colors.border}}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><Text style={s.cardTitle}>{tier==="platinum"?(ar?"وصلتِ لأعلى مستوى":"Top tier unlocked"):(ar?"تقدمك للمستوى التالي":"Progress to your next tier")}</Text><Text style={{fontWeight:"900",color:colors.navy}}>{Math.round(ratio*100)}%</Text></View><View style={{height:9,backgroundColor:colors.border,borderRadius:8,marginTop:14,overflow:"hidden"}}><View style={{height:9,width:`${ratio*100}%`,backgroundColor:colors.navy,borderRadius:8}}/></View><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{tier==="platinum"?(ar?"استمتعي بكل مزايا بانثيرا":"Enjoy every Panthera benefit"):(ar?`${data.lifetimePoints.toLocaleString("ar-SA")} من ${target.toLocaleString("ar-SA")} نقطة`:`${data.lifetimePoints.toLocaleString()} of ${target.toLocaleString()} points`)}</Text></View><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"مزايا عضويتك":"Your benefits"}</Text>{data.benefits.map((benefit,index)=><View key={benefit} style={[s.listCard,ar&&{flexDirection:"row-reverse"}]}><View style={[s.quickIcon,{backgroundColor:index%2?"#F3EEE6":"#E7EFEA"}]}><Icon name={index%2?"gift":"sparkles"} color={index%2?colors.amber:colors.navy}/></View><Text style={[s.menuText,ar&&{textAlign:"right"}]}>{ar?benefitAr[benefit]??benefit:benefit}</Text><Icon name="checkmark-circle" color="#4F9A72"/></View>)}<Text style={{fontSize:11,color:colors.muted,textAlign:"center",marginTop:14}}>{ar?"أظهري رمز QR للاستقبال عند الوصول":"Show this QR code at reception when you arrive"}</Text></>:<Empty text={ar?"فعّلي ملف العضوية من قاعدة البيانات أولاً":"Activate the membership service first"}/>}</ScrollView>; }
+function Membership({
+  back,
+  data,
+  language,
+}: {
+  back: () => void;
+  data: PatientMembership | null;
+  language: Language;
+}) {
+  const ar = language === "ar",
+    tier = data?.tier ?? "silver",
+    tierLabel = ar
+      ? (
+          { silver: "فضية", gold: "ذهبية", platinum: "بلاتينية" } as Record<
+            string,
+            string
+          >
+        )[tier]
+      : tier.charAt(0).toUpperCase() + tier.slice(1),
+    benefitAr: Record<string, string> = {
+      "Priority booking": "أولوية في الحجز",
+      "Exclusive offers": "عروض حصرية",
+      "Birthday benefit": "ميزة خاصة في عيد الميلاد",
+      "Dedicated care support": "دعم عناية مخصص",
+      "Member offers": "عروض خاصة للأعضاء",
+      "Earn points on paid visits": "نقاط على كل زيارة مدفوعة",
+      "Member-only offers": "عروض مخصصة للأعضاء",
+    },
+    target = Math.max(data?.nextTierPoints ?? 1, 1),
+    ratio = Math.min(1, (data?.lifetimePoints ?? 0) / target);
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "عضوية بانثيرا" : "Panthera Membership"}
+        subtitle={
+          ar
+            ? "مزاياك ونقاطك وبطاقة عضويتك"
+            : "Your points, benefits and digital card"
+        }
+        back={back}
+      />
+      {data ? (
+        <>
+          <LinearGradient
+            colors={
+              tier === "platinum"
+                ? ["#243A49", "#516E84"]
+                : tier === "gold"
+                  ? ["#8B7450", "#C6AC78"]
+                  : ["#516E84", "#91A3AE"]
+            }
+            style={{ borderRadius: 32, padding: 24, overflow: "hidden" }}
+          >
+            <View
+              style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}
+            >
+              <Image
+                alt="Panthera Clinics"
+                source={pantheraBrand}
+                style={{ width: 105, height: 55, tintColor: "#fff" }}
+                resizeMode="contain"
+              />
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF24",
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "900" }}>
+                  {tierLabel}
+                </Text>
+              </View>
+            </View>
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 23,
+                fontWeight: "900",
+                marginTop: 30,
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              {data.name}
+            </Text>
+            <Text
+              style={{
+                color: "#E7EEF1",
+                marginTop: 4,
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              #{data.customerCode ?? data.customerId}
+            </Text>
+            <View
+              style={[
+                s.rowBetween,
+                { marginTop: 24 },
+                ar && { flexDirection: "row-reverse" },
+              ]}
+            >
+              <View>
+                <Text
+                  style={{
+                    color: "#E7EEF1",
+                    fontSize: 11,
+                    textAlign: ar ? "right" : "left",
+                  }}
+                >
+                  {ar ? "رصيد النقاط" : "POINTS BALANCE"}
+                </Text>
+                <Text
+                  style={{ color: "#fff", fontSize: 28, fontWeight: "900" }}
+                >
+                  {data.points.toLocaleString(ar ? "ar-SA" : "en-US")}
+                </Text>
+              </View>
+              <View
+                style={{
+                  backgroundColor: "#fff",
+                  padding: 8,
+                  borderRadius: 16,
+                }}
+              >
+                <QRCode
+                  value={data.qrValue}
+                  size={76}
+                  color={colors.ink}
+                  backgroundColor="#FFFFFF"
+                />
+              </View>
+            </View>
+          </LinearGradient>
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 26,
+              padding: 20,
+              marginTop: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View
+              style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}
+            >
+              <Text style={s.cardTitle}>
+                {tier === "platinum"
+                  ? ar
+                    ? "وصلتِ لأعلى مستوى"
+                    : "Top tier unlocked"
+                  : ar
+                    ? "تقدمك للمستوى التالي"
+                    : "Progress to your next tier"}
+              </Text>
+              <Text style={{ fontWeight: "900", color: colors.navy }}>
+                {Math.round(ratio * 100)}%
+              </Text>
+            </View>
+            <View
+              style={{
+                height: 9,
+                backgroundColor: colors.border,
+                borderRadius: 8,
+                marginTop: 14,
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  height: 9,
+                  width: `${ratio * 100}%`,
+                  backgroundColor: colors.navy,
+                  borderRadius: 8,
+                }}
+              />
+            </View>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {tier === "platinum"
+                ? ar
+                  ? "استمتعي بكل مزايا بانثيرا"
+                  : "Enjoy every Panthera benefit"
+                : ar
+                  ? `${data.lifetimePoints.toLocaleString("ar-SA")} من ${target.toLocaleString("ar-SA")} نقطة`
+                  : `${data.lifetimePoints.toLocaleString()} of ${target.toLocaleString()} points`}
+            </Text>
+          </View>
+          <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+            {ar ? "مزايا عضويتك" : "Your benefits"}
+          </Text>
+          {data.benefits.map((benefit, index) => (
+            <View
+              key={benefit}
+              style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+            >
+              <View
+                style={[
+                  s.quickIcon,
+                  { backgroundColor: index % 2 ? "#F3EEE6" : "#E7EFEA" },
+                ]}
+              >
+                <Icon
+                  name={index % 2 ? "gift" : "sparkles"}
+                  color={index % 2 ? colors.amber : colors.navy}
+                />
+              </View>
+              <Text style={[s.menuText, ar && { textAlign: "right" }]}>
+                {ar ? (benefitAr[benefit] ?? benefit) : benefit}
+              </Text>
+              <Icon name="checkmark-circle" color="#4F9A72" />
+            </View>
+          ))}
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              textAlign: "center",
+              marginTop: 14,
+            }}
+          >
+            {ar
+              ? "أظهري رمز QR للاستقبال عند الوصول"
+              : "Show this QR code at reception when you arrive"}
+          </Text>
+        </>
+      ) : (
+        <Empty
+          text={
+            ar
+              ? "فعّلي ملف العضوية من قاعدة البيانات أولاً"
+              : "Activate the membership service first"
+          }
+        />
+      )}
+    </ScrollView>
+  );
+}
 
-function Results({back,go,data,language}:{back:()=>void;go:(tab:Tab)=>void;data:PatientResults;language:Language}) {const ar=language==="ar",titleAr:Record<string,string>={routine:"حافظي على خطة العناية","next-visit":"خطوتك القادمة","followup":"دعم فريق العناية"},messageAr:Record<string,string>={routine:data.media.length?"راجعي تعليمات العناية ونتائجك السابقة في أي وقت.":"ابدئي باستشارة لبناء خطة عناية مخصصة لك.","next-visit":"تابعي موعدك القادم أو اختاري موعدًا مناسبًا لاستمرار رحلتك.",followup:"فريق بانثيرا متاح لدعمك والإجابة عن استفساراتك."};return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"نتائجي وتوصياتي":"My results & recommendations"} subtitle={ar?"مساحة خاصة وآمنة لمتابعة تطور رحلتك":"A private, secure view of your progress"} back={back}/><View style={{backgroundColor:"#E7EFEA",borderRadius:24,padding:18,flexDirection:ar?"row-reverse":"row",alignItems:"center",gap:13}}><View style={[s.quickIcon,{backgroundColor:"#fff"}]}><Icon name="lock-closed" color={colors.navy}/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"صورك محمية":"Your photos are protected"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"لا تظهر إلا لك ولفريق العناية المصرح له":"Visible only to you and your authorized care team"}</Text></View></View><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"تطور النتائج":"Your progress"}</Text>{data.media.length?<View style={{flexDirection:ar?"row-reverse":"row",flexWrap:"wrap",gap:12}}>{data.media.map(item=><View key={item.id} style={{width:"48%",backgroundColor:colors.card,borderRadius:24,overflow:"hidden",borderWidth:1,borderColor:colors.border}}>{item.signedUrl?<Image alt={item.caption??item.type} source={{uri:item.signedUrl}} style={{width:"100%",height:190}} resizeMode="cover"/>:<View style={{height:190,alignItems:"center",justifyContent:"center",backgroundColor:colors.violetSoft}}><Icon name="lock-closed" size={28} color={colors.navy}/></View>}<View style={{padding:13}}><Text style={{fontSize:10,fontWeight:"900",color:colors.navy,textTransform:"uppercase"}}>{ar?({before:"قبل",after:"بعد",progress:"متابعة"} as Record<string,string>)[item.type]:item.type}</Text><Text numberOfLines={2} style={[s.cardMuted,ar&&{textAlign:"right"}]}>{item.caption??new Date(item.capturedAt).toLocaleDateString(ar?"ar-SA":"en-US")}</Text></View></View>)}</View>:<View style={s.empty}><Icon name="images-outline" size={34} color={colors.navy}/><Text style={s.cardTitle}>{ar?"ألبوم النتائج جاهز لأول صورة":"Your progress album is ready"}</Text><Text style={[s.cardMuted,{textAlign:"center"}]}>{ar?"سيضيف فريق العناية صور قبل وبعد الإجراء بعد موافقتك":"Your care team can add before-and-after photos with your consent"}</Text></View>}<Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"مقترح لك الآن":"Recommended for you"}</Text>{data.recommendations.map((item,index)=><TouchableOpacity key={item.id} onPress={()=>go(item.action)} style={[s.listCard,ar&&{flexDirection:"row-reverse"}]}><View style={[s.quickIcon,{backgroundColor:index%3===0?"#E7EFEA":index%3===1?"#F3EEE6":"#E8EDF1"}]}><Icon name={item.icon as IconName} color={index%3===1?colors.amber:colors.navy}/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?titleAr[item.id]??item.title:item.title}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?messageAr[item.id]??item.message:item.message}</Text></View><Icon name={ar?"chevron-back":"chevron-forward"}/></TouchableOpacity>)}</ScrollView>; }
+function Results({
+  back,
+  go,
+  data,
+  language,
+}: {
+  back: () => void;
+  go: (tab: Tab) => void;
+  data: PatientResults;
+  language: Language;
+}) {
+  const ar = language === "ar",
+    titleAr: Record<string, string> = {
+      routine: "حافظي على خطة العناية",
+      "next-visit": "خطوتك القادمة",
+      followup: "دعم فريق العناية",
+    },
+    messageAr: Record<string, string> = {
+      routine: data.media.length
+        ? "راجعي تعليمات العناية ونتائجك السابقة في أي وقت."
+        : "ابدئي باستشارة لبناء خطة عناية مخصصة لك.",
+      "next-visit":
+        "تابعي موعدك القادم أو اختاري موعدًا مناسبًا لاستمرار رحلتك.",
+      followup: "فريق بانثيرا متاح لدعمك والإجابة عن استفساراتك.",
+    };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "نتائجي وتوصياتي" : "My results & recommendations"}
+        subtitle={
+          ar
+            ? "مساحة خاصة وآمنة لمتابعة تطور رحلتك"
+            : "A private, secure view of your progress"
+        }
+        back={back}
+      />
+      <View
+        style={{
+          backgroundColor: "#E7EFEA",
+          borderRadius: 24,
+          padding: 18,
+          flexDirection: ar ? "row-reverse" : "row",
+          alignItems: "center",
+          gap: 13,
+        }}
+      >
+        <View style={[s.quickIcon, { backgroundColor: "#fff" }]}>
+          <Icon name="lock-closed" color={colors.navy} />
+        </View>
+        <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "صورك محمية" : "Your photos are protected"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {ar
+              ? "لا تظهر إلا لك ولفريق العناية المصرح له"
+              : "Visible only to you and your authorized care team"}
+          </Text>
+        </View>
+      </View>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "تطور النتائج" : "Your progress"}
+      </Text>
+      {data.media.length ? (
+        <View
+          style={{
+            flexDirection: ar ? "row-reverse" : "row",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          {data.media.map((item) => (
+            <View
+              key={item.id}
+              style={{
+                width: "48%",
+                backgroundColor: colors.card,
+                borderRadius: 24,
+                overflow: "hidden",
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              {item.signedUrl ? (
+                <Image
+                  alt={item.caption ?? item.type}
+                  source={{ uri: item.signedUrl }}
+                  style={{ width: "100%", height: 190 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={{
+                    height: 190,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: colors.violetSoft,
+                  }}
+                >
+                  <Icon name="lock-closed" size={28} color={colors.navy} />
+                </View>
+              )}
+              <View style={{ padding: 13 }}>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "900",
+                    color: colors.navy,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {ar
+                    ? (
+                        {
+                          before: "قبل",
+                          after: "بعد",
+                          progress: "متابعة",
+                        } as Record<string, string>
+                      )[item.type]
+                    : item.type}
+                </Text>
+                <Text
+                  numberOfLines={2}
+                  style={[s.cardMuted, ar && { textAlign: "right" }]}
+                >
+                  {item.caption ??
+                    new Date(item.capturedAt).toLocaleDateString(
+                      ar ? "ar-SA" : "en-US",
+                    )}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={s.empty}>
+          <Icon name="images-outline" size={34} color={colors.navy} />
+          <Text style={s.cardTitle}>
+            {ar
+              ? "ألبوم النتائج جاهز لأول صورة"
+              : "Your progress album is ready"}
+          </Text>
+          <Text style={[s.cardMuted, { textAlign: "center" }]}>
+            {ar
+              ? "سيضيف فريق العناية صور قبل وبعد الإجراء بعد موافقتك"
+              : "Your care team can add before-and-after photos with your consent"}
+          </Text>
+        </View>
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "مقترح لك الآن" : "Recommended for you"}
+      </Text>
+      {data.recommendations.map((item, index) => (
+        <TouchableOpacity
+          key={item.id}
+          onPress={() => go(item.action)}
+          style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+        >
+          <View
+            style={[
+              s.quickIcon,
+              {
+                backgroundColor:
+                  index % 3 === 0
+                    ? "#E7EFEA"
+                    : index % 3 === 1
+                      ? "#F3EEE6"
+                      : "#E8EDF1",
+              },
+            ]}
+          >
+            <Icon
+              name={item.icon as IconName}
+              color={index % 3 === 1 ? colors.amber : colors.navy}
+            />
+          </View>
+          <View style={s.grow}>
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? (titleAr[item.id] ?? item.title) : item.title}
+            </Text>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {ar ? (messageAr[item.id] ?? item.message) : item.message}
+            </Text>
+          </View>
+          <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+}
 
-function BeautyCalendar({back,data,language}:{back:()=>void;data:BeautyCalendarData;language:Language}) {const ar=language==="ar",[futureOnly,setFutureOnly]=useState(true),events=data.events.filter(item=>!futureOnly||new Date(item.date)>=new Date()),icon=(type:string)=>type==="appointment"?"calendar":type==="followup"?"refresh-circle":type==="product"?"flask":"sparkles";return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"تقويم الجمال":"Beauty Calendar"} subtitle={ar?"مواعيدك ومتابعاتك وروتينك في خط زمني واحد":"Visits, follow-ups and routines in one timeline"} back={back}/><View style={{flexDirection:ar?"row-reverse":"row",gap:10,marginBottom:20}}><TouchableOpacity style={[s.lightButton,{borderWidth:1,borderColor:futureOnly?colors.navy:colors.border,backgroundColor:futureOnly?colors.navy:"#fff"}]} onPress={()=>setFutureOnly(true)}><Text style={{fontWeight:"800",color:futureOnly?"#fff":colors.text}}>{ar?"القادم":"Upcoming"}</Text></TouchableOpacity><TouchableOpacity style={[s.lightButton,{borderWidth:1,borderColor:!futureOnly?colors.navy:colors.border,backgroundColor:!futureOnly?colors.navy:"#fff"}]} onPress={()=>setFutureOnly(false)}><Text style={{fontWeight:"800",color:!futureOnly?"#fff":colors.text}}>{ar?"الكل":"All"}</Text></TouchableOpacity></View>{events.length?events.map((item,index)=>{const date=new Date(item.date),past=date<new Date();return <View key={item.id} style={{flexDirection:ar?"row-reverse":"row",gap:14}}><View style={{alignItems:"center"}}><View style={{width:52,height:52,borderRadius:18,backgroundColor:past?colors.violetSoft:colors.navy,alignItems:"center",justifyContent:"center"}}><Icon name={icon(item.type)} color={past?colors.navy:"#fff"}/></View>{index<events.length-1?<View style={{width:2,height:72,backgroundColor:colors.border}}/>:null}</View><View style={{flex:1,backgroundColor:colors.card,borderRadius:22,padding:16,marginBottom:12,borderWidth:1,borderColor:colors.border}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar&&item.type==="followup"?"متابعة موصى بها":item.title}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{item.subtitle}</Text><Text style={{color:colors.navy,fontWeight:"900",marginTop:9,textAlign:ar?"right":"left"}}>{date.toLocaleString(ar?"ar-SA":"en-US",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}</Text></View></View>}):<Empty text={ar?"لا توجد أحداث في هذه الفترة":"No events in this period"}/>}<View style={{backgroundColor:"#F3EEE6",borderRadius:25,padding:18,marginTop:10,flexDirection:ar?"row-reverse":"row",gap:13}}><Icon name="bulb" color={colors.amber}/><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"لمسة ذكية":"A thoughtful touch"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"تظهر المتابعات التي يوصي بها فريق العناية تلقائياً هنا.":"Follow-ups recommended by your care team appear here automatically."}</Text></View></View></ScrollView>; }
+function BeautyCalendar({
+  back,
+  data,
+  language,
+}: {
+  back: () => void;
+  data: BeautyCalendarData;
+  language: Language;
+}) {
+  const ar = language === "ar",
+    [futureOnly, setFutureOnly] = useState(true),
+    events = data.events.filter(
+      (item) => !futureOnly || new Date(item.date) >= new Date(),
+    ),
+    icon = (type: string) =>
+      type === "appointment"
+        ? "calendar"
+        : type === "followup"
+          ? "refresh-circle"
+          : type === "product"
+            ? "flask"
+            : "sparkles";
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "تقويم الجمال" : "Beauty Calendar"}
+        subtitle={
+          ar
+            ? "مواعيدك ومتابعاتك وروتينك في خط زمني واحد"
+            : "Visits, follow-ups and routines in one timeline"
+        }
+        back={back}
+      />
+      <View
+        style={{
+          flexDirection: ar ? "row-reverse" : "row",
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
+        <TouchableOpacity
+          style={[
+            s.lightButton,
+            {
+              borderWidth: 1,
+              borderColor: futureOnly ? colors.navy : colors.border,
+              backgroundColor: futureOnly ? colors.navy : "#fff",
+            },
+          ]}
+          onPress={() => setFutureOnly(true)}
+        >
+          <Text
+            style={{
+              fontWeight: "800",
+              color: futureOnly ? "#fff" : colors.text,
+            }}
+          >
+            {ar ? "القادم" : "Upcoming"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            s.lightButton,
+            {
+              borderWidth: 1,
+              borderColor: !futureOnly ? colors.navy : colors.border,
+              backgroundColor: !futureOnly ? colors.navy : "#fff",
+            },
+          ]}
+          onPress={() => setFutureOnly(false)}
+        >
+          <Text
+            style={{
+              fontWeight: "800",
+              color: !futureOnly ? "#fff" : colors.text,
+            }}
+          >
+            {ar ? "الكل" : "All"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {events.length ? (
+        events.map((item, index) => {
+          const date = new Date(item.date),
+            past = date < new Date();
+          return (
+            <View
+              key={item.id}
+              style={{ flexDirection: ar ? "row-reverse" : "row", gap: 14 }}
+            >
+              <View style={{ alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 18,
+                    backgroundColor: past ? colors.violetSoft : colors.navy,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon
+                    name={icon(item.type)}
+                    color={past ? colors.navy : "#fff"}
+                  />
+                </View>
+                {index < events.length - 1 ? (
+                  <View
+                    style={{
+                      width: 2,
+                      height: 72,
+                      backgroundColor: colors.border,
+                    }}
+                  />
+                ) : null}
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.card,
+                  borderRadius: 22,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                  {ar && item.type === "followup"
+                    ? "متابعة موصى بها"
+                    : item.title}
+                </Text>
+                <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                  {item.subtitle}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.navy,
+                    fontWeight: "900",
+                    marginTop: 9,
+                    textAlign: ar ? "right" : "left",
+                  }}
+                >
+                  {date.toLocaleString(ar ? "ar-SA" : "en-US", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+            </View>
+          );
+        })
+      ) : (
+        <Empty
+          text={ar ? "لا توجد أحداث في هذه الفترة" : "No events in this period"}
+        />
+      )}
+      <View
+        style={{
+          backgroundColor: "#F3EEE6",
+          borderRadius: 25,
+          padding: 18,
+          marginTop: 10,
+          flexDirection: ar ? "row-reverse" : "row",
+          gap: 13,
+        }}
+      >
+        <Icon name="bulb" color={colors.amber} />
+        <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "لمسة ذكية" : "A thoughtful touch"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {ar
+              ? "تظهر المتابعات التي يوصي بها فريق العناية تلقائياً هنا."
+              : "Follow-ups recommended by your care team appear here automatically."}
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
 
-function Support({back,data,language}:{back:()=>void;data:BeautyCalendarData["contact"];language:Language}) {const ar=language==="ar",phone=data?.phone?.trim()??"",digits=phone.replace(/\D/g,"");const open=(url:string)=>{void Linking.openURL(url).catch(()=>Alert.alert(ar?"تعذر فتح الرابط":"Unable to open link"));};return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"نحن هنا لأجلك":"We're here for you"} subtitle={ar?"تواصلي مع فريق بانثيرا بالطريقة الأنسب لك":"Reach Panthera in the way that suits you"} back={back}/><LinearGradient colors={[colors.navy,colors.ink]} style={{borderRadius:30,padding:24}}><Icon name="heart" color="#fff" size={32}/><Text style={{fontSize:25,fontWeight:"900",color:"#fff",marginTop:16,textAlign:ar?"right":"left"}}>{data?.clinicName??"Panthera Clinics"}</Text><Text style={{color:"#D7E3E8",marginTop:6,textAlign:ar?"right":"left"}}>{data?.branchName??(ar?"الفرع الرئيسي":"Main branch")}</Text></LinearGradient><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"تواصل سريع":"Quick contact"}</Text><TouchableOpacity style={[s.listCard,ar&&{flexDirection:"row-reverse"}]} disabled={!phone} onPress={()=>open(`tel:${phone}`)}><View style={[s.quickIcon,{backgroundColor:"#E7EFEA"}]}><Icon name="call" color="#4F9A72"/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"اتصلي بالعيادة":"Call the clinic"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{phone||(ar?"سيتم إضافة الرقم قريباً":"Phone will be added soon")}</Text></View><Icon name={ar?"chevron-back":"chevron-forward"}/></TouchableOpacity><TouchableOpacity style={[s.listCard,ar&&{flexDirection:"row-reverse"}]} disabled={!digits} onPress={()=>open(`https://wa.me/${digits}`)}><View style={[s.quickIcon,{backgroundColor:"#E5F7ED"}]}><Icon name="logo-whatsapp" color="#3C9A68"/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"واتساب بانثيرا":"Panthera WhatsApp"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"للاستفسارات والمساعدة السريعة":"For questions and quick assistance"}</Text></View><Icon name={ar?"chevron-back":"chevron-forward"}/></TouchableOpacity>{data?.email?<TouchableOpacity style={[s.listCard,ar&&{flexDirection:"row-reverse"}]} onPress={()=>open(`mailto:${data.email}`)}><View style={s.quickIcon}><Icon name="mail" color={colors.navy}/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"البريد الإلكتروني":"Email"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{data.email}</Text></View></TouchableOpacity>:null}{data?.address?<View style={{backgroundColor:colors.card,borderRadius:24,padding:18,marginTop:10}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"موقعنا":"Our location"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{data.address}</Text></View>:null}</ScrollView>; }
+function Support({
+  back,
+  data,
+  language,
+}: {
+  back: () => void;
+  data: BeautyCalendarData["contact"];
+  language: Language;
+}) {
+  const ar = language === "ar",
+    phone = data?.phone?.trim() ?? "",
+    whatsapp = data?.whatsapp?.trim() || phone,
+    digits = whatsapp.replace(/\D/g, "");
+  const open = (url: string) => {
+    void Linking.openURL(url).catch(() =>
+      Alert.alert(ar ? "تعذر فتح الرابط" : "Unable to open link"),
+    );
+  };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "نحن هنا لأجلك" : "We're here for you"}
+        subtitle={
+          ar
+            ? "تواصلي مع فريق بانثيرا بالطريقة الأنسب لك"
+            : "Reach Panthera in the way that suits you"
+        }
+        back={back}
+      />
+      <LinearGradient
+        colors={[colors.navy, colors.ink]}
+        style={{ borderRadius: 30, padding: 24 }}
+      >
+        <Icon name="heart" color="#fff" size={32} />
+        <Text
+          style={{
+            fontSize: 25,
+            fontWeight: "900",
+            color: "#fff",
+            marginTop: 16,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {data?.clinicName ?? "Panthera Clinics"}
+        </Text>
+        <Text
+          style={{
+            color: "#D7E3E8",
+            marginTop: 6,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {data?.branchName ?? (ar ? "الفرع الرئيسي" : "Main branch")}
+        </Text>
+      </LinearGradient>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "تواصل سريع" : "Quick contact"}
+      </Text>
+      <TouchableOpacity
+        style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+        disabled={!phone}
+        onPress={() => open(`tel:${phone}`)}
+      >
+        <View style={[s.quickIcon, { backgroundColor: "#E7EFEA" }]}>
+          <Icon name="call" color="#4F9A72" />
+        </View>
+        <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "اتصلي بالعيادة" : "Call the clinic"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {phone ||
+              (ar ? "سيتم إضافة الرقم قريباً" : "Phone will be added soon")}
+          </Text>
+        </View>
+        <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+        disabled={!digits}
+        onPress={() => open(`https://wa.me/${digits}`)}
+      >
+        <View style={[s.quickIcon, { backgroundColor: "#E5F7ED" }]}>
+          <Icon name="logo-whatsapp" color="#3C9A68" />
+        </View>
+        <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "واتساب بانثيرا" : "Panthera WhatsApp"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {ar
+              ? "للاستفسارات والمساعدة السريعة"
+              : "For questions and quick assistance"}
+          </Text>
+        </View>
+        <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+      </TouchableOpacity>
+      {data?.email ? (
+        <TouchableOpacity
+          style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+          onPress={() => open(`mailto:${data.email}`)}
+        >
+          <View style={s.quickIcon}>
+            <Icon name="mail" color={colors.navy} />
+          </View>
+          <View style={s.grow}>
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? "البريد الإلكتروني" : "Email"}
+            </Text>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {data.email}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ) : null}
+      {data?.address || data?.mapsUrl ? (
+        <TouchableOpacity
+          style={[s.listCard, { marginTop: 10 }, ar && { flexDirection: "row-reverse" }]}
+          disabled={!data?.mapsUrl}
+          onPress={() => data?.mapsUrl && open(data.mapsUrl)}
+        >
+          <View style={[s.quickIcon, { backgroundColor: "#EEF3F5" }]}>
+            <Icon name="location" color={colors.navy} />
+          </View>
+          <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "موقعنا" : "Our location"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {data?.address ?? (ar ? "افتحي الموقع على الخريطة" : "Open the clinic on the map")}
+          </Text>
+          </View>
+          {data?.mapsUrl ? <Icon name={ar ? "chevron-back" : "chevron-forward"} /> : null}
+        </TouchableOpacity>
+      ) : null}
+      {data?.workingHours ? (
+        <View style={{ backgroundColor: colors.card, borderRadius: 24, padding: 18, marginTop: 10 }}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "ساعات العمل" : "Working hours"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {data.workingHours}
+          </Text>
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+}
 
-function Wallet({back,data,language}:{back:()=>void;data:FinanceHealthHub["wallet"];language:Language}) {const ar=language==="ar",status=(value:string|null)=>ar?({paid:"مدفوع",pending:"قيد الدفع",unpaid:"غير مدفوع",due:"مستحق",refunded:"مسترد"} as Record<string,string>)[value??""]??value:value;return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"محفظتي":"My Wallet"} subtitle={ar?"مدفوعاتك وفواتيرك في مكان واحد":"Payments and invoices in one place"} back={back}/><View style={{flexDirection:ar?"row-reverse":"row",gap:12}}><LinearGradient colors={[colors.navy,colors.ink]} style={{flex:1,borderRadius:25,padding:20}}><Text style={{fontSize:11,color:"#D7E3E8",textAlign:ar?"right":"left"}}>{ar?"إجمالي المدفوع":"TOTAL PAID"}</Text><Text style={{fontSize:24,fontWeight:"900",color:"#fff",marginTop:8}}>{data.currency} {Number(data.totalPaid).toLocaleString(ar?"ar-SA":"en-US")}</Text></LinearGradient><View style={{flex:1,borderRadius:25,padding:20,backgroundColor:data.outstanding>0?"#FFF2ED":"#E7EFEA"}}><Text style={{fontSize:11,color:colors.muted,textAlign:ar?"right":"left"}}>{ar?"المتبقي":"OUTSTANDING"}</Text><Text style={{fontSize:24,fontWeight:"900",color:data.outstanding>0?colors.danger:"#4F9A72",marginTop:8}}>{data.currency} {Number(data.outstanding).toLocaleString(ar?"ar-SA":"en-US")}</Text></View></View><View style={{backgroundColor:"#F3EEE6",borderRadius:22,padding:16,marginTop:14,flexDirection:ar?"row-reverse":"row",gap:12}}><Icon name="shield-checkmark" color={colors.amber}/><Text style={[s.cardMuted,s.grow,ar&&{textAlign:"right"}]}>{ar?"تظهر هنا المدفوعات المسجلة رسميًا في نظام العيادة.":"Only payments officially recorded by the clinic appear here."}</Text></View><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"سجل الفواتير":"Invoice history"}</Text>{data.transactions.length?data.transactions.map(item=><View key={item.id} style={[s.invoice,ar&&{flexDirection:"row-reverse"}]}><View style={[s.invoiceIcon,{backgroundColor:item.status==="paid"?"#E7EFEA":"#FFF2ED"}]}><Icon name="receipt-outline" color={item.status==="paid"?"#4F9A72":colors.danger}/></View><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{item.invoiceNumber??`${ar?"فاتورة":"Invoice"} #${item.id}`}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{new Date(item.date).toLocaleDateString(ar?"ar-SA":"en-US")} · {item.method??(ar?"طريقة غير محددة":"Method not specified")}</Text>{item.reference?<Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>#{item.reference}</Text>:null}</View><View><Text style={s.amount}>{data.currency} {Number(item.amount).toLocaleString()}</Text><Text style={[s.invoiceStatus,item.status!=="paid"&&{color:colors.danger}]}>{status(item.status)}</Text></View></View>):<Empty text={ar?"لا توجد عمليات مالية بعد":"No transactions yet"}/>}</ScrollView>; }
+function Wallet({
+  back,
+  data,
+  language,
+}: {
+  back: () => void;
+  data: FinanceHealthHub["wallet"];
+  language: Language;
+}) {
+  const ar = language === "ar",
+    status = (value: string | null) =>
+      ar
+        ? ((
+            {
+              paid: "مدفوع",
+              pending: "قيد الدفع",
+              unpaid: "غير مدفوع",
+              due: "مستحق",
+              refunded: "مسترد",
+            } as Record<string, string>
+          )[value ?? ""] ?? value)
+        : value;
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "محفظتي" : "My Wallet"}
+        subtitle={
+          ar
+            ? "مدفوعاتك وفواتيرك في مكان واحد"
+            : "Payments and invoices in one place"
+        }
+        back={back}
+      />
+      <View style={{ flexDirection: ar ? "row-reverse" : "row", gap: 12 }}>
+        <LinearGradient
+          colors={[colors.navy, colors.ink]}
+          style={{ flex: 1, borderRadius: 25, padding: 20 }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              color: "#D7E3E8",
+              textAlign: ar ? "right" : "left",
+            }}
+          >
+            {ar ? "إجمالي المدفوع" : "TOTAL PAID"}
+          </Text>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              color: "#fff",
+              marginTop: 8,
+            }}
+          >
+            {data.currency}{" "}
+            {Number(data.totalPaid).toLocaleString(ar ? "ar-SA" : "en-US")}
+          </Text>
+        </LinearGradient>
+        <View
+          style={{
+            flex: 1,
+            borderRadius: 25,
+            padding: 20,
+            backgroundColor: data.outstanding > 0 ? "#FFF2ED" : "#E7EFEA",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              textAlign: ar ? "right" : "left",
+            }}
+          >
+            {ar ? "المتبقي" : "OUTSTANDING"}
+          </Text>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              color: data.outstanding > 0 ? colors.danger : "#4F9A72",
+              marginTop: 8,
+            }}
+          >
+            {data.currency}{" "}
+            {Number(data.outstanding).toLocaleString(ar ? "ar-SA" : "en-US")}
+          </Text>
+        </View>
+      </View>
+      <View
+        style={{
+          backgroundColor: "#F3EEE6",
+          borderRadius: 22,
+          padding: 16,
+          marginTop: 14,
+          flexDirection: ar ? "row-reverse" : "row",
+          gap: 12,
+        }}
+      >
+        <Icon name="shield-checkmark" color={colors.amber} />
+        <Text style={[s.cardMuted, s.grow, ar && { textAlign: "right" }]}>
+          {ar
+            ? "تظهر هنا المدفوعات المسجلة رسميًا في نظام العيادة."
+            : "Only payments officially recorded by the clinic appear here."}
+        </Text>
+      </View>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "سجل الفواتير" : "Invoice history"}
+      </Text>
+      {data.transactions.length ? (
+        data.transactions.map((item) => (
+          <View key={item.id} style={[s.invoice, { flexDirection: "column", gap: 12 }]}>
+            <View style={{ flexDirection: ar ? "row-reverse" : "row", gap: 12, alignItems: "center" }}>
+            <View
+              style={[
+                s.invoiceIcon,
+                {
+                  backgroundColor:
+                    item.status === "paid" ? "#E7EFEA" : "#FFF2ED",
+                },
+              ]}
+            >
+              <Icon
+                name="receipt-outline"
+                color={item.status === "paid" ? "#4F9A72" : colors.danger}
+              />
+            </View>
+            <View style={s.grow}>
+              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                {item.invoiceNumber ??
+                  `${ar ? "فاتورة" : "Invoice"} #${item.id}`}
+              </Text>
+              <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                {new Date(item.date).toLocaleDateString(ar ? "ar-SA" : "en-US")}{" "}
+                ·{" "}
+                {item.method ??
+                  (ar ? "طريقة غير محددة" : "Method not specified")}
+              </Text>
+              {item.reference ? (
+                <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                  #{item.reference}
+                </Text>
+              ) : null}
+            </View>
+            <View>
+              <Text style={s.amount}>
+                {data.currency} {Number(item.amount).toLocaleString()}
+              </Text>
+              <Text
+                style={[
+                  s.invoiceStatus,
+                  item.status !== "paid" && { color: colors.danger },
+                ]}
+              >
+                {status(item.status)}
+              </Text>
+            </View>
+            </View>
+            {item.items?.length ? <View style={{ gap: 5, borderTopWidth: 1, borderTopColor: "#E8E1D8", paddingTop: 10 }}>{item.items.map((line,index)=><Text key={`${item.id}-${index}`} style={[s.cardMuted, ar&&{textAlign:"right"}]}>{(ar ? line.descriptionAr : line.descriptionEn) || line.description} · {Number(line.quantity)} {line.unit==="service"?"":line.unit}</Text>)}</View>:null}
+            <View style={{ flexDirection: ar ? "row-reverse" : "row", flexWrap: "wrap", gap: 8 }}>
+              {[
+                [ar?"قبل الضريبة":"Subtotal",item.subtotal],
+                [ar?"الضريبة":"Tax",item.taxAmount??0],
+                [ar?"الخصم":"Discount",item.discountAmount],
+                [ar?"المدفوع":"Paid",item.paidAmount],
+                [ar?"المتبقي":"Remaining",item.outstanding],
+              ].map(([label,value])=><View key={String(label)} style={{ minWidth: "30%", flexGrow: 1, borderRadius: 12, backgroundColor: "#F6F2EC", padding: 9 }}><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{label}</Text><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{data.currency} {Number(value).toLocaleString()}</Text></View>)}
+            </View>
+          </View>
+        ))
+      ) : (
+        <Empty text={ar ? "لا توجد عمليات مالية بعد" : "No transactions yet"} />
+      )}
+    </ScrollView>
+  );
+}
 
-function HealthCenter({back,data,language,refresh}:{back:()=>void;data:FinanceHealthHub["health"];language:Language;refresh:()=>Promise<void>}) {const ar=language==="ar",[editing,setEditing]=useState(false),[note,setNote]=useState(""),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(false),record=data.record,fields=["blood_type","allergies","chronic_diseases","medications","medical_notes"],labels:Record<string,string>=ar?{blood_type:"فصيلة الدم",allergies:"الحساسية",chronic_diseases:"الأمراض المزمنة",medications:"الأدوية",medical_notes:"ملاحظات طبية"}:{blood_type:"Blood type",allergies:"Allergies",chronic_diseases:"Chronic conditions",medications:"Medications",medical_notes:"Medical notes"},pending=data.updateRequests.find(item=>item.status==="pending"||item.status==="reviewing"),submit=async()=>{try{setBusy(true);await requestMedicalUpdate(note,selected);await refresh();setEditing(false);setNote("");setSelected([]);Alert.alert(ar?"تم إرسال الطلب":"Request sent",ar?"سيراجعه فريق العناية بأمان.":"Your care team will review it securely.");}catch(e){Alert.alert(ar?"تعذر إرسال الطلب":"Unable to send request",e instanceof Error?e.message:"");}finally{setBusy(false);}};return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"مركز صحتي":"My Health Center"} subtitle={ar?"ملف طبي واضح وآمن ومحدث":"A clear, secure and up-to-date medical profile"} back={back}/><LinearGradient colors={["#E7EFEA","#F4F4F2"]} style={{borderRadius:28,padding:22}}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><View><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"اكتمال الملف الطبي":"Medical profile completeness"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"ساعدي فريقك الطبي بمعلومات دقيقة":"Help your care team with accurate information"}</Text></View><Text style={{fontSize:25,fontWeight:"900",color:colors.navy}}>{data.completeness}%</Text></View><View style={{height:9,backgroundColor:"#fff",borderRadius:8,marginTop:16,overflow:"hidden"}}><View style={{height:9,width:`${Math.min(100,data.completeness)}%`,backgroundColor:"#4F9A72"}}/></View></LinearGradient><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"معلوماتي الطبية":"Medical information"}</Text>{fields.map(field=><View key={field} style={s.infoRow}><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{labels[field]}</Text><Text style={[s.infoValue,ar&&{textAlign:"right"}]}>{record?.[field as keyof typeof record]?.toString()||(ar?"غير مسجل":"Not recorded")}</Text></View>)}{pending?<View style={{backgroundColor:"#FFF7E8",borderRadius:22,padding:18,marginTop:16,flexDirection:ar?"row-reverse":"row",gap:12}}><Icon name="time" color={colors.amber}/><View style={s.grow}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"طلب تحديث قيد المراجعة":"Update request in review"}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"سيتولى فريق العناية تحديث الملف بعد التحقق.":"Your care team will update the record after verification."}</Text></View></View>:editing?<View style={{backgroundColor:colors.card,borderRadius:26,padding:18,marginTop:16}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?"ما المعلومات التي تحتاج تحديثاً؟":"What needs updating?"}</Text><View style={{flexDirection:ar?"row-reverse":"row",flexWrap:"wrap",gap:8,marginTop:14}}>{fields.map(field=><TouchableOpacity key={field} onPress={()=>setSelected(value=>value.includes(field)?value.filter(x=>x!==field):[...value,field])} style={{paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:selected.includes(field)?colors.navy:colors.violetSoft}}><Text style={{fontSize:11,fontWeight:"800",color:selected.includes(field)?"#fff":colors.text}}>{labels[field]}</Text></TouchableOpacity>)}</View><TextInput multiline value={note} onChangeText={setNote} placeholder={ar?"اكتبي ملاحظة لفريق العناية":"Add a note for your care team"} placeholderTextColor={colors.muted} style={{minHeight:90,backgroundColor:colors.canvas,borderRadius:16,padding:14,marginTop:14,textAlignVertical:"top",textAlign:ar?"right":"left"}}/><TouchableOpacity disabled={busy} style={[s.primary,busy&&s.disabled]} onPress={submit}><Text style={s.primaryText}>{busy?(ar?"جارٍ الإرسال…":"Sending…"):(ar?"إرسال طلب آمن":"Send secure request")}</Text></TouchableOpacity><TouchableOpacity onPress={()=>setEditing(false)}><Text style={s.back}>{ar?"إلغاء":"Cancel"}</Text></TouchableOpacity></View>:<TouchableOpacity style={s.secondary} onPress={()=>setEditing(true)}><Text style={s.secondaryText}>{ar?"طلب تحديث الملف":"Request record update"}</Text></TouchableOpacity>}</ScrollView>; }
+function HealthCenter({
+  back,
+  data,
+  language,
+  refresh,
+}: {
+  back: () => void;
+  data: FinanceHealthHub["health"];
+  language: Language;
+  refresh: () => Promise<void>;
+}) {
+  const ar = language === "ar",
+    [editing, setEditing] = useState(false),
+    [note, setNote] = useState(""),
+    [selected, setSelected] = useState<string[]>([]),
+    [busy, setBusy] = useState(false),
+    record = data.record,
+    fields = [
+      "blood_type",
+      "allergies",
+      "chronic_diseases",
+      "medications",
+      "medical_notes",
+    ],
+    labels: Record<string, string> = ar
+      ? {
+          blood_type: "فصيلة الدم",
+          allergies: "الحساسية",
+          chronic_diseases: "الأمراض المزمنة",
+          medications: "الأدوية",
+          medical_notes: "ملاحظات طبية",
+        }
+      : {
+          blood_type: "Blood type",
+          allergies: "Allergies",
+          chronic_diseases: "Chronic conditions",
+          medications: "Medications",
+          medical_notes: "Medical notes",
+        },
+    pending = data.updateRequests.find(
+      (item) => item.status === "pending" || item.status === "reviewing",
+    ),
+    submit = async () => {
+      try {
+        setBusy(true);
+        await requestMedicalUpdate(note, selected);
+        await refresh();
+        setEditing(false);
+        setNote("");
+        setSelected([]);
+        Alert.alert(
+          ar ? "تم إرسال الطلب" : "Request sent",
+          ar
+            ? "سيراجعه فريق العناية بأمان."
+            : "Your care team will review it securely.",
+        );
+      } catch (e) {
+        Alert.alert(
+          ar ? "تعذر إرسال الطلب" : "Unable to send request",
+          localizedError(e, ar),
+        );
+      } finally {
+        setBusy(false);
+      }
+    };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "مركز صحتي" : "My Health Center"}
+        subtitle={
+          ar
+            ? "ملف طبي واضح وآمن ومحدث"
+            : "A clear, secure and up-to-date medical profile"
+        }
+        back={back}
+      />
+      <LinearGradient
+        colors={["#E7EFEA", "#F4F4F2"]}
+        style={{ borderRadius: 28, padding: 22 }}
+      >
+        <View style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}>
+          <View>
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? "اكتمال الملف الطبي" : "Medical profile completeness"}
+            </Text>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {ar
+                ? "ساعدي فريقك الطبي بمعلومات دقيقة"
+                : "Help your care team with accurate information"}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 25, fontWeight: "900", color: colors.navy }}>
+            {data.completeness}%
+          </Text>
+        </View>
+        <View
+          style={{
+            height: 9,
+            backgroundColor: "#fff",
+            borderRadius: 8,
+            marginTop: 16,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              height: 9,
+              width: `${Math.min(100, data.completeness)}%`,
+              backgroundColor: "#4F9A72",
+            }}
+          />
+        </View>
+      </LinearGradient>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "معلوماتي الطبية" : "Medical information"}
+      </Text>
+      {fields.map((field) => (
+        <View key={field} style={s.infoRow}>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {labels[field]}
+          </Text>
+          <Text style={[s.infoValue, ar && { textAlign: "right" }]}>
+            {record?.[field as keyof typeof record]?.toString() ||
+              (ar ? "غير مسجل" : "Not recorded")}
+          </Text>
+        </View>
+      ))}
+      {pending ? (
+        <View
+          style={{
+            backgroundColor: "#FFF7E8",
+            borderRadius: 22,
+            padding: 18,
+            marginTop: 16,
+            flexDirection: ar ? "row-reverse" : "row",
+            gap: 12,
+          }}
+        >
+          <Icon name="time" color={colors.amber} />
+          <View style={s.grow}>
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? "طلب تحديث قيد المراجعة" : "Update request in review"}
+            </Text>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {ar
+                ? "سيتولى فريق العناية تحديث الملف بعد التحقق."
+                : "Your care team will update the record after verification."}
+            </Text>
+          </View>
+        </View>
+      ) : editing ? (
+        <View
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: 26,
+            padding: 18,
+            marginTop: 16,
+          }}
+        >
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "ما المعلومات التي تحتاج تحديثاً؟" : "What needs updating?"}
+          </Text>
+          <View
+            style={{
+              flexDirection: ar ? "row-reverse" : "row",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 14,
+            }}
+          >
+            {fields.map((field) => (
+              <TouchableOpacity
+                key={field}
+                onPress={() =>
+                  setSelected((value) =>
+                    value.includes(field)
+                      ? value.filter((x) => x !== field)
+                      : [...value, field],
+                  )
+                }
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                  borderRadius: 14,
+                  backgroundColor: selected.includes(field)
+                    ? colors.navy
+                    : colors.violetSoft,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "800",
+                    color: selected.includes(field) ? "#fff" : colors.text,
+                  }}
+                >
+                  {labels[field]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            multiline
+            value={note}
+            onChangeText={setNote}
+            placeholder={
+              ar
+                ? "اكتبي ملاحظة لفريق العناية"
+                : "Add a note for your care team"
+            }
+            placeholderTextColor={colors.muted}
+            style={{
+              minHeight: 90,
+              backgroundColor: colors.canvas,
+              borderRadius: 16,
+              padding: 14,
+              marginTop: 14,
+              textAlignVertical: "top",
+              textAlign: ar ? "right" : "left",
+            }}
+          />
+          <TouchableOpacity
+            disabled={busy}
+            style={[s.primary, busy && s.disabled]}
+            onPress={submit}
+          >
+            <Text style={s.primaryText}>
+              {busy
+                ? ar
+                  ? "جارٍ الإرسال…"
+                  : "Sending…"
+                : ar
+                  ? "إرسال طلب آمن"
+                  : "Send secure request"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setEditing(false)}>
+            <Text style={s.back}>{ar ? "إلغاء" : "Cancel"}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={s.secondary} onPress={() => setEditing(true)}>
+          <Text style={s.secondaryText}>
+            {ar ? "طلب تحديث الملف" : "Request record update"}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
+  );
+}
 
-function Experience({back,data,language,refresh}:{back:()=>void;data:PatientExperience;language:Language;refresh:()=>Promise<void>}) {const ar=language==="ar",visit=data.eligibleVisits[0],[rating,setRating]=useState(0),[tags,setTags]=useState<string[]>([]),[comment,setComment]=useState(""),[busy,setBusy]=useState(false),tagOptions=ar?["الاستقبال","الطبيبة","النتيجة","النظافة","سهولة الحجز"]:["Reception","Doctor","Result","Cleanliness","Easy booking"],momentTitle:Record<string,string>={joined:"بدأت رحلتك مع بانثيرا","first-visit":"أول زيارة في بانثيرا","latest-care":"خطوة جديدة في رحلة العناية",membership:"عضويتك في بانثيرا"},submit=async()=>{if(!visit||!rating)return;try{setBusy(true);await submitPatientFeedback(visit.id,rating,tags,comment);await refresh();setRating(0);setTags([]);setComment("");Alert.alert(ar?"شكرًا لكِ":"Thank you",ar?"رأيك وصل لفريق بانثيرا بسرية.":"Your private feedback reached the Panthera team.");}catch(e){Alert.alert(ar?"تعذر إرسال التقييم":"Unable to send feedback",e instanceof Error?e.message:"");}finally{setBusy(false);}};return <ScrollView contentContainerStyle={{padding:22,paddingBottom:120}}><Header title={ar?"لحظاتي مع بانثيرا":"My Panthera Moments"} subtitle={ar?"كل خطوة جميلة تستحق أن تُحفظ":"Every beautiful step deserves to be remembered"} back={back}/><LinearGradient colors={[colors.navy,colors.ink]} style={{borderRadius:30,padding:24}}><Icon name="sparkles" color="#fff" size={31}/><Text style={{fontSize:25,fontWeight:"900",color:"#fff",marginTop:14,textAlign:ar?"right":"left"}}>{ar?"رحلتك، قصة واحدة متصلة":"Your journey, one connected story"}</Text><Text style={{color:"#D7E3E8",marginTop:8,textAlign:ar?"right":"left"}}>{ar?"نحتفظ بمحطات العناية المهمة لتعودي إليها بابتسامة.":"We keep your meaningful care milestones together."}</Text></LinearGradient><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"محطات رحلتي":"Journey milestones"}</Text>{data.moments.length?data.moments.map((moment,index)=><View key={moment.id} style={{flexDirection:ar?"row-reverse":"row",gap:14}}><View style={{alignItems:"center"}}><View style={{width:50,height:50,borderRadius:18,backgroundColor:index===0?colors.navy:colors.violetSoft,alignItems:"center",justifyContent:"center"}}><Icon name={moment.icon} color={index===0?"#fff":colors.navy}/></View>{index<data.moments.length-1?<View style={{width:2,height:65,backgroundColor:colors.border}}/>:null}</View><View style={{flex:1,backgroundColor:colors.card,borderRadius:22,padding:16,marginBottom:12}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?momentTitle[moment.id]??moment.title:moment.title}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{moment.message}</Text><Text style={{fontSize:10,color:colors.navy,fontWeight:"800",marginTop:8,textAlign:ar?"right":"left"}}>{new Date(moment.date).toLocaleDateString(ar?"ar-SA":"en-US",{day:"numeric",month:"long",year:"numeric"})}</Text></View></View>):<Empty text={ar?"ستظهر محطات رحلتك هنا":"Your care moments will appear here"}/>}<Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"صوتك يصنع الفرق":"Your voice matters"}</Text>{visit?<View style={{backgroundColor:colors.card,borderRadius:28,padding:20,borderWidth:1,borderColor:colors.border}}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{ar?`كيف كانت زيارتك لـ ${visit.service}؟`:`How was your ${visit.service} visit?`}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{new Date(visit.date).toLocaleDateString(ar?"ar-SA":"en-US")} {visit.provider?`· ${visit.provider}`:""}</Text><View style={{flexDirection:ar?"row-reverse":"row",justifyContent:"center",gap:12,marginVertical:22}}>{[1,2,3,4,5].map(value=><TouchableOpacity key={value} onPress={()=>setRating(value)}><Icon name={value<=rating?"star":"star-outline"} color={value<=rating?"#D7A647":colors.border} size={34}/></TouchableOpacity>)}</View><View style={{flexDirection:ar?"row-reverse":"row",flexWrap:"wrap",gap:8}}>{tagOptions.map(tag=><TouchableOpacity key={tag} onPress={()=>setTags(current=>current.includes(tag)?current.filter(x=>x!==tag):[...current,tag])} style={{paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:tags.includes(tag)?colors.navy:colors.violetSoft}}><Text style={{fontSize:11,fontWeight:"800",color:tags.includes(tag)?"#fff":colors.text}}>{tag}</Text></TouchableOpacity>)}</View><TextInput multiline value={comment} onChangeText={setComment} placeholder={ar?"اكتبي ملاحظتك اختياريًا":"Add an optional private note"} placeholderTextColor={colors.muted} style={{minHeight:82,backgroundColor:colors.canvas,borderRadius:16,padding:14,marginTop:14,textAlignVertical:"top",textAlign:ar?"right":"left"}}/><TouchableOpacity disabled={!rating||busy} style={[s.primary,(!rating||busy)&&s.disabled]} onPress={submit}><Text style={s.primaryText}>{busy?(ar?"جارٍ الإرسال…":"Sending…"):(ar?"إرسال التقييم بسرية":"Send private feedback")}</Text></TouchableOpacity></View>:<View style={s.empty}><Icon name="checkmark-circle" size={34} color="#4F9A72"/><Text style={s.cardTitle}>{ar?"لا يوجد تقييم مطلوب الآن":"You're all caught up"}</Text><Text style={[s.cardMuted,{textAlign:"center"}]}>{ar?"بعد كل زيارة مكتملة سيظهر لك تقييم خاص وسري.":"A private feedback card appears after every completed visit."}</Text></View>}</ScrollView>; }
+function Experience({
+  back,
+  data,
+  language,
+  contact,
+}: {
+  back: () => void;
+  data: PatientExperience;
+  language: Language;
+  contact: BeautyCalendarData["contact"];
+}) {
+  const ar = language === "ar",
+    visit = data.eligibleVisits[0],
+    [busy, setBusy] = useState(false),
+    momentTitle: Record<string, string> = {
+      joined: "بدأت رحلتك مع بانثيرا",
+      "first-visit": "أول زيارة في بانثيرا",
+      "latest-care": "خطوة جديدة في رحلة العناية",
+      membership: "عضويتك في بانثيرا",
+    },
+    reviewOnGoogle = async () => {
+      if (!visit) return;
+      try {
+        setBusy(true);
+        const url = await openGoogleReview(visit.id);
+        await Linking.openURL(url);
+      } catch (e) {
+        Alert.alert(
+          ar ? "تعذر فتح تقييم Google" : "Unable to open Google reviews",
+          localizedError(e, ar),
+        );
+      } finally {
+        setBusy(false);
+      }
+    };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "لحظاتي مع بانثيرا" : "My Panthera Moments"}
+        subtitle={
+          ar
+            ? "كل خطوة جميلة تستحق أن تُحفظ"
+            : "Every beautiful step deserves to be remembered"
+        }
+        back={back}
+      />
+      <LinearGradient
+        colors={[colors.navy, colors.ink]}
+        style={{ borderRadius: 30, padding: 24 }}
+      >
+        <Icon name="sparkles" color="#fff" size={31} />
+        <Text
+          style={{
+            fontSize: 25,
+            fontWeight: "900",
+            color: "#fff",
+            marginTop: 14,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {ar ? "رحلتك، قصة واحدة متصلة" : "Your journey, one connected story"}
+        </Text>
+        <Text
+          style={{
+            color: "#D7E3E8",
+            marginTop: 8,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {ar
+            ? "نحتفظ بمحطات العناية المهمة لتعودي إليها بابتسامة."
+            : "We keep your meaningful care milestones together."}
+        </Text>
+      </LinearGradient>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "محطات رحلتي" : "Journey milestones"}
+      </Text>
+      {data.moments.length ? (
+        data.moments.map((moment, index) => (
+          <View
+            key={moment.id}
+            style={{ flexDirection: ar ? "row-reverse" : "row", gap: 14 }}
+          >
+            <View style={{ alignItems: "center" }}>
+              <View
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 18,
+                  backgroundColor:
+                    index === 0 ? colors.navy : colors.violetSoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon
+                  name={moment.icon}
+                  color={index === 0 ? "#fff" : colors.navy}
+                />
+              </View>
+              {index < data.moments.length - 1 ? (
+                <View
+                  style={{
+                    width: 2,
+                    height: 65,
+                    backgroundColor: colors.border,
+                  }}
+                />
+              ) : null}
+            </View>
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: colors.card,
+                borderRadius: 22,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                {ar ? (momentTitle[moment.id] ?? moment.title) : moment.title}
+              </Text>
+              <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                {moment.message}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: colors.navy,
+                  fontWeight: "800",
+                  marginTop: 8,
+                  textAlign: ar ? "right" : "left",
+                }}
+              >
+                {new Date(moment.date).toLocaleDateString(
+                  ar ? "ar-SA" : "en-US",
+                  { day: "numeric", month: "long", year: "numeric" },
+                )}
+              </Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Empty
+          text={
+            ar ? "ستظهر محطات رحلتك هنا" : "Your care moments will appear here"
+          }
+        />
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "شاركينا تجربتك على Google" : "Share your experience on Google"}
+      </Text>
+      {visit ? (
+        <View
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: 28,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar
+              ? `كيف كانت زيارتك لـ ${visit.service}؟`
+              : `How was your ${visit.service} visit?`}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {new Date(visit.date).toLocaleDateString(ar ? "ar-SA" : "en-US")}{" "}
+            {visit.provider ? `· ${visit.provider}` : ""}
+          </Text>
+          <View style={{alignItems:"center",paddingVertical:22}}>
+            <View style={{flexDirection:"row",gap:7}}>{[1,2,3,4,5].map(value=><Icon key={value} name="star" color="#D7A647" size={30}/>)}</View>
+            <Text style={[s.cardMuted,{textAlign:"center",marginTop:14}]}>{ar?`سيتم تحويلك إلى صفحة ${contact?.clinicName??"عيادات بانثيرا"} الرسمية على Google. لا يتم حفظ أي تقييم داخل التطبيق.`:`You will be taken to ${contact?.clinicName??"Panthera Clinics"}' official Google page. No rating is stored inside the app.`}</Text>
+          </View>
+          <TouchableOpacity
+            disabled={busy}
+            style={[s.primary, busy && s.disabled]}
+            onPress={reviewOnGoogle}
+          >
+            <Text style={s.primaryText}>
+              {busy ? (ar?"جارٍ فتح Google…":"Opening Google…") : (ar?"التقييم على Google":"Review on Google")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={s.empty}>
+          <Icon name="checkmark-circle" size={34} color="#4F9A72" />
+          <Text style={s.cardTitle}>
+            {ar ? "لا توجد زيارة مكتملة للتقييم" : "No completed visit to review"}
+          </Text>
+          <Text style={[s.cardMuted, { textAlign: "center" }]}>
+            {ar
+              ? "بعد الزيارة المكتملة سيظهر رابط تقييم Google هنا."
+              : "A Google review link appears here after a completed visit."}
+          </Text>
+        </View>
+      )}
+    </ScrollView>
+  );
+}
 
-function Today({go,data,care,membership,finance,results,experience,language,toggleLanguage}:{go:(tab:Tab)=>void;data:PatientDashboard;care:PatientCareHub;membership:PatientMembership|null;finance:FinanceHealthHub;results:PatientResults;experience:PatientExperience;language:Language;toggleLanguage:()=>void}) {const ar=language==="ar",name=data.profile.firstName??(ar?"بكِ":"there"),next=data.appointments.filter(item=>new Date(item.appointmentAt)>new Date()).sort((a,b)=>+new Date(a.appointmentAt)-+new Date(b.appointmentAt))[0],unread=data.notifications.filter(item=>!item.is_read).length,recommendation=results.recommendations[0],action=finance.wallet.outstanding>0?{icon:"wallet",title:ar?"يوجد مبلغ يحتاج مراجعتك":"A payment needs your attention",copy:ar?`${finance.wallet.currency} ${finance.wallet.outstanding} مستحق`:`${finance.wallet.currency} ${finance.wallet.outstanding} outstanding`,tab:"wallet" as Tab,color:"#A85D55"}:experience.eligibleVisits.length?{icon:"star",title:ar?"كيف كانت زيارتك؟":"How was your visit?",copy:ar?"رأيك السري يساعدنا نصنع تجربة أفضل":"Your private feedback helps us improve",tab:"experience" as Tab,color:"#B28B4B"}:next?{icon:"calendar",title:ar?"موعدك القادم جاهز":"Your next visit is ready",copy:new Date(next.appointmentAt).toLocaleString(ar?"ar-SA":"en-US",{weekday:"long",day:"numeric",month:"long",hour:"numeric",minute:"2-digit"}),tab:"care" as Tab,color:"#4F7B70"}:{icon:"sparkles",title:ar?"ابدئي خطتك مع بانثيرا":"Start your Panthera journey",copy:ar?"اختاري ما تريدين الاهتمام به اليوم":"Tell us what you would like to care for today",tab:"book" as Tab,color:colors.navy};return <ScrollView contentContainerStyle={{padding:22,paddingBottom:130}}><View style={{flexDirection:ar?"row-reverse":"row",alignItems:"center",justifyContent:"space-between",marginBottom:26}}><View style={{flex:1}}><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:118,height:54,alignSelf:ar?"flex-end":"flex-start"}} resizeMode="contain"/><Text style={{fontSize:29,fontWeight:"900",color:colors.ink,textAlign:ar?"right":"left",marginTop:8}}>{ar?`أهلاً ${name}`:`Hello, ${name}`}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{ar?"هذه خطوتك التالية اليوم":"Here is what matters next"}</Text></View><View style={{gap:8}}><TouchableOpacity style={{width:44,height:44,borderRadius:16,backgroundColor:"#fff",alignItems:"center",justifyContent:"center"}} onPress={()=>go("notifications")}><Icon name="notifications-outline" color={colors.navy}/>{unread?<View style={{position:"absolute",right:7,top:7,minWidth:15,height:15,borderRadius:8,backgroundColor:colors.danger,alignItems:"center",justifyContent:"center"}}><Text style={{fontSize:8,color:"#fff",fontWeight:"900"}}>{unread}</Text></View>:null}</TouchableOpacity><TouchableOpacity style={{width:44,height:34,borderRadius:13,backgroundColor:colors.violetSoft,alignItems:"center",justifyContent:"center"}} onPress={toggleLanguage}><Text style={{fontSize:11,fontWeight:"900",color:colors.navy}}>{ar?"EN":"عربي"}</Text></TouchableOpacity></View></View><TouchableOpacity activeOpacity={.9} onPress={()=>go(action.tab)}><LinearGradient colors={[action.color,colors.ink]} style={{borderRadius:32,padding:24,minHeight:210,justifyContent:"space-between"}}><View style={{width:50,height:50,borderRadius:18,backgroundColor:"#FFFFFF20",alignItems:"center",justifyContent:"center"}}><Icon name={action.icon} color="#fff" size={26}/></View><View><Text style={{fontSize:25,fontWeight:"900",color:"#fff",textAlign:ar?"right":"left"}}>{action.title}</Text><Text style={{color:"#E4ECEF",lineHeight:21,marginTop:8,textAlign:ar?"right":"left"}}>{action.copy}</Text><View style={{flexDirection:ar?"row-reverse":"row",alignItems:"center",gap:7,marginTop:18}}><Text style={{color:"#fff",fontWeight:"900"}}>{ar?"افتحي الآن":"Open now"}</Text><Icon name={ar?"arrow-back":"arrow-forward"} color="#fff"/></View></View></LinearGradient></TouchableOpacity>{next?<TouchableOpacity style={{backgroundColor:colors.card,borderRadius:26,padding:18,marginTop:14,borderWidth:1,borderColor:colors.border}} onPress={()=>go("care")}><View style={[s.rowBetween,ar&&{flexDirection:"row-reverse"}]}><View style={{flex:1}}><Text style={[s.eyebrow,ar&&{textAlign:"right"}]}>{ar?"الموعد القادم":"NEXT VISIT"}</Text><Text style={[s.cardTitle,{fontSize:19,marginTop:7},ar&&{textAlign:"right"}]}>{next.service}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{next.provider} · {appointmentStatusLabel(next.status,ar)}</Text></View><View style={{width:62,height:68,borderRadius:21,backgroundColor:colors.navy,alignItems:"center",justifyContent:"center"}}><Text style={{fontSize:22,fontWeight:"900",color:"#fff"}}>{new Date(next.appointmentAt).getDate()}</Text><Text style={{fontSize:10,fontWeight:"800",color:"#D7E3E8"}}>{new Date(next.appointmentAt).toLocaleDateString(ar?"ar-SA":"en-US",{month:"short"})}</Text></View></View></TouchableOpacity>:null}<Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{ar?"في لمحة":"At a glance"}</Text><View style={{flexDirection:ar?"row-reverse":"row",gap:10}}>{[{icon:"diamond",value:membership?.points??0,label:ar?"نقطة":"Points",tab:"membership" as Tab},{icon:"images",value:results.media.length,label:ar?"نتيجة":"Results",tab:"results" as Tab},{icon:"heart",value:care.history.length,label:ar?"جلسة":"Sessions",tab:"care" as Tab}].map(item=><TouchableOpacity key={item.label} onPress={()=>go(item.tab)} style={{flex:1,backgroundColor:colors.card,borderRadius:22,padding:15,alignItems:"center",borderWidth:1,borderColor:colors.border}}><Icon name={item.icon} color={colors.navy}/><Text style={{fontSize:20,fontWeight:"900",color:colors.ink,marginTop:8}}>{item.value}</Text><Text style={{fontSize:10,color:colors.muted,marginTop:3}}>{item.label}</Text></TouchableOpacity>)}</View>{recommendation?<TouchableOpacity style={{backgroundColor:"#F1EDE6",borderRadius:25,padding:18,marginTop:18,flexDirection:ar?"row-reverse":"row",gap:13}} onPress={()=>go(recommendation.action)}><View style={{width:44,height:44,borderRadius:15,backgroundColor:"#fff",alignItems:"center",justifyContent:"center"}}><Icon name="sparkles" color={colors.amber}/></View><View style={s.grow}><Text style={[s.eyebrow,ar&&{textAlign:"right"}]}>{ar?"مقترح لكِ":"FOR YOU"}</Text><Text style={[s.cardTitle,{marginTop:5},ar&&{textAlign:"right"}]}>{recommendation.title}</Text></View><Icon name={ar?"chevron-back":"chevron-forward"}/></TouchableOpacity>:null}</ScrollView>; }
+function Today({
+  go,
+  data,
+  care,
+  membership,
+  finance,
+  results,
+  experience,
+  language,
+  toggleLanguage,
+}: {
+  go: (tab: Tab) => void;
+  data: PatientDashboard;
+  care: PatientCareHub;
+  membership: PatientMembership | null;
+  finance: FinanceHealthHub;
+  results: PatientResults;
+  experience: PatientExperience;
+  language: Language;
+  toggleLanguage: () => void;
+}) {
+  const ar = language === "ar",
+    name = data.profile.firstName ?? (ar ? "بكِ" : "there"),
+    next = data.appointments
+      .filter((item) =>
+        new Date(item.appointmentAt) > new Date() &&
+        !["cancelled", "canceled", "completed", "no_show"].includes(item.status.toLowerCase()),
+      )
+      .sort(
+        (a, b) => +new Date(a.appointmentAt) - +new Date(b.appointmentAt),
+      )[0],
+    unread = data.notifications.filter((item) => !item.is_read).length,
+    medicalStaffNotice = data.notifications.find(
+      (item) => !item.is_read && isMedicalStaffNotification(item.notification_type),
+    ),
+    recommendation = results.recommendations[0],
+    action = medicalStaffNotice
+      ? {
+          icon: "medkit",
+          title: ar
+            ? medicalStaffNotice.title_ar || "رسالة جديدة من فريقك الطبي"
+            : medicalStaffNotice.title_en || medicalStaffNotice.title || "New message from your care team",
+          copy: ar
+            ? medicalStaffNotice.message_ar || "افتحي الرسالة لمتابعة تعليمات فريقك الطبي"
+            : medicalStaffNotice.message_en || medicalStaffNotice.message,
+          tab: notificationTab(medicalStaffNotice),
+          color: "#356B62",
+        }
+      : next
+        ? {
+            icon: "calendar",
+            title: ar ? "موعدك القادم جاهز" : "Your next visit is ready",
+            copy: new Date(next.appointmentAt).toLocaleString(
+              ar ? "ar-SA" : "en-US",
+              { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" },
+            ),
+            tab: "appointments" as Tab,
+            color: "#4F7B70",
+          }
+      : finance.wallet.outstanding > 0
+        ? {
+            icon: "wallet",
+            title: ar
+              ? "يوجد مبلغ يحتاج مراجعتك"
+              : "A payment needs your attention",
+            copy: ar
+              ? `${finance.wallet.currency} ${finance.wallet.outstanding} مستحق`
+              : `${finance.wallet.currency} ${finance.wallet.outstanding} outstanding`,
+            tab: "wallet" as Tab,
+            color: "#A85D55",
+          }
+        : experience.eligibleVisits.length
+          ? {
+              icon: "star",
+              title: ar ? "كيف كانت زيارتك؟" : "How was your visit?",
+              copy: ar
+                ? "شاركينا تجربتك على صفحة بانثيرا في Google"
+                : "Share your experience on Panthera's Google page",
+              tab: "experience" as Tab,
+              color: "#B28B4B",
+            }
+          : {
+                icon: "sparkles",
+                title: ar
+                  ? "ابدئي خطتك مع بانثيرا"
+                  : "Start your Panthera journey",
+                copy: ar
+                  ? "اختاري ما تريدين الاهتمام به اليوم"
+                  : "Tell us what you would like to care for today",
+                tab: "book" as Tab,
+                color: colors.navy,
+              };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 130 }}>
+      <View
+        style={{
+          flexDirection: ar ? "row-reverse" : "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 26,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <Image
+            alt="Panthera Clinics"
+            source={pantheraBrand}
+            style={{
+              width: 118,
+              height: 54,
+              alignSelf: ar ? "flex-end" : "flex-start",
+            }}
+            resizeMode="contain"
+          />
+          <Text
+            style={{
+              fontSize: 29,
+              fontWeight: "900",
+              color: colors.ink,
+              textAlign: ar ? "right" : "left",
+              marginTop: 8,
+            }}
+          >
+            {ar ? `أهلاً ${name}` : `Hello, ${name}`}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {ar ? "هذه خطوتك التالية اليوم" : "Here is what matters next"}
+          </Text>
+        </View>
+        <View style={{ gap: 8 }}>
+          <TouchableOpacity
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 16,
+              backgroundColor: "#fff",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onPress={() => go("notifications")}
+          >
+            <Icon name="notifications-outline" color={colors.navy} />
+            {unread ? (
+              <View
+                style={{
+                  position: "absolute",
+                  right: 7,
+                  top: 7,
+                  minWidth: 15,
+                  height: 15,
+                  borderRadius: 8,
+                  backgroundColor: colors.danger,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 8, color: "#fff", fontWeight: "900" }}>
+                  {unread}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              width: 44,
+              height: 34,
+              borderRadius: 13,
+              backgroundColor: colors.violetSoft,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onPress={toggleLanguage}
+          >
+            <Text
+              style={{ fontSize: 11, fontWeight: "900", color: colors.navy }}
+            >
+              {ar ? "EN" : "عربي"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => go(action.tab)}>
+        <LinearGradient
+          colors={[action.color, colors.ink]}
+          style={{
+            borderRadius: 32,
+            padding: 24,
+            minHeight: 210,
+            justifyContent: "space-between",
+          }}
+        >
+          <View
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 18,
+              backgroundColor: "#FFFFFF20",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name={action.icon} color="#fff" size={26} />
+          </View>
+          <View>
+            <Text
+              style={{
+                fontSize: 25,
+                fontWeight: "900",
+                color: "#fff",
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              {action.title}
+            </Text>
+            <Text
+              style={{
+                color: "#E4ECEF",
+                lineHeight: 21,
+                marginTop: 8,
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              {action.copy}
+            </Text>
+            <View
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                alignItems: "center",
+                gap: 7,
+                marginTop: 18,
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "900" }}>
+                {ar ? "افتحي الآن" : "Open now"}
+              </Text>
+              <Icon name={ar ? "arrow-back" : "arrow-forward"} color="#fff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+      {next ? (
+        <TouchableOpacity
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: 26,
+            padding: 18,
+            marginTop: 14,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+          onPress={() => go("care")}
+        >
+          <View style={[s.rowBetween, ar && { flexDirection: "row-reverse" }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.eyebrow, ar && { textAlign: "right" }]}>
+                {ar ? "الموعد القادم" : "NEXT VISIT"}
+              </Text>
+              <Text
+                style={[
+                  s.cardTitle,
+                  { fontSize: 19, marginTop: 7 },
+                  ar && { textAlign: "right" },
+                ]}
+              >
+                {appointmentService(next, ar)}
+              </Text>
+              <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                {appointmentProvider(next, ar)} · {appointmentStatusLabel(next.status, ar)}
+              </Text>
+            </View>
+            <View
+              style={{
+                width: 62,
+                height: 68,
+                borderRadius: 21,
+                backgroundColor: colors.navy,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 22, fontWeight: "900", color: "#fff" }}>
+                {new Date(next.appointmentAt).getDate()}
+              </Text>
+              <Text
+                style={{ fontSize: 10, fontWeight: "800", color: "#D7E3E8" }}
+              >
+                {new Date(next.appointmentAt).toLocaleDateString(
+                  ar ? "ar-SA" : "en-US",
+                  { month: "short" },
+                )}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      ) : null}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "في لمحة" : "At a glance"}
+      </Text>
+      <View style={{ flexDirection: ar ? "row-reverse" : "row", gap: 10 }}>
+        {[
+          {
+            icon: "diamond",
+            value: membership?.points ?? 0,
+            label: ar ? "نقطة" : "Points",
+            tab: "membership" as Tab,
+          },
+          {
+            icon: "images",
+            value: results.media.length,
+            label: ar ? "نتيجة" : "Results",
+            tab: "results" as Tab,
+          },
+          {
+            icon: "heart",
+            value: care.history.length,
+            label: ar ? "جلسة" : "Sessions",
+            tab: "care" as Tab,
+          },
+        ].map((item) => (
+          <TouchableOpacity
+            key={item.label}
+            onPress={() => go(item.tab)}
+            style={{
+              flex: 1,
+              backgroundColor: colors.card,
+              borderRadius: 22,
+              padding: 15,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Icon name={item.icon} color={colors.navy} />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "900",
+                color: colors.ink,
+                marginTop: 8,
+              }}
+            >
+              {item.value}
+            </Text>
+            <Text style={{ fontSize: 10, color: colors.muted, marginTop: 3 }}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {recommendation ? (
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#F1EDE6",
+            borderRadius: 25,
+            padding: 18,
+            marginTop: 18,
+            flexDirection: ar ? "row-reverse" : "row",
+            gap: 13,
+          }}
+          onPress={() => go(recommendation.action)}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 15,
+              backgroundColor: "#fff",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="sparkles" color={colors.amber} />
+          </View>
+          <View style={s.grow}>
+            <Text style={[s.eyebrow, ar && { textAlign: "right" }]}>
+              {ar ? "مقترح لكِ" : "FOR YOU"}
+            </Text>
+            <Text
+              style={[
+                s.cardTitle,
+                { marginTop: 5 },
+                ar && { textAlign: "right" },
+              ]}
+            >
+              {recommendation.title}
+            </Text>
+          </View>
+          <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+        </TouchableOpacity>
+      ) : null}
+    </ScrollView>
+  );
+}
 
-function JourneyHub({data,care,results,beauty,experience,language,go,refresh}:{data:PatientDashboard;care:PatientCareHub;results:PatientResults;beauty:BeautyCalendarData;experience:PatientExperience;language:Language;go:(tab:Tab)=>void;refresh:()=>Promise<void>}) {const ar=language==="ar",[section,setSection]=useState<"overview"|"visits"|"results"|"calendar"|"moments">("overview"),items=[{id:"overview",label:ar?"الخطة":"Plan"},{id:"visits",label:ar?"الزيارات":"Visits"},{id:"results",label:ar?"النتائج":"Results"},{id:"calendar",label:ar?"التقويم":"Calendar"},{id:"moments",label:ar?"لحظاتي":"Moments"}] as const;return <View style={{flex:1}}><View style={{paddingHorizontal:18,paddingTop:10,paddingBottom:8,backgroundColor:colors.canvas}}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection:ar?"row-reverse":"row",gap:8}}>{items.map(item=><TouchableOpacity key={item.id} onPress={()=>setSection(item.id)} style={{paddingHorizontal:16,paddingVertical:10,borderRadius:16,backgroundColor:section===item.id?colors.navy:"#fff",borderWidth:1,borderColor:section===item.id?colors.navy:colors.border}}><Text style={{fontSize:12,fontWeight:"900",color:section===item.id?"#fff":colors.text}}>{item.label}</Text></TouchableOpacity>)}</ScrollView></View>{section==="overview"?<Care data={care} language={language}/>:section==="visits"?<Appointments data={data.appointments} language={language}/>:section==="results"?<Results data={results} language={language} go={go} back={()=>setSection("overview")}/>:section==="calendar"?<BeautyCalendar data={beauty} language={language} back={()=>setSection("overview")}/>:<Experience data={experience} language={language} refresh={refresh} back={()=>setSection("overview")}/>}</View>; }
+function JourneyHub({
+  data,
+  care,
+  results,
+  beauty,
+  experience,
+  language,
+  go,
+}: {
+  data: PatientDashboard;
+  care: PatientCareHub;
+  results: PatientResults;
+  beauty: BeautyCalendarData;
+  experience: PatientExperience;
+  language: Language;
+  go: (tab: Tab) => void;
+}) {
+  const ar = language === "ar",
+    [section, setSection] = useState<
+      "overview" | "visits" | "results" | "calendar" | "moments"
+    >("overview"),
+    items = [
+      { id: "overview", label: ar ? "الخطة" : "Plan" },
+      { id: "visits", label: ar ? "الزيارات" : "Visits" },
+      { id: "results", label: ar ? "النتائج" : "Results" },
+      { id: "calendar", label: ar ? "التقويم" : "Calendar" },
+      { id: "moments", label: ar ? "لحظاتي" : "Moments" },
+    ] as const;
+  return (
+    <View style={{ flex: 1 }}>
+      <View
+        style={{
+          paddingHorizontal: 18,
+          paddingTop: 10,
+          paddingBottom: 8,
+          backgroundColor: colors.canvas,
+        }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            flexDirection: ar ? "row-reverse" : "row",
+            gap: 8,
+          }}
+        >
+          {items.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => setSection(item.id)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 16,
+                backgroundColor: section === item.id ? colors.navy : "#fff",
+                borderWidth: 1,
+                borderColor: section === item.id ? colors.navy : colors.border,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "900",
+                  color: section === item.id ? "#fff" : colors.text,
+                }}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+      {section === "overview" ? (
+        <Care data={care} language={language} />
+      ) : section === "visits" ? (
+        <Appointments data={data.appointments} language={language} />
+      ) : section === "results" ? (
+        <Results
+          data={results}
+          language={language}
+          go={go}
+          back={() => setSection("overview")}
+        />
+      ) : section === "calendar" ? (
+        <BeautyCalendar
+          data={beauty}
+          language={language}
+          back={() => setSection("overview")}
+        />
+      ) : (
+        <Experience
+          data={experience}
+          language={language}
+          contact={beauty.contact}
+          back={() => setSection("overview")}
+        />
+      )}
+    </View>
+  );
+}
 
-function MeHub({go,logout,data,membership,finance,language,toggleLanguage}:{go:(tab:Tab)=>void;logout:()=>void;data:PatientDashboard;membership:PatientMembership|null;finance:FinanceHealthHub;language:Language;toggleLanguage:()=>void}) {const ar=language==="ar",p=data.profile,initials=`${p.firstName?.[0]??""}${p.lastName?.[0]??""}`||"P",groups=[{title:ar?"العناية والهوية":"Care & identity",items:[[ar?"بطاقة عضوية بانثيرا":"Panthera membership","diamond-outline","membership"],[ar?"مركز صحتي":"My health center","medical-outline","medical"],[ar?"نتائجي الخاصة":"My private results","images-outline","results"]]},{title:ar?"المال والمواعيد":"Money & visits",items:[[ar?"المحفظة والفواتير":"Wallet & invoices","wallet-outline","wallet"],[ar?"تقويم الجمال":"Beauty Calendar","calendar-outline","beauty"],[ar?"لحظاتي وتقييمي":"Moments & feedback","sparkles-outline","experience"]]},{title:ar?"الإعدادات والدعم":"Settings & support",items:[[ar?"الإشعارات":"Notifications","notifications-outline","notifications"],[ar?"تواصل مع بانثيرا":"Contact Panthera","chatbubble-ellipses-outline","support"]]}];return <ScrollView contentContainerStyle={{padding:22,paddingBottom:130}}><View style={{flexDirection:ar?"row-reverse":"row",alignItems:"center",gap:15,marginBottom:22}}><View style={{width:70,height:70,borderRadius:25,backgroundColor:colors.ink,alignItems:"center",justifyContent:"center"}}><Text style={{fontSize:22,fontWeight:"900",color:"#fff"}}>{initials}</Text></View><View style={s.grow}><Text style={[s.title,ar&&{textAlign:"right"}]}>{[p.firstName,p.lastName].filter(Boolean).join(" ")}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>#{p.customerCode??p.id} · {ar?"مريض بانثيرا":"Panthera patient"}</Text></View><TouchableOpacity onPress={toggleLanguage} style={{paddingHorizontal:12,paddingVertical:9,borderRadius:14,backgroundColor:colors.violetSoft}}><Text style={{fontSize:11,fontWeight:"900",color:colors.navy}}>{ar?"EN":"عربي"}</Text></TouchableOpacity></View><TouchableOpacity onPress={()=>go("membership")}><LinearGradient colors={[colors.navy,colors.ink]} style={{borderRadius:27,padding:20,flexDirection:ar?"row-reverse":"row",alignItems:"center",justifyContent:"space-between"}}><View><Text style={{fontSize:11,color:"#D7E3E8",textAlign:ar?"right":"left"}}>{ar?"عضوية بانثيرا":"PANTHERA MEMBER"}</Text><Text style={{fontSize:21,fontWeight:"900",color:"#fff",marginTop:6}}>{membership?.tier?.toUpperCase()??"SILVER"}</Text><Text style={{color:"#D7E3E8",marginTop:4}}>{membership?.points??0} {ar?"نقطة":"points"}</Text></View><View style={{width:54,height:54,borderRadius:19,backgroundColor:"#FFFFFF20",alignItems:"center",justifyContent:"center"}}><Icon name="diamond" color="#fff" size={27}/></View></LinearGradient></TouchableOpacity>{finance.wallet.outstanding>0?<TouchableOpacity onPress={()=>go("wallet")} style={{backgroundColor:"#FFF0EB",borderRadius:20,padding:15,marginTop:12,flexDirection:ar?"row-reverse":"row",gap:10}}><Icon name="alert-circle" color={colors.danger}/><Text style={[s.menuText,ar&&{textAlign:"right"}]}>{ar?`${finance.wallet.outstanding} ${finance.wallet.currency} تحتاج مراجعة`:`${finance.wallet.currency} ${finance.wallet.outstanding} needs attention`}</Text></TouchableOpacity>:null}{groups.map(group=><View key={group.title}><Text style={[s.sectionTitle,ar&&{textAlign:"right"}]}>{group.title}</Text><View style={{borderRadius:24,overflow:"hidden",borderWidth:1,borderColor:colors.border}}>{group.items.map(([label,icon,target])=><TouchableOpacity key={label} onPress={()=>go(target as Tab)} style={[s.menu,ar&&{flexDirection:"row-reverse"}]}><View style={[s.quickIcon,{width:38,height:38}]}><Icon name={icon} color={colors.navy} size={19}/></View><Text style={[s.menuText,ar&&{textAlign:"right"}]}>{label}</Text><Icon name={ar?"chevron-back":"chevron-forward"}/></TouchableOpacity>)}</View></View>)}<TouchableOpacity onPress={logout} style={s.logout}><Icon name="log-out-outline" color={colors.danger}/><Text style={s.logoutText}>{ar?"تسجيل الخروج":"Sign out"}</Text></TouchableOpacity></ScrollView>; }
+function MeHub({
+  go,
+  logout,
+  data,
+  membership,
+  finance,
+  language,
+  toggleLanguage,
+}: {
+  go: (tab: Tab) => void;
+  logout: () => void;
+  data: PatientDashboard;
+  membership: PatientMembership | null;
+  finance: FinanceHealthHub;
+  language: Language;
+  toggleLanguage: () => void;
+}) {
+  const ar = language === "ar",
+    p = data.profile,
+    initials = `${p.firstName?.[0] ?? ""}${p.lastName?.[0] ?? ""}` || "P",
+    groups = [
+      {
+        title: ar ? "العناية والهوية" : "Care & identity",
+        items: [
+          [
+            ar ? "بطاقة عضوية بانثيرا" : "Panthera membership",
+            "diamond-outline",
+            "membership",
+          ],
+          [ar ? "مركز صحتي" : "My health center", "medical-outline", "medical"],
+          [
+            ar ? "نتائجي الخاصة" : "My private results",
+            "images-outline",
+            "results",
+          ],
+        ],
+      },
+      {
+        title: ar ? "المال والمواعيد" : "Money & visits",
+        items: [
+          [
+            ar ? "المحفظة والفواتير" : "Wallet & invoices",
+            "wallet-outline",
+            "wallet",
+          ],
+          [
+            ar ? "تقويم الجمال" : "Beauty Calendar",
+            "calendar-outline",
+            "beauty",
+          ],
+          [
+            ar ? "لحظاتي وتقييم Google" : "Moments & Google review",
+            "sparkles-outline",
+            "experience",
+          ],
+        ],
+      },
+      {
+        title: ar ? "الإعدادات والدعم" : "Settings & support",
+        items: [
+          [
+            ar ? "الإشعارات" : "Notifications",
+            "notifications-outline",
+            "notifications",
+          ],
+          [
+            ar ? "تواصل مع بانثيرا" : "Contact Panthera",
+            "chatbubble-ellipses-outline",
+            "support",
+          ],
+        ],
+      },
+    ];
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 130 }}>
+      <View
+        style={{
+          flexDirection: ar ? "row-reverse" : "row",
+          alignItems: "center",
+          gap: 15,
+          marginBottom: 22,
+        }}
+      >
+        <View
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 25,
+            backgroundColor: colors.ink,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "900", color: "#fff" }}>
+            {initials}
+          </Text>
+        </View>
+        <View style={s.grow}>
+          <Text style={[s.title, ar && { textAlign: "right" }]}>
+            {[p.firstName, p.lastName].filter(Boolean).join(" ")}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            #{p.customerCode ?? p.id} ·{" "}
+            {ar ? "مريض بانثيرا" : "Panthera patient"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={toggleLanguage}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 9,
+            borderRadius: 14,
+            backgroundColor: colors.violetSoft,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: "900", color: colors.navy }}>
+            {ar ? "EN" : "عربي"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity onPress={() => go("membership")}>
+        <LinearGradient
+          colors={[colors.navy, colors.ink]}
+          style={{
+            borderRadius: 27,
+            padding: 20,
+            flexDirection: ar ? "row-reverse" : "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View>
+            <Text
+              style={{
+                fontSize: 11,
+                color: "#D7E3E8",
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              {ar ? "عضوية بانثيرا" : "PANTHERA MEMBER"}
+            </Text>
+            <Text
+              style={{
+                fontSize: 21,
+                fontWeight: "900",
+                color: "#fff",
+                marginTop: 6,
+              }}
+            >
+              {membership?.tier?.toUpperCase() ?? "SILVER"}
+            </Text>
+            <Text style={{ color: "#D7E3E8", marginTop: 4 }}>
+              {membership?.points ?? 0} {ar ? "نقطة" : "points"}
+            </Text>
+          </View>
+          <View
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 19,
+              backgroundColor: "#FFFFFF20",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="diamond" color="#fff" size={27} />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+      {finance.wallet.outstanding > 0 ? (
+        <TouchableOpacity
+          onPress={() => go("wallet")}
+          style={{
+            backgroundColor: "#FFF0EB",
+            borderRadius: 20,
+            padding: 15,
+            marginTop: 12,
+            flexDirection: ar ? "row-reverse" : "row",
+            gap: 10,
+          }}
+        >
+          <Icon name="alert-circle" color={colors.danger} />
+          <Text style={[s.menuText, ar && { textAlign: "right" }]}>
+            {ar
+              ? `${finance.wallet.outstanding} ${finance.wallet.currency} تحتاج مراجعة`
+              : `${finance.wallet.currency} ${finance.wallet.outstanding} needs attention`}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+      {groups.map((group) => (
+        <View key={group.title}>
+          <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+            {group.title}
+          </Text>
+          <View
+            style={{
+              borderRadius: 24,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            {group.items.map(([label, icon, target]) => (
+              <TouchableOpacity
+                key={label}
+                onPress={() => go(target as Tab)}
+                style={[s.menu, ar && { flexDirection: "row-reverse" }]}
+              >
+                <View style={[s.quickIcon, { width: 38, height: 38 }]}>
+                  <Icon name={icon} color={colors.navy} size={19} />
+                </View>
+                <Text style={[s.menuText, ar && { textAlign: "right" }]}>
+                  {label}
+                </Text>
+                <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ))}
+      <TouchableOpacity onPress={logout} style={s.logout}>
+        <Icon name="log-out-outline" color={colors.danger} />
+        <Text style={s.logoutText}>{ar ? "تسجيل الخروج" : "Sign out"}</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
 
-function Empty({text}:{text:string}){return <View style={s.empty}><Icon name="file-tray-outline" size={32}/><Text style={s.cardMuted}>{text}</Text></View>}
+function Concierge({
+  data,
+  language,
+  refresh,
+  back,
+}: {
+  data: PatientConcierge;
+  language: Language;
+  refresh: () => Promise<void>;
+  back: () => void;
+}) {
+  const ar = language === "ar",
+    [message, setMessage] = useState(""),
+    [name, setName] = useState(""),
+    [busy, setBusy] = useState(false);
+  const run = async (action: () => Promise<unknown>, success: string) => {
+    setBusy(true);
+    try {
+      await action();
+      await refresh();
+      Alert.alert(ar ? "تم" : "Done", success);
+    } catch (e) {
+      Alert.alert(
+        ar ? "تعذر التنفيذ" : "Unable to continue",
+        localizedError(e, ar),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const request = (
+    id: number,
+    type: "reschedule" | "cancel" | "check_in",
+    appointmentDate: string,
+  ) => {
+    const preferred =
+      type === "reschedule"
+        ? new Date(new Date(appointmentDate).getTime() + 86400000).toISOString()
+        : null;
+    return run(
+      () =>
+        requestAppointmentAction(
+          id,
+          type,
+          preferred,
+          type === "reschedule"
+            ? "Please contact me to choose the best available time"
+            : undefined,
+        ),
+      ar ? "وصل طلبك لفريق العيادة" : "Your request reached the clinic team",
+    );
+  };
+  return (
+    <ScrollView contentContainerStyle={s.page}>
+      <Header
+        title={ar ? "مساعد بانثيرا" : "Panthera Concierge"}
+        subtitle={
+          ar
+            ? "كل ما تحتاجينه في مكان واحد"
+            : "Everything you need in one place"
+        }
+        back={back}
+      />
+      <LinearGradient
+        colors={[colors.navy, colors.ink]}
+        style={{ borderRadius: 28, padding: 22, marginBottom: 22 }}
+      >
+        <Icon name="sparkles" color="#fff" size={28} />
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 21,
+            fontWeight: "900",
+            marginTop: 12,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {ar ? "نحن نرتب الباقي عنك" : "We organize the rest for you"}
+        </Text>
+        <Text
+          style={{
+            color: "#D7E3E8",
+            lineHeight: 21,
+            marginTop: 7,
+            textAlign: ar ? "right" : "left",
+          }}
+        >
+          {ar
+            ? "طلباتك تصل مباشرة للفريق مع أولوية واضحة ومتابعة لحظية."
+            : "Your requests go directly to the right team with clear priority and live updates."}
+        </Text>
+      </LinearGradient>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "مواعيدي القادمة" : "Upcoming appointments"}
+      </Text>
+      {data.upcomingAppointments.length ? (
+        data.upcomingAppointments.map((a) => (
+          <View key={a.id} style={s.listCard}>
+            <View style={[s.quickIcon, { backgroundColor: "#E7EFEA" }]}>
+              <Icon name="calendar" color={colors.cyan} />
+            </View>
+            <View style={s.grow}>
+              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                {appointmentService(a, ar) ?? (ar ? "موعد بانثيرا" : "Panthera visit")}
+              </Text>
+              <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                {new Date(a.date).toLocaleString(ar ? "ar-SA" : "en-SA")} ·{" "}
+                {appointmentProvider(a, ar) ?? "Panthera"}
+              </Text>
+              <View
+                style={{
+                  flexDirection: ar ? "row-reverse" : "row",
+                  flexWrap: "wrap",
+                  gap: 7,
+                  marginTop: 12,
+                }}
+              >
+                <TouchableOpacity
+                  disabled={busy}
+                  onPress={() => void request(a.id, "check_in", a.date)}
+                  style={{
+                    backgroundColor: "#E7EFEA",
+                    padding: 9,
+                    borderRadius: 11,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "800",
+                      color: colors.cyan,
+                    }}
+                  >
+                    {ar ? "تسجيل الوصول" : "Check in"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  disabled={busy}
+                  onPress={() => void request(a.id, "reschedule", a.date)}
+                  style={{
+                    backgroundColor: colors.violetSoft,
+                    padding: 9,
+                    borderRadius: 11,
+                  }}
+                >
+                  <Text style={s.link}>
+                    {ar ? "تغيير الموعد" : "Reschedule"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  disabled={busy}
+                  onPress={() =>
+                    void run(
+                      () =>
+                        addPatientAppointmentToCalendar({
+                          title: `Panthera · ${appointmentService(a, ar) ?? (ar ? "موعد" : "Appointment")}`,
+                          start: a.date,
+                          notes: appointmentProvider(a, ar) ?? undefined,
+                        }, language),
+                      ar
+                        ? "تمت إضافة الموعد للتقويم"
+                        : "Appointment added to calendar",
+                    )
+                  }
+                  style={{
+                    backgroundColor: "#EDF3F7",
+                    padding: 9,
+                    borderRadius: 11,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "800",
+                      color: colors.navy,
+                    }}
+                  >
+                    {ar ? "أضف للتقويم" : "Add to calendar"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  disabled={busy}
+                  onPress={() => void request(a.id, "cancel", a.date)}
+                  style={{
+                    backgroundColor: "#FFF0EB",
+                    padding: 9,
+                    borderRadius: 11,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "800",
+                      color: colors.danger,
+                    }}
+                  >
+                    {ar ? "إلغاء" : "Cancel"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Empty
+          text={ar ? "لا توجد مواعيد قادمة" : "No upcoming appointments"}
+        />
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "الموافقات المطلوبة" : "Required consents"}
+      </Text>
+      {data.consents.filter((x) => x.status === "pending").length ? (
+        data.consents
+          .filter((x) => x.status === "pending")
+          .map((c) => (
+            <View
+              key={c.id}
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 22,
+                padding: 18,
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: 10,
+              }}
+            >
+              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                {c.title}
+              </Text>
+              <Text
+                style={[s.cardMuted, ar && { textAlign: "right" }]}
+                numberOfLines={4}
+              >
+                {c.body}
+              </Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder={ar ? "الاسم الكامل للتوقيع" : "Full name to sign"}
+                style={[
+                  s.input,
+                  {
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 13,
+                    padding: 12,
+                    marginTop: 12,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                disabled={busy || name.trim().length < 2}
+                onPress={() =>
+                  void run(
+                    () => acceptPatientConsent(c.id, name),
+                    ar ? "تم حفظ موافقتك" : "Your consent was saved",
+                  )
+                }
+                style={[s.primary, { marginTop: 10 }]}
+              >
+                <Text style={s.primaryText}>
+                  {ar ? "أوافق وأوقع" : "Accept & sign"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))
+      ) : (
+        <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+          {ar ? "لا توجد موافقات معلقة" : "No pending consents"}
+        </Text>
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "باقاتي" : "My packages"}
+      </Text>
+      {data.packages.length ? (
+        data.packages.map((p) => (
+          <View
+            key={p.id}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 22,
+              padding: 18,
+              marginBottom: 10,
+            }}
+          >
+            <View style={s.rowBetween}>
+              <Text style={s.cardTitle}>{p.name}</Text>
+              <Text style={s.status}>
+                {p.usedSessions}/{p.totalSessions}
+              </Text>
+            </View>
+            <View style={[s.progress, { marginTop: 14, marginBottom: 6 }]}>
+              <View
+                style={[
+                  s.progressFill,
+                  {
+                    width: `${Math.min(100, (p.usedSessions / p.totalSessions) * 100)}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={s.cardMuted}>{p.service ?? p.status}</Text>
+          </View>
+        ))
+      ) : (
+        <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+          {ar ? "لا توجد باقات نشطة" : "No active packages"}
+        </Text>
+      )}
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "راسل فريق الرعاية" : "Message the care team"}
+      </Text>
+      <View style={{ backgroundColor: "#fff", borderRadius: 22, padding: 16 }}>
+        <TextInput
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          placeholder={
+            ar ? "اكتبي سؤالك أو طلبك هنا…" : "Write your question or request…"
+          }
+          style={{
+            minHeight: 92,
+            textAlignVertical: "top",
+            color: colors.text,
+            textAlign: ar ? "right" : "left",
+          }}
+        />
+        <TouchableOpacity
+          disabled={busy || !message.trim()}
+          onPress={() =>
+            void run(
+              async () => {
+                await sendPatientMessage(message, "general", null, language);
+                setMessage("");
+              },
+              ar ? "تم إرسال رسالتك" : "Your message was sent",
+            )
+          }
+          style={s.primary}
+        >
+          <Text style={s.primaryText}>
+            {ar ? "إرسال للفريق" : "Send to care team"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {data.requests.length ? (
+        <>
+          <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+            {ar ? "متابعة الطلبات" : "Request tracking"}
+          </Text>
+          {data.requests.slice(0, 5).map((r) => (
+            <View key={r.id} style={s.notice}>
+              <Icon
+                name={r.status === "completed" ? "checkmark-circle" : "time"}
+                color={r.status === "completed" ? colors.cyan : colors.violet}
+              />
+              <View style={s.grow}>
+                <Text style={s.cardTitle}>{r.type.replaceAll("_", " ")}</Text>
+                <Text style={s.cardMuted}>
+                  {r.status} ·{" "}
+                  {new Date(r.createdAt).toLocaleDateString(
+                    ar ? "ar-SA" : "en-SA",
+                  )}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <View style={s.empty}>
+      <Icon name="file-tray-outline" size={32} />
+      <Text style={s.cardMuted}>{text}</Text>
+    </View>
+  );
+}
+
+function PrivacyCenter({ language }: { language: Language }) {
+  const ar = language === "ar",
+    [document, setDocument] = useState<"privacy" | "terms" | null>(null),
+    [busy, setBusy] = useState(false);
+  if (document)
+    return (
+      <LegalDocument
+        type={document}
+        language={language}
+        back={() => setDocument(null)}
+      />
+    );
+  const request = (type: "access" | "export" | "correction" | "deletion") => {
+    const execute = async () => {
+      setBusy(true);
+      try {
+        await submitPrivacyRequest(type);
+        Alert.alert(
+          ar ? "تم استلام طلبك" : "Request received",
+          ar
+            ? "سيقوم فريق الخصوصية بمراجعة الطلب والتواصل معك."
+            : "The privacy team will review the request and contact you.",
+        );
+        if (type === "deletion") await supabase.auth.signOut();
+      } catch (e) {
+        Alert.alert(
+          ar ? "تعذر إرسال الطلب" : "Unable to submit request",
+          localizedError(e, ar),
+        );
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (type === "deletion")
+      Alert.alert(
+        ar ? "طلب حذف الحساب" : "Request account deletion",
+        ar
+          ? "سيتم إيقاف دخول التطبيق، مع الاحتفاظ بالسجلات الطبية أو المالية التي يلزم حفظها نظامًا فقط."
+          : "App access will be disabled while legally required clinical or financial records are retained.",
+        [
+          { text: ar ? "إلغاء" : "Cancel", style: "cancel" },
+          {
+            text: ar ? "إرسال الطلب" : "Submit request",
+            style: "destructive",
+            onPress: () => void execute(),
+          },
+        ],
+      );
+    else void execute();
+  };
+  const actions = [
+    {
+      type: "access" as const,
+      icon: "eye-outline",
+      ar: "طلب الوصول إلى بياناتي",
+      en: "Access my data",
+    },
+    {
+      type: "export" as const,
+      icon: "download-outline",
+      ar: "طلب نسخة من بياناتي",
+      en: "Request a data copy",
+    },
+    {
+      type: "correction" as const,
+      icon: "create-outline",
+      ar: "طلب تصحيح البيانات",
+      en: "Request data correction",
+    },
+    {
+      type: "deletion" as const,
+      icon: "trash-outline",
+      ar: "حذف الحساب والبيانات",
+      en: "Delete account and data",
+    },
+  ];
+  return (
+    <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
+      <Header
+        title={ar ? "الخصوصية والحساب" : "Privacy & account"}
+        subtitle={
+          ar
+            ? "تحكم واضح وآمن في بياناتك"
+            : "Clear, secure control of your data"
+        }
+      />
+      <View
+        style={{
+          backgroundColor: "#E7EFEA",
+          borderRadius: 25,
+          padding: 19,
+          flexDirection: ar ? "row-reverse" : "row",
+          gap: 13,
+        }}
+      >
+        <Icon name="shield-checkmark" color={colors.navy} size={28} />
+        <View style={s.grow}>
+          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+            {ar ? "بياناتك الصحية خاصة" : "Your health data is private"}
+          </Text>
+          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+            {ar
+              ? "لا يصل إليها إلا أنت وفريق العناية المصرح له."
+              : "Only you and your authorized care team can access it."}
+          </Text>
+        </View>
+      </View>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "السياسات" : "Policies"}
+      </Text>
+      <TouchableOpacity
+        style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+        onPress={() => setDocument("privacy")}
+      >
+        <Icon name="document-lock-outline" color={colors.navy} />
+        <Text style={[s.menuText, ar && { textAlign: "right" }]}>
+          {ar ? "سياسة الخصوصية" : "Privacy policy"}
+        </Text>
+        <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[s.listCard, ar && { flexDirection: "row-reverse" }]}
+        onPress={() => setDocument("terms")}
+      >
+        <Icon name="document-text-outline" color={colors.navy} />
+        <Text style={[s.menuText, ar && { textAlign: "right" }]}>
+          {ar
+            ? "الشروط والأحكام وحقوق الملكية"
+            : "Terms, conditions & intellectual property"}
+        </Text>
+        <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+      </TouchableOpacity>
+      <Text style={[s.sectionTitle, ar && { textAlign: "right" }]}>
+        {ar ? "حقوق بياناتي" : "My data rights"}
+      </Text>
+      {actions.map((action) => (
+        <TouchableOpacity
+          disabled={busy}
+          key={action.type}
+          style={[
+            s.listCard,
+            action.type === "deletion" && { borderColor: "#E4B1AA" },
+            ar && { flexDirection: "row-reverse" },
+          ]}
+          onPress={() => request(action.type)}
+        >
+          <Icon
+            name={action.icon}
+            color={action.type === "deletion" ? colors.danger : colors.violet}
+          />
+          <Text
+            style={[
+              s.menuText,
+              action.type === "deletion" && { color: colors.danger },
+              ar && { textAlign: "right" },
+            ]}
+          >
+            {ar ? action.ar : action.en}
+          </Text>
+          <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+        </TouchableOpacity>
+      ))}
+      <Text style={[s.legal, { lineHeight: 18 }]}>
+        {ar
+          ? `إصدار السياسات: ${legalVersion}. التطبيق ليس لخدمات الطوارئ.`
+          : `Policy version: ${legalVersion}. This app is not for emergency care.`}
+      </Text>
+    </ScrollView>
+  );
+}
 
 export default function App() {
-  const [sessionReady,setSessionReady]=useState(false),[authenticated,setAuthenticated]=useState(false),[tab,setTab]=useState<Tab>("home"),[data,setData]=useState<PatientDashboard|null>(null),[care,setCare]=useState<PatientCareHub>({activePlan:null,history:[],appointmentTracking:[]}),[membership,setMembership]=useState<PatientMembership|null>(null),[results,setResults]=useState<PatientResults>({media:[],recommendations:[]}),[beauty,setBeauty]=useState<BeautyCalendarData>({events:[],contact:null}),[finance,setFinance]=useState<FinanceHealthHub>({wallet:{totalPaid:0,outstanding:0,currency:"SAR",transactions:[]},health:{record:null,completeness:0,updateRequests:[]}}),[experience,setExperience]=useState<PatientExperience>({moments:[],eligibleVisits:[],feedback:[]}),[error,setError]=useState(""),[language,setLanguage]=useState<Language>("en");
-  const refresh=useCallback(async()=>{try{setError("");const [dashboard,careHub,membershipCard,patientResults,beautyCalendar,financeHealth,patientExperience]=await Promise.all([loadDashboard(),loadCareHub(),loadMembership(),loadPatientResults(),loadBeautyCalendar(),loadFinanceHealth(),loadPatientExperience()]);setData(dashboard);setCare(careHub);setMembership(membershipCard);setResults(patientResults);setBeauty(beautyCalendar);setFinance(financeHealth);setExperience(patientExperience);}catch(e){setError(e instanceof Error?e.message:"Unable to load your account");}},[]);
-  useEffect(()=>{supabase.auth.getSession().then(({data})=>{setAuthenticated(Boolean(data.session));setSessionReady(true);if(data.session)setTimeout(refresh,0);});const{data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{setAuthenticated(Boolean(session));if(session)setTimeout(refresh,0);else setData(null);});return()=>listener.subscription.unsubscribe();},[refresh]);
-  useEffect(()=>{void AsyncStorage.getItem("zernio_language").then(value=>{if(value==="ar"||value==="en")setLanguage(value);});},[]);
-  useEffect(()=>{if(!authenticated)return;const channel=supabase.channel("patient-notification-updates").on("postgres_changes",{event:"INSERT",schema:"public",table:"patient_notifications"},()=>{void refresh();}).subscribe();return()=>{void supabase.removeChannel(channel);};},[authenticated,refresh]);
-  useEffect(()=>{if(!authenticated)return;const timer=setInterval(()=>void refresh(),10000);const listener=AppState.addEventListener("change",state=>{if(state==="active")void refresh();});return()=>{clearInterval(timer);listener.remove();};},[authenticated,refresh]);
-  const toggleLanguage=()=>{const next=language==="en"?"ar":"en";setLanguage(next);void AsyncStorage.setItem("zernio_language",next);};
-  if(!sessionReady) return <SafeAreaProvider><View style={s.loader}><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:280,height:180}} resizeMode="contain"/><Text style={s.cardMuted}>{language==="ar"?"جارٍ التحميل بأمان…":"Loading securely…"}</Text></View></SafeAreaProvider>;
-  if(!authenticated) return <SafeAreaProvider><StatusBar style="dark"/><Login language={language} toggleLanguage={toggleLanguage}/></SafeAreaProvider>;
-  if(!data) return <SafeAreaProvider><View style={s.loader}><Image alt="Panthera Clinics" source={pantheraBrand} style={{width:280,height:180}} resizeMode="contain"/><Text style={s.cardMuted}>{error||(language==="ar"?"جارٍ تحميل بياناتك…":"Loading your care…")}</Text>{error?<TouchableOpacity style={s.secondary} onPress={refresh}><Text style={s.secondaryText}>{language==="ar"?"حاول مرة أخرى":"Try again"}</Text></TouchableOpacity>:null}</View></SafeAreaProvider>;
-  const main = tab==="home"?<Today go={setTab} data={data} care={care} membership={membership} finance={finance} results={results} experience={experience} language={language} toggleLanguage={toggleLanguage}/>:tab==="book"?<Booking refresh={refresh} language={language}/>:tab==="care"?<JourneyHub data={data} care={care} results={results} beauty={beauty} experience={experience} language={language} go={setTab} refresh={refresh}/>:tab==="appointments"?<Appointments data={data.appointments} language={language}/>:tab==="medical"?<HealthCenter data={finance.health} language={language} refresh={refresh} back={()=>setTab("profile")}/>:tab==="wallet"?<Wallet data={finance.wallet} language={language} back={()=>setTab("profile")}/>:tab==="membership"?<Membership data={membership} language={language} back={()=>setTab("profile")}/>:tab==="results"?<Results data={results} language={language} go={setTab} back={()=>setTab("profile")}/>:tab==="beauty"?<BeautyCalendar data={beauty} language={language} back={()=>setTab("profile")}/>:tab==="experience"?<Experience data={experience} language={language} refresh={refresh} back={()=>setTab("profile")}/>:tab==="support"?<Support data={beauty.contact} language={language} back={()=>setTab("home")}/>:tab==="notifications"?<Notifications data={data.notifications} language={language} back={()=>setTab("home")}/>:<MeHub data={data} membership={membership} finance={finance} go={setTab} language={language} toggleLanguage={toggleLanguage} logout={()=>supabase.auth.signOut()}/>;
-  const t=translate(language),navItems=[["home","sunny",language==="ar"?"اليوم":"Today"],["book","add-circle",t.book],["care","heart",language==="ar"?"رحلتي":"Journey"],["profile","person",language==="ar"?"أنا":"Me"]];return <SafeAreaProvider><SafeAreaView style={s.safe}><StatusBar style="dark"/><View style={s.content}>{main}</View>{tab!=="support"&&tab!=="book"?<TouchableOpacity accessibilityLabel={language==="ar"?"المساعدة":"Help"} onPress={()=>setTab("support")} style={{position:"absolute",right:22,bottom:96,width:52,height:52,borderRadius:19,backgroundColor:colors.navy,alignItems:"center",justifyContent:"center",zIndex:30}}><Icon name="chatbubble-ellipses" color="#fff" size={24}/></TouchableOpacity>:null}<View style={s.nav}>{navItems.map(([id,icon,label])=><TouchableOpacity key={id} style={s.navItem} onPress={()=>setTab(id as Tab)}><Icon name={(tab===id?icon:`${icon}-outline`) as IconName} color={tab===id?"#FFFFFF":"#AEBBC2"}/><Text style={[s.navText,tab===id&&s.navActive]}>{label}</Text></TouchableOpacity>)}</View></SafeAreaView></SafeAreaProvider>;
+  const [sessionReady, setSessionReady] = useState(false),
+    [authenticated, setAuthenticated] = useState(false),
+    [unlocked, setUnlocked] = useState(false),
+    [tab, setTab] = useState<Tab>("home"),
+    [data, setData] = useState<PatientDashboard | null>(null),
+    [care, setCare] = useState<PatientCareHub>({
+      activePlan: null,
+      history: [],
+      appointmentTracking: [],
+    }),
+    [membership, setMembership] = useState<PatientMembership | null>(null),
+    [results, setResults] = useState<PatientResults>({
+      media: [],
+      recommendations: [],
+    }),
+    [beauty, setBeauty] = useState<BeautyCalendarData>({
+      events: [],
+      contact: null,
+    }),
+    [finance, setFinance] = useState<FinanceHealthHub>({
+      wallet: {
+        totalPaid: 0,
+        outstanding: 0,
+        currency: "SAR",
+        transactions: [],
+      },
+      health: { record: null, completeness: 0, updateRequests: [] },
+    }),
+    [experience, setExperience] = useState<PatientExperience>({
+      moments: [],
+      eligibleVisits: [],
+      feedback: [],
+    }),
+    [concierge, setConcierge] = useState<PatientConcierge>({
+      requests: [],
+      consents: [],
+      messages: [],
+      packages: [],
+      upcomingAppointments: [],
+    }),
+    [error, setError] = useState(""),
+    [language, setLanguage] = useState<Language>("en");
+  const refresh = useCallback(async () => {
+    try {
+      setError("");
+      const [
+        dashboard,
+        careHub,
+        membershipCard,
+        patientResults,
+        beautyCalendar,
+        financeHealth,
+        patientExperience,
+        conciergeHub,
+      ] = await Promise.all([
+        loadDashboard(),
+        loadCareHub(),
+        loadMembership(),
+        loadPatientResults(),
+        loadBeautyCalendar(),
+        loadFinanceHealth(),
+        loadPatientExperience(),
+        loadPatientConcierge(),
+      ]);
+      setData(dashboard);
+      setCare(careHub);
+      setMembership(membershipCard);
+      setResults(patientResults);
+      setBeauty(beautyCalendar);
+      setFinance(financeHealth);
+      setExperience(patientExperience);
+      setConcierge(conciergeHub);
+    } catch (e) {
+      setError(localizedError(e, language === "ar", language === "ar" ? "تعذر تحميل حسابك" : "Unable to load your account"));
+    }
+  }, [language]);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthenticated(Boolean(data.session));
+      setSessionReady(true);
+      if (data.session) setTimeout(refresh, 0);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setAuthenticated(Boolean(session));
+        if (session) setTimeout(refresh, 0);
+        else {
+          setData(null);
+          setUnlocked(false);
+        }
+      },
+    );
+    return () => listener.subscription.unsubscribe();
+  }, [refresh]);
+  const pushRegistrationAttempted = useRef(false);
+  const pushRegistrationInFlight = useRef(false);
+  useEffect(() => {
+    if (!authenticated) return;
+    let active = true;
+    const unlock = () =>
+      void unlockWithBiometrics(language)
+        .then((value) => {
+          if (active) setUnlocked(value);
+        })
+        .catch(() => {
+          if (active) setUnlocked(false);
+        });
+    unlock();
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") unlock();
+      else setUnlocked(false);
+    });
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, [authenticated, language]);
+  useEffect(() => {
+    if (
+      !unlocked ||
+      !data?.profile.id ||
+      pushRegistrationAttempted.current ||
+      pushRegistrationInFlight.current
+    )
+      return;
+    pushRegistrationInFlight.current = true;
+    void registerPatientPushNotifications(language)
+      .then(() => {
+        pushRegistrationAttempted.current = true;
+      })
+      .catch((e) =>
+        Alert.alert(
+          language === "ar"
+            ? "تعذر تفعيل الإشعارات"
+            : "Notifications need attention",
+          localizedError(
+            e,
+            language === "ar",
+            language === "ar"
+              ? "فعّل الإشعارات ثم حاول مرة أخرى."
+              : "Please enable notifications and try again.",
+          ),
+        ),
+      )
+      .finally(() => {
+        pushRegistrationInFlight.current = false;
+      });
+  }, [unlocked, language, data?.profile.id]);
+  useEffect(
+    () => subscribeToPatientNotifications((payload) => {
+      const tab = payload.actionTab as Tab | undefined;
+      setTab(tab && tab !== "home" ? tab : "notifications");
+      void markPatientNotificationsRead().then(refresh).catch(() => undefined);
+    }),
+    [refresh],
+  );
+  useEffect(() => {
+    if (tab !== "notifications" || !authenticated) return;
+    void Promise.resolve().then(() =>
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              notifications: current.notifications.map((item) => ({
+                ...item,
+                is_read: true,
+              })),
+            }
+          : current,
+      ),
+    );
+    void markPatientNotificationsRead()
+      .then(refresh)
+      .catch(() => undefined);
+  }, [tab, authenticated, refresh]);
+  useEffect(() => {
+    void AsyncStorage.getItem("zernio_language").then((value) => {
+      if (value === "ar" || value === "en") setLanguage(value);
+    });
+  }, []);
+  useEffect(() => {
+    if (authenticated) void setPatientLanguage(language).catch(() => undefined);
+  }, [authenticated, language]);
+  useEffect(() => {
+    if (!authenticated) return;
+    const channel = supabase
+      .channel("patient-notification-updates")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "patient_notifications" },
+        () => {
+          if (tab === "notifications")
+            void markPatientNotificationsRead().then(refresh);
+          else void refresh();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [authenticated, refresh, tab]);
+  useEffect(() => {
+    if (!authenticated) return;
+    const timer = setInterval(() => void refresh(), 10000);
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refresh();
+    });
+    return () => {
+      clearInterval(timer);
+      listener.remove();
+    };
+  }, [authenticated, refresh]);
+  const toggleLanguage = () => {
+    const next = language === "en" ? "ar" : "en";
+    setLanguage(next);
+    void AsyncStorage.setItem("zernio_language", next);
+    if (authenticated) void setPatientLanguage(next).catch(() => undefined);
+  };
+  if (!sessionReady)
+    return (
+      <SafeAreaProvider>
+        <View style={s.loader}>
+          <Image
+            alt="Panthera Clinics"
+            source={pantheraBrand}
+            style={{ width: 280, height: 180 }}
+            resizeMode="contain"
+          />
+          <Text style={s.cardMuted}>
+            {language === "ar" ? "جارٍ التحميل بأمان…" : "Loading securely…"}
+          </Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  if (!authenticated)
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Login language={language} toggleLanguage={toggleLanguage} />
+      </SafeAreaProvider>
+    );
+  if (!unlocked)
+    return (
+      <SafeAreaProvider>
+        <View style={s.loader}>
+          <Icon name="finger-print" color={colors.navy} size={54} />
+          <Text style={[s.title, { marginTop: 20 }]}>
+            {language === "ar" ? "بياناتك محمية" : "Your care is protected"}
+          </Text>
+          <Text style={[s.cardMuted, { textAlign: "center", maxWidth: 280 }]}>
+            {language === "ar"
+              ? "استخدمي بصمة الجهاز أو رمز القفل لفتح التطبيق."
+              : "Use your device authentication to open the app."}
+          </Text>
+          <TouchableOpacity
+            style={s.primary}
+            onPress={() => void unlockWithBiometrics(language).then(setUnlocked)}
+          >
+            <Text style={s.primaryText}>
+              {language === "ar" ? "فتح التطبيق" : "Unlock app"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void supabase.auth.signOut()}>
+            <Text style={s.back}>
+              {language === "ar" ? "تسجيل الخروج" : "Sign out"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaProvider>
+    );
+  if (!data)
+    return (
+      <SafeAreaProvider>
+        <View style={s.loader}>
+          <Image
+            alt="Panthera Clinics"
+            source={pantheraBrand}
+            style={{ width: 280, height: 180 }}
+            resizeMode="contain"
+          />
+          <Text style={s.cardMuted}>
+            {error ||
+              (language === "ar"
+                ? "جارٍ تحميل بياناتك…"
+                : "Loading your care…")}
+          </Text>
+          {error ? (
+            <TouchableOpacity style={s.secondary} onPress={refresh}>
+              <Text style={s.secondaryText}>
+                {language === "ar" ? "حاول مرة أخرى" : "Try again"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </SafeAreaProvider>
+    );
+  const main =
+    tab === "home" ? (
+      <Today
+        go={setTab}
+        data={data}
+        care={care}
+        membership={membership}
+        finance={finance}
+        results={results}
+        experience={experience}
+        language={language}
+        toggleLanguage={toggleLanguage}
+      />
+    ) : tab === "book" ? (
+      <Booking refresh={refresh} language={language} />
+    ) : tab === "care" ? (
+      <JourneyHub
+        data={data}
+        care={care}
+        results={results}
+        beauty={beauty}
+        experience={experience}
+        language={language}
+        go={setTab}
+      />
+    ) : tab === "appointments" ? (
+      <Appointments data={data.appointments} language={language} />
+    ) : tab === "medical" ? (
+      <HealthCenter
+        data={finance.health}
+        language={language}
+        refresh={refresh}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "wallet" ? (
+      <Wallet
+        data={finance.wallet}
+        language={language}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "membership" ? (
+      <Membership
+        data={membership}
+        language={language}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "results" ? (
+      <Results
+        data={results}
+        language={language}
+        go={setTab}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "beauty" ? (
+      <BeautyCalendar
+        data={beauty}
+        language={language}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "experience" ? (
+      <Experience
+        data={experience}
+        language={language}
+        contact={beauty.contact}
+        back={() => setTab("profile")}
+      />
+    ) : tab === "support" ? (
+      <Support
+        data={beauty.contact}
+        language={language}
+        back={() => setTab("home")}
+      />
+    ) : tab === "concierge" ? (
+      <Concierge
+        data={concierge}
+        language={language}
+        refresh={refresh}
+        back={() => setTab("home")}
+      />
+    ) : tab === "notifications" ? (
+      <Notifications
+        data={data.notifications}
+        language={language}
+        open={(notification) => setTab(notificationTab(notification))}
+        back={() => setTab("home")}
+      />
+    ) : (
+      <MeHub
+        data={data}
+        membership={membership}
+        finance={finance}
+        go={setTab}
+        language={language}
+        toggleLanguage={toggleLanguage}
+        logout={() => supabase.auth.signOut()}
+      />
+    );
+  const renderedMain =
+    tab === "privacy" ? <PrivacyCenter language={language} /> : main;
+  const t = translate(language),
+    navItems = [
+      ["home", "sunny", language === "ar" ? "اليوم" : "Today"],
+      ["book", "add-circle", t.book],
+      ["care", "heart", language === "ar" ? "رحلتي" : "Journey"],
+      ["profile", "person", language === "ar" ? "أنا" : "Me"],
+      [
+        "privacy",
+        "shield-checkmark",
+        language === "ar" ? "الخصوصية" : "Privacy",
+      ],
+    ];
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={s.safe}>
+        <StatusBar style="dark" />
+        <View style={s.content}>{renderedMain}</View>
+        {tab !== "concierge" && tab !== "book" && tab !== "privacy" ? (
+          <TouchableOpacity
+            accessibilityLabel={
+              language === "ar" ? "مساعد بانثيرا" : "Panthera Concierge"
+            }
+            onPress={() => setTab("concierge")}
+            style={{
+              position: "absolute",
+              right: 22,
+              bottom: 96,
+              width: 52,
+              height: 52,
+              borderRadius: 19,
+              backgroundColor: colors.navy,
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 30,
+            }}
+          >
+            <Icon name="sparkles" color="#fff" size={24} />
+          </TouchableOpacity>
+        ) : null}
+        <View style={s.nav}>
+          {navItems.map(([id, icon, label]) => (
+            <TouchableOpacity
+              key={id}
+              style={s.navItem}
+              onPress={() => setTab(id as Tab)}
+            >
+              <Icon
+                name={(tab === id ? icon : `${icon}-outline`) as IconName}
+                color={tab === id ? "#FFFFFF" : "#AEBBC2"}
+              />
+              <Text style={[s.navText, tab === id && s.navActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
 }
 
-const s=StyleSheet.create({safe:{flex:1,backgroundColor:colors.canvas},content:{flex:1},page:{padding:22,paddingTop:24,paddingBottom:42},header:{flexDirection:"row",gap:14,alignItems:"center",marginBottom:24,paddingBottom:18,borderBottomWidth:1,borderBottomColor:colors.border},backIcon:{width:42,height:42,borderRadius:16,backgroundColor:colors.card,alignItems:"center",justifyContent:"center"},eyebrow:{fontSize:11,fontWeight:"800",letterSpacing:1.5,color:colors.violet},title:{fontSize:29,fontWeight:"900",color:colors.text,marginTop:4},subtitle:{fontSize:14,color:colors.muted,marginTop:4},avatar:{width:76,height:54,alignItems:"center",justifyContent:"center",overflow:"hidden"},avatarText:{fontWeight:"800",color:colors.violet},login:{flex:1,padding:24,justifyContent:"center"},loader:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:colors.canvas},brandMark:{width:62,height:62,borderRadius:21,backgroundColor:colors.violet,alignItems:"center",justifyContent:"center"},loginBrand:{fontSize:32,fontWeight:"900",color:colors.ink,marginTop:18},loginClinic:{fontSize:11,fontWeight:"800",letterSpacing:2,color:colors.violet,marginTop:3},loginTitle:{fontSize:27,fontWeight:"800",color:colors.text,marginTop:36},loginCopy:{fontSize:15,lineHeight:22,color:colors.muted,marginTop:8,maxWidth:340},loginCard:{backgroundColor:colors.card,borderRadius:30,padding:22,marginTop:26,borderWidth:1,borderColor:colors.border},fieldLabel:{fontSize:12,fontWeight:"800",color:colors.text,marginBottom:9},inputWrap:{height:54,borderWidth:1,borderColor:colors.border,borderRadius:15,flexDirection:"row",alignItems:"center",paddingHorizontal:14,gap:10},input:{flex:1,fontSize:16,color:colors.text},legal:{fontSize:11,textAlign:"center",color:colors.muted,marginTop:14},error:{fontSize:12,color:colors.danger,marginTop:10},disabled:{opacity:.55},hero:{borderRadius:32,padding:24,marginBottom:28},noNext:{backgroundColor:colors.card,borderRadius:30,padding:22,marginBottom:26,alignItems:"center",gap:8,borderWidth:1,borderColor:colors.border},heroIcon:{width:42,height:42,borderRadius:13,backgroundColor:"#ffffff20",alignItems:"center",justifyContent:"center"},heroLabel:{fontSize:10,fontWeight:"800",letterSpacing:1.3,color:"#AAB8CF",marginTop:20},heroTitle:{fontSize:24,fontWeight:"800",color:"#fff",marginTop:5},heroMeta:{color:"#D5DCEC",marginTop:8},heroFooter:{marginTop:24,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},heroRoom:{color:"#AAB8CF",fontSize:12},lightButton:{backgroundColor:"#fff",paddingHorizontal:14,paddingVertical:9,borderRadius:11},lightButtonText:{fontWeight:"700",fontSize:12,color:colors.ink},sectionTitle:{fontSize:18,fontWeight:"800",color:colors.text,marginTop:8,marginBottom:14},quickGrid:{flexDirection:"row",flexWrap:"wrap",gap:12,marginBottom:22},quickCard:{width:"48%",backgroundColor:colors.card,borderRadius:24,padding:17,borderWidth:1,borderColor:colors.border},quickIcon:{width:42,height:42,borderRadius:13,backgroundColor:colors.violetSoft,alignItems:"center",justifyContent:"center"},quickText:{fontWeight:"700",color:colors.text,marginTop:14},rowBetween:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},link:{color:colors.violet,fontWeight:"700",fontSize:12},serviceCard:{width:176,backgroundColor:colors.card,borderRadius:26,padding:18,marginRight:12,borderWidth:1,borderColor:colors.border},serviceIcon:{width:42,height:42,borderRadius:13,backgroundColor:"#EEE8E0",alignItems:"center",justifyContent:"center",marginBottom:14},cardTitle:{fontWeight:"800",color:colors.text,fontSize:15},cardMuted:{fontSize:12,color:colors.muted,marginTop:4,lineHeight:18},duration:{fontSize:11,fontWeight:"700",color:colors.violet,marginTop:12},progress:{height:5,backgroundColor:colors.border,borderRadius:5,marginBottom:26},progressFill:{height:5,backgroundColor:colors.violet,borderRadius:5},listCard:{flexDirection:"row",alignItems:"center",gap:14,backgroundColor:colors.card,borderRadius:22,padding:15,borderWidth:1,borderColor:colors.border,marginBottom:10},selected:{borderColor:colors.violet,backgroundColor:"#EEF2F3"},grow:{flex:1},primary:{backgroundColor:colors.ink,borderRadius:18,padding:17,alignItems:"center",marginTop:24},primaryText:{color:"#fff",fontWeight:"800",fontSize:15},back:{textAlign:"center",padding:16,color:colors.muted,fontWeight:"700"},dateRow:{flexDirection:"row",gap:10},dateCard:{flex:1,backgroundColor:"#fff",paddingVertical:16,borderRadius:16,alignItems:"center",borderWidth:1,borderColor:colors.border},dateActive:{backgroundColor:colors.violet,borderColor:colors.violet},dateText:{textAlign:"center",lineHeight:20,fontWeight:"800",color:colors.text},times:{flexDirection:"row",flexWrap:"wrap",gap:10},time:{width:"31%",paddingVertical:13,alignItems:"center",borderRadius:13,backgroundColor:"#fff",borderWidth:1,borderColor:colors.border},timeActive:{backgroundColor:colors.violetSoft,borderColor:colors.violet},timeText:{fontSize:12,fontWeight:"700",color:colors.text},timeActiveText:{fontSize:12,fontWeight:"800",color:colors.violet},confirm:{alignItems:"center",backgroundColor:colors.card,padding:30,borderRadius:30,borderWidth:1,borderColor:colors.border},confirmTitle:{fontSize:22,fontWeight:"800",marginTop:12,color:colors.text},confirmText:{textAlign:"center",lineHeight:24,color:colors.muted,marginTop:10},appointment:{flexDirection:"row",alignItems:"center",backgroundColor:colors.card,padding:16,borderRadius:24,marginBottom:12,borderWidth:1,borderColor:colors.border},dateBadge:{width:52,height:58,borderRadius:15,backgroundColor:colors.violetSoft,alignItems:"center",justifyContent:"center",marginRight:13},dateDay:{fontSize:20,fontWeight:"900",color:colors.violet},dateMonth:{fontSize:9,fontWeight:"800",color:colors.violet},status:{fontSize:10,fontWeight:"800",color:colors.violet,backgroundColor:colors.violetSoft,padding:7,borderRadius:9},profileHero:{alignItems:"center",backgroundColor:colors.card,borderRadius:30,padding:26,marginBottom:22},bigAvatar:{width:74,height:74,borderRadius:25,backgroundColor:colors.ink,alignItems:"center",justifyContent:"center"},bigAvatarText:{color:"#fff",fontSize:22,fontWeight:"800"},profileName:{fontSize:21,fontWeight:"800",color:colors.text,marginTop:12},invoice:{flexDirection:"row",alignItems:"center",backgroundColor:colors.card,padding:16,borderRadius:22,marginBottom:10},invoiceIcon:{width:42,height:42,borderRadius:13,backgroundColor:colors.violetSoft,alignItems:"center",justifyContent:"center",marginRight:12},amount:{fontWeight:"800",color:colors.text,textAlign:"right"},invoiceStatus:{fontSize:10,fontWeight:"800",color:colors.cyan,textAlign:"right",marginTop:4},menu:{flexDirection:"row",alignItems:"center",gap:13,backgroundColor:colors.card,padding:17,borderBottomWidth:1,borderBottomColor:colors.border},menuText:{flex:1,fontWeight:"700",color:colors.text},medicalHero:{flexDirection:"row",alignItems:"center",gap:15,backgroundColor:"#E7EFEA",padding:18,borderRadius:20,marginBottom:16},infoRow:{backgroundColor:colors.card,padding:18,borderBottomWidth:1,borderBottomColor:colors.border},infoValue:{fontSize:15,fontWeight:"700",color:colors.text,marginTop:5},secondary:{borderWidth:1,borderColor:colors.violet,borderRadius:16,padding:16,alignItems:"center",marginTop:20},secondaryText:{color:colors.violet,fontWeight:"800"},notice:{flexDirection:"row",gap:13,backgroundColor:colors.card,padding:17,borderRadius:24,marginBottom:11,borderWidth:1,borderColor:colors.border},noticeTime:{fontSize:10,color:colors.muted},empty:{alignItems:"center",justifyContent:"center",padding:32,backgroundColor:colors.card,borderRadius:26,borderWidth:1,borderColor:colors.border},logout:{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:8,padding:18,marginTop:20},logoutText:{fontWeight:"800",color:colors.danger},nav:{height:72,backgroundColor:colors.ink,flexDirection:"row",paddingHorizontal:12,paddingTop:10,marginHorizontal:16,marginBottom:10,borderRadius:26},navItem:{flex:1,alignItems:"center",gap:4},navText:{fontSize:10,fontWeight:"700",color:"#AEBBC2"},navActive:{color:"#FFFFFF"}});
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  content: { flex: 1 },
+  page: { padding: 22, paddingTop: 24, paddingBottom: 42 },
+  header: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+    marginBottom: 24,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: colors.violet,
+  },
+  title: { fontSize: 29, fontWeight: "900", color: colors.text, marginTop: 4 },
+  subtitle: { fontSize: 14, color: colors.muted, marginTop: 4 },
+  avatar: {
+    width: 76,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarText: { fontWeight: "800", color: colors.violet },
+  login: { flex: 1, padding: 24, justifyContent: "center" },
+  loader: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 30,
+    backgroundColor: colors.canvas,
+  },
+  brandMark: {
+    width: 62,
+    height: 62,
+    borderRadius: 21,
+    backgroundColor: colors.violet,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loginBrand: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: colors.ink,
+    marginTop: 18,
+  },
+  loginClinic: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: colors.violet,
+    marginTop: 3,
+  },
+  loginTitle: {
+    fontSize: 27,
+    fontWeight: "800",
+    color: colors.text,
+    marginTop: 36,
+  },
+  loginCopy: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.muted,
+    marginTop: 8,
+    maxWidth: 340,
+  },
+  loginCard: {
+    backgroundColor: colors.card,
+    borderRadius: 30,
+    padding: 22,
+    marginTop: 26,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: 9,
+  },
+  inputWrap: {
+    height: 54,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  input: { flex: 1, fontSize: 16, color: colors.text },
+  legal: {
+    fontSize: 11,
+    textAlign: "center",
+    color: colors.muted,
+    marginTop: 14,
+  },
+  error: { fontSize: 12, color: colors.danger, marginTop: 10 },
+  disabled: { opacity: 0.55 },
+  hero: { borderRadius: 32, padding: 24, marginBottom: 28 },
+  noNext: {
+    backgroundColor: colors.card,
+    borderRadius: 30,
+    padding: 22,
+    marginBottom: 26,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  heroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: "#ffffff20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.3,
+    color: "#AAB8CF",
+    marginTop: 20,
+  },
+  heroTitle: { fontSize: 24, fontWeight: "800", color: "#fff", marginTop: 5 },
+  heroMeta: { color: "#D5DCEC", marginTop: 8 },
+  heroFooter: {
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  heroRoom: { color: "#AAB8CF", fontSize: 12 },
+  lightButton: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 11,
+  },
+  lightButtonText: { fontWeight: "700", fontSize: 12, color: colors.ink },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 22,
+  },
+  quickCard: {
+    width: "48%",
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: 17,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: colors.violetSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickText: { fontWeight: "700", color: colors.text, marginTop: 14 },
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  link: { color: colors.violet, fontWeight: "700", fontSize: 12 },
+  serviceCard: {
+    width: 176,
+    backgroundColor: colors.card,
+    borderRadius: 26,
+    padding: 18,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  serviceIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: "#EEE8E0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  cardTitle: { fontWeight: "800", color: colors.text, fontSize: 15 },
+  cardMuted: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  duration: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.violet,
+    marginTop: 12,
+  },
+  progress: {
+    height: 5,
+    backgroundColor: colors.border,
+    borderRadius: 5,
+    marginBottom: 26,
+  },
+  progressFill: { height: 5, backgroundColor: colors.violet, borderRadius: 5 },
+  listCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
+  },
+  selected: { borderColor: colors.violet, backgroundColor: "#EEF2F3" },
+  grow: { flex: 1 },
+  primary: {
+    backgroundColor: colors.ink,
+    borderRadius: 18,
+    padding: 17,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  primaryText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  back: {
+    textAlign: "center",
+    padding: 16,
+    color: colors.muted,
+    fontWeight: "700",
+  },
+  dateRow: { flexDirection: "row", gap: 10 },
+  dateCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dateActive: { backgroundColor: colors.violet, borderColor: colors.violet },
+  dateText: {
+    textAlign: "center",
+    lineHeight: 20,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  times: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  time: {
+    width: "31%",
+    paddingVertical: 13,
+    alignItems: "center",
+    borderRadius: 13,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timeActive: {
+    backgroundColor: colors.violetSoft,
+    borderColor: colors.violet,
+  },
+  timeText: { fontSize: 12, fontWeight: "700", color: colors.text },
+  timeActiveText: { fontSize: 12, fontWeight: "800", color: colors.violet },
+  confirm: {
+    alignItems: "center",
+    backgroundColor: colors.card,
+    padding: 30,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  confirmTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginTop: 12,
+    color: colors.text,
+  },
+  confirmText: {
+    textAlign: "center",
+    lineHeight: 24,
+    color: colors.muted,
+    marginTop: 10,
+  },
+  appointment: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 24,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dateBadge: {
+    width: 52,
+    height: 58,
+    borderRadius: 15,
+    backgroundColor: colors.violetSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 13,
+  },
+  dateDay: { fontSize: 20, fontWeight: "900", color: colors.violet },
+  dateMonth: { fontSize: 9, fontWeight: "800", color: colors.violet },
+  status: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.violet,
+    backgroundColor: colors.violetSoft,
+    padding: 7,
+    borderRadius: 9,
+  },
+  profileHero: {
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: 30,
+    padding: 26,
+    marginBottom: 22,
+  },
+  bigAvatar: {
+    width: 74,
+    height: 74,
+    borderRadius: 25,
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bigAvatarText: { color: "#fff", fontSize: 22, fontWeight: "800" },
+  profileName: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: colors.text,
+    marginTop: 12,
+  },
+  invoice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 22,
+    marginBottom: 10,
+  },
+  invoiceIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: colors.violetSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  amount: { fontWeight: "800", color: colors.text, textAlign: "right" },
+  invoiceStatus: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.cyan,
+    textAlign: "right",
+    marginTop: 4,
+  },
+  menu: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    backgroundColor: colors.card,
+    padding: 17,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  menuText: { flex: 1, fontWeight: "700", color: colors.text },
+  medicalHero: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 15,
+    backgroundColor: "#E7EFEA",
+    padding: 18,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  infoRow: {
+    backgroundColor: colors.card,
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 5,
+  },
+  secondary: {
+    borderWidth: 1,
+    borderColor: colors.violet,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  secondaryText: { color: colors.violet, fontWeight: "800" },
+  notice: {
+    flexDirection: "row",
+    gap: 13,
+    backgroundColor: colors.card,
+    padding: 17,
+    borderRadius: 24,
+    marginBottom: 11,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noticeTime: { fontSize: 10, color: colors.muted },
+  empty: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    backgroundColor: colors.card,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  logout: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 18,
+    marginTop: 20,
+  },
+  logoutText: { fontWeight: "800", color: colors.danger },
+  nav: {
+    height: 72,
+    backgroundColor: colors.ink,
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 26,
+  },
+  navItem: { flex: 1, alignItems: "center", gap: 4 },
+  navText: { fontSize: 10, fontWeight: "700", color: "#AEBBC2" },
+  navActive: { color: "#FFFFFF" },
+});

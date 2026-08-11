@@ -152,11 +152,12 @@ export function isSameDay(
 
 export function formatCalendarTitle(
   date: Date,
-  view: CalendarView
+  view: CalendarView,
+  locale = "en-GB"
 ): string {
   if (view === "day") {
     return new Intl.DateTimeFormat(
-      "en-GB",
+      locale,
       {
         weekday: "long",
         day: "numeric",
@@ -171,13 +172,13 @@ export function formatCalendarTitle(
     const end = endOfWeek(date);
 
     return `${new Intl.DateTimeFormat(
-      "en-GB",
+      locale,
       {
         day: "numeric",
         month: "short",
       }
     ).format(start)} - ${new Intl.DateTimeFormat(
-      "en-GB",
+      locale,
       {
         day: "numeric",
         month: "short",
@@ -187,7 +188,7 @@ export function formatCalendarTitle(
   }
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    locale,
     {
       month: "long",
       year: "numeric",

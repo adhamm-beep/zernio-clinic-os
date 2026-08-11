@@ -1,109 +1,29 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui/button";
-
 import type { CalendarView } from "../types/calendar";
 
-type CalendarHeaderProps = {
-  title: string;
-  view: CalendarView;
+type Props = { title: string; view: CalendarView; onViewChange: (view: CalendarView) => void; onPrevious: () => void; onNext: () => void; onToday: () => void };
 
-  onViewChange: (view: CalendarView) => void;
+export default function CalendarHeader({ title, view, onViewChange, onPrevious, onNext, onToday }: Props) {
+  const { isArabic, text } = useLocale();
+  const views: Array<{ value: CalendarView; en: string; ar: string }> = [
+    { value: "day", en: "Day", ar: "يوم" },
+    { value: "week", en: "Week", ar: "أسبوع" },
+    { value: "month", en: "Month", ar: "شهر" },
+  ];
+  const PreviousIcon = isArabic ? ChevronRight : ChevronLeft;
+  const NextIcon = isArabic ? ChevronLeft : ChevronRight;
 
-  onPrevious: () => void;
-  onNext: () => void;
-  onToday: () => void;
-};
-
-export default function CalendarHeader({
-  title,
-  view,
-  onViewChange,
-  onPrevious,
-  onNext,
-  onToday,
-}: CalendarHeaderProps) {
-  return (
-    <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-
-      <div>
-        <h1 className="text-2xl font-bold">
-          Calendar
-        </h1>
-
-        <p className="text-sm text-gray-500">
-          {title}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-
-        <Button
-          variant="outline"
-          onClick={onPrevious}
-        >
-          ←
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={onToday}
-        >
-          Today
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={onNext}
-        >
-          →
-        </Button>
-
-        <div className="ml-4 flex rounded-lg border overflow-hidden">
-
-          <button
-            onClick={() =>
-              onViewChange("day")
-            }
-            className={`px-4 py-2 text-sm ${
-              view === "day"
-                ? "bg-slate-900 text-white"
-                : "bg-white"
-            }`}
-          >
-            Day
-          </button>
-
-          <button
-            onClick={() =>
-              onViewChange("week")
-            }
-            className={`px-4 py-2 text-sm ${
-              view === "week"
-                ? "bg-slate-900 text-white"
-                : "bg-white"
-            }`}
-          >
-            Week
-          </button>
-
-          <button
-            onClick={() =>
-              onViewChange("month")
-            }
-            className={`px-4 py-2 text-sm ${
-              view === "month"
-                ? "bg-slate-900 text-white"
-                : "bg-white"
-            }`}
-          >
-            Month
-          </button>
-
-        </div>
-
-      </div>
-
+  return <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <div><h2 className="text-2xl font-bold">{text("Appointment calendar", "تقويم المواعيد")}</h2><p className="text-sm text-gray-500">{title}</p></div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="button" variant="outline" onClick={onPrevious} aria-label={text("Previous", "السابق")}><PreviousIcon className="h-4 w-4" /></Button>
+      <Button type="button" variant="outline" onClick={onToday}>{text("Today", "اليوم")}</Button>
+      <Button type="button" variant="outline" onClick={onNext} aria-label={text("Next", "التالي")}><NextIcon className="h-4 w-4" /></Button>
+      <div className="flex overflow-hidden rounded-lg border">{views.map(item => <button key={item.value} type="button" onClick={() => onViewChange(item.value)} className={`px-4 py-2 text-sm transition ${view === item.value ? "bg-slate-900 text-white" : "bg-white hover:bg-slate-50"}`}>{text(item.en, item.ar)}</button>)}</div>
     </div>
-  );
+  </div>;
 }

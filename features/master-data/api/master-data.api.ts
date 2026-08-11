@@ -122,7 +122,11 @@ export async function getServices(): Promise<MasterService[]> {
     .select(`
       id,
       name,
+      name_en,
+      name_ar,
       category,
+      category_en,
+      category_ar,
       default_price,
       duration_minutes,
       is_active,
@@ -220,7 +224,7 @@ export async function getServicePrices(): Promise<MasterServicePrice[]> {
 
 export async function getServiceVariants(): Promise<MasterServiceVariant[]> {
   const { data, error } = await supabase.from("service_variants")
-    .select("id, service_id, name, price, is_starting_from, is_active")
+    .select("id, service_id, name, name_en, name_ar, price, is_starting_from, is_active")
     .eq("is_active", true).order("name");
   if (error) throw new Error(error.message);
   return (data ?? []) as MasterServiceVariant[];

@@ -1,25 +1,35 @@
 "use client";
 
+import { useMemo } from "react";
+
 import FollowUpTable from "@/features/follow-ups/components/FollowUpTable";
 import { useFollowUps } from "@/features/follow-ups/hooks/useFollowUps";
 import AddFollowUpDialog from "@/features/follow-ups/components/AddFollowUpDialog";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import DateRangeFilter from "@/features/date-range/DateRangeFilter";
+import { isWithinDateRange } from "@/features/date-range/date-range";
+import { useDateRange } from "@/features/date-range/useDateRange";
 
 export default function FollowUpsPage() {
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
+  const range = useDateRange();
   const {
     data: followUps = [],
     isLoading,
     error,
   } = useFollowUps(clinicId, branchId);
+  const visibleFollowUps = useMemo(
+    () => followUps.filter((followUp) => isWithinDateRange(followUp.scheduled_at ?? followUp.created_at, range)),
+    [followUps, range]
+  );
 
-  const pendingCount = followUps.filter(
+  const pendingCount = visibleFollowUps.filter(
     (followUp) => followUp.status === "pending"
   ).length;
 
-  const completedCount = followUps.filter(
+  const completedCount = visibleFollowUps.filter(
     (followUp) => followUp.status === "completed"
   ).length;
 
@@ -32,7 +42,7 @@ export default function FollowUpsPage() {
           </h1>
 
           <p className="mt-1 text-gray-500">
-            {followUps.length} follow ups
+            {visibleFollowUps.length} follow ups
           </p>
         </div>
         {clinicId > 0 && branchId > 0 && (
@@ -40,10 +50,12 @@ export default function FollowUpsPage() {
         )}
       </div>
 
+      <DateRangeFilter />
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm text-gray-500">Total Follow Ups</p>
-          <p className="mt-2 text-2xl font-bold">{followUps.length}</p>
+          <p className="mt-2 text-2xl font-bold">{visibleFollowUps.length}</p>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -72,7 +84,7 @@ export default function FollowUpsPage() {
       )}
 
       {!isLoading && !error && (
-        <FollowUpTable followUps={followUps} />
+        <FollowUpTable followUps={visibleFollowUps} />
       )}
     </div>
   );

@@ -8,5 +8,7 @@ export function usePayments(clinicId?: number, branchId?: number) {
     queryKey: ["payments", clinicId ?? "all", branchId ?? "all"],
     queryFn: () => getPayments(clinicId, branchId),
     enabled: clinicId === undefined || (clinicId > 0 && (branchId === undefined || branchId > 0)),
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
 }

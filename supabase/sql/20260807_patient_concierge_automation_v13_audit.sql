@@ -1,0 +1,11 @@
+with checks as (
+ select 'concierge_tables' check_name,count(*)::bigint value,6::bigint expected from information_schema.tables where table_schema='public' and table_name in('patient_appointment_requests','patient_consents','patient_messages','patient_packages','patient_push_tokens','patient_automation_suggestions')
+ union all select 'concierge_rls',count(*)::bigint,6::bigint from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in('patient_appointment_requests','patient_consents','patient_messages','patient_packages','patient_push_tokens','patient_automation_suggestions') and c.relrowsecurity
+ union all select 'concierge_functions',count(*)::bigint,7::bigint from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in('patient_concierge_hub','patient_request_appointment_action','patient_accept_consent','patient_send_message','patient_register_push_token','staff_process_patient_request','staff_reply_to_patient')
+ union all select 'concierge_notification_triggers',count(*)::bigint,2::bigint from pg_trigger where tgname in('patient_request_status_notify','patient_staff_message_notify') and not tgisinternal
+ union all select 'concierge_realtime',count(*)::bigint,5::bigint from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename in('patient_appointment_requests','patient_consents','patient_messages','patient_packages','patient_automation_suggestions')
+ union all select 'orphan_appointment_requests',count(*)::bigint,0::bigint from patient_appointment_requests r left join appointments a on a.id=r.appointment_id where a.id is null
+ union all select 'invalid_package_usage',count(*)::bigint,0::bigint from patient_packages where used_sessions<0 or used_sessions>total_sessions
+ union all select 'open_requests_without_suggestion',count(*)::bigint,0::bigint from patient_appointment_requests r where r.status='pending' and not exists(select 1 from patient_automation_suggestions s where s.customer_id=r.customer_id and s.appointment_id=r.appointment_id and s.status='open')
+)
+select case when value=expected then 'OK' else 'CHECK' end status,check_name,value,expected from checks order by check_name;

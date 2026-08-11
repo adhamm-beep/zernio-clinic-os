@@ -8,6 +8,8 @@ export type SaveServiceInput = {
   branchId: number;
   providerId: number;
   name: string;
+  nameEn: string;
+  nameAr: string;
   code: string;
   category: string;
   durationMinutes: number;
@@ -23,6 +25,8 @@ export type SaveVariantInput = {
   providerId: number;
   serviceId: number;
   name: string;
+  nameEn: string;
+  nameAr: string;
   price: number;
   startingFrom: boolean;
 };
@@ -39,6 +43,8 @@ export async function saveService(input: SaveServiceInput) {
   const servicePayload = {
     clinic_id: input.clinicId,
     name: input.name.trim(),
+    name_en: input.nameEn.trim(),
+    name_ar: input.nameAr.trim(),
     code: input.code.trim().toUpperCase().replace(/\s+/g, "-"),
     category,
     duration_minutes: input.durationMinutes,
@@ -110,8 +116,8 @@ export async function saveVariant(input: SaveVariantInput) {
   let variantId = input.id;
   if (variantId) {
     const payload = input.providerId < 0
-      ? { name: input.name.trim(), price: input.price, is_starting_from: input.startingFrom, is_active: true }
-      : { name: input.name.trim(), is_active: true };
+      ? { name: input.nameEn.trim(), name_en: input.nameEn.trim(), name_ar: input.nameAr.trim(), price: input.price, is_starting_from: input.startingFrom, is_active: true }
+      : { name: input.nameEn.trim(), name_en: input.nameEn.trim(), name_ar: input.nameAr.trim(), is_active: true };
     const { error } = await supabase.from("service_variants").update(payload).eq("id", variantId);
     if (error) throw new Error(error.message);
   } else {
@@ -126,7 +132,9 @@ export async function saveVariant(input: SaveVariantInput) {
       const { data, error } = await supabase.from("service_variants").insert({
         clinic_id: input.clinicId,
         service_id: input.serviceId,
-        name: input.name.trim(),
+        name: input.nameEn.trim(),
+        name_en: input.nameEn.trim(),
+        name_ar: input.nameAr.trim(),
         price: input.price,
         is_starting_from: input.startingFrom,
         is_active: true,

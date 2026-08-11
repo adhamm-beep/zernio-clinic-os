@@ -1,5 +1,5 @@
-import ClinicAnalyticsDashboard from "@/features/reports/components/ClinicAnalyticsDashboard";
+import ReportsWorkspace from "@/features/reports/components/ReportsWorkspace";
 
 export default function ReportsPage() {
-  return <ClinicAnalyticsDashboard />;
+  return <ReportsWorkspace />;
 }

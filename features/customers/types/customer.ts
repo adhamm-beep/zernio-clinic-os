@@ -4,6 +4,9 @@ export interface Customer {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  phone_normalized?: string | null;
+  national_id?: string | null;
+  nationality?: "saudi" | "non_saudi" | null;
   email: string | null;
   gender: string | null;
   status: string | null;
@@ -67,4 +70,11 @@ export interface Customer360 extends Customer {
   treatmentValue: number;
   outstandingBalance: number;
   lastVisit: string | null;
+  membership: {
+    points: number;
+    lifetimePoints: number;
+    tier: "silver" | "gold" | "platinum";
+    joinedAt: string | null;
+    nextTierPoints: number;
+  } | null;
 }

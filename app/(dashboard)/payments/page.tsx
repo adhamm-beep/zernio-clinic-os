@@ -1,86 +1,59 @@
 "use client";
 
-import PaymentTable from "@/features/payments/components/PaymentTable";
-import { usePayments } from "@/features/payments/hooks/usePayments";
-import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
+import { useMemo, useState } from "react";
+import { Banknote, CalendarCheck2, FileText, Percent, ReceiptText, Search, WalletCards, type LucideIcon } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import { useAppointments } from "@/features/appointments/hooks/useAppointments";
+import { useMasterData } from "@/features/appointments/hooks/useMasterData";
+import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
+import BillingDueQueue from "@/features/payments/components/BillingDueQueue";
+import PaymentTable from "@/features/payments/components/PaymentTable";
+import { useBillingDueAppointments } from "@/features/payments/hooks/useBillingDueAppointments";
+import { usePayments } from "@/features/payments/hooks/usePayments";
+import DateRangeFilter from "@/features/date-range/DateRangeFilter";
+import { isWithinDateRange } from "@/features/date-range/date-range";
+import { useDateRange } from "@/features/date-range/useDateRange";
+import { groupServiceFamilies } from "@/features/services/service-family";
 
 export default function PaymentsPage() {
+  const { isArabic, text } = useLocale();
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
-  const {
-    data: payments = [],
-    isLoading,
-    error,
-  } = usePayments(clinicId, branchId);
+  const range = useDateRange();
+  const [doctorId, setDoctorId] = useState("all");
+  const [serviceFamily, setServiceFamily] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const paymentsQuery = usePayments(clinicId, branchId);
+  const appointmentsQuery = useAppointments(clinicId, branchId);
+  const { data: billingDue = [] } = useBillingDueAppointments(clinicId, branchId);
+  const masterQuery = useMasterData();
+  const doctors = useMemo(() => (masterQuery.data?.staff ?? []).filter(item => item.is_active && item.role?.toLowerCase() === "doctor"), [masterQuery.data]);
+  const services = useMemo(() => (masterQuery.data?.services ?? []).filter(item => item.is_active), [masterQuery.data]);
+  const serviceFamilies = useMemo(() => groupServiceFamilies(services), [services]);
+  const selectedServiceIds = useMemo(() => serviceFamilies.find(item => item.key === serviceFamily)?.serviceIds ?? [], [serviceFamilies, serviceFamily]);
+  const filtered = useMemo(() => (paymentsQuery.data ?? []).filter(payment => {
+    const customer = `${payment.customers?.first_name ?? ""} ${payment.customers?.last_name ?? ""}`.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
+    return isWithinDateRange(payment.payment_date ?? payment.created_at, range) && (doctorId === "all" || payment.appointments?.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (payment.appointments?.service_id != null && selectedServiceIds.includes(payment.appointments.service_id)) || payment.payment_invoice_items?.some(item => selectedServiceIds.includes(item.service_id))) && (status === "all" || payment.payment_status === status) && (!query || customer.includes(query) || payment.customers?.phone?.includes(query) || payment.customers?.customer_code?.toLowerCase().includes(query) || payment.invoice_number?.toLowerCase().includes(query));
+  }), [paymentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds, status, search]);
+  const completedPatients = useMemo(() => new Set((appointmentsQuery.data ?? []).filter(item => item.status === "completed" && isWithinDateRange(item.appointment_at, range) && (doctorId === "all" || item.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (item.service_id != null && selectedServiceIds.includes(item.service_id)))).map(item => item.customer_id)).size, [appointmentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds]);
+  const totals = filtered.reduce((result, payment) => ({ total: result.total + Number(payment.amount ?? 0), paid: result.paid + Number(payment.paid_amount ?? (payment.payment_status === "paid" ? payment.amount : 0)), remaining: result.remaining + Number(payment.balance_due ?? 0), tax: result.tax + Number(payment.tax_amount ?? 0), discount: result.discount + Number(payment.discount_amount ?? 0) }), { total: 0, paid: 0, remaining: 0, tax: 0, discount: 0 });
+  const money = (value: number) => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
+  const cards: Array<{ label: string; value: number; icon: LucideIcon; tone: string; surface: string }> = [
+    { label: text("Invoice total", "إجمالي الفواتير"), value: totals.total, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" },
+    { label: text("Paid", "المدفوع"), value: totals.paid, icon: Banknote, tone: "text-emerald-700", surface: "bg-emerald-50" },
+    { label: text("Remaining", "المتبقي"), value: totals.remaining, icon: WalletCards, tone: "text-rose-700", surface: "bg-rose-50" },
+    { label: text("Tax", "الضريبة"), value: totals.tax, icon: FileText, tone: "text-blue-700", surface: "bg-blue-50" },
+    { label: text("Discount", "الخصم"), value: totals.discount, icon: Percent, tone: "text-amber-700", surface: "bg-amber-50" },
+  ];
 
-  const totalAmount = payments.reduce(
-    (sum, payment) => sum + Number(payment.amount ?? 0),
-    0
-  );
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Payments
-          </h1>
-
-          <p className="mt-1 text-gray-500">
-            {payments.length} payments
-          </p>
-        </div>
-
-        {clinicId > 0 && branchId > 0 && (
-          <AddPaymentDialog clinicId={clinicId} branchId={branchId} />
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-gray-500">
-            Total Payments
-          </p>
-
-          <p className="mt-2 text-2xl font-bold text-gray-900">
-            {payments.length}
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-gray-500">
-            Total Collected
-          </p>
-
-          <p className="mt-2 text-2xl font-bold text-gray-900">
-            {new Intl.NumberFormat("en-SA", {
-              style: "currency",
-              currency: "SAR",
-              maximumFractionDigits: 2,
-            }).format(totalAmount)}
-          </p>
-        </div>
-      </div>
-
-      {isLoading && (
-        <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
-          Loading payments...
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl bg-red-50 p-6 text-red-700">
-          {error instanceof Error
-            ? error.message
-            : "Failed to load payments."}
-        </div>
-      )}
-
-      {!isLoading && !error && (
-        <PaymentTable payments={payments} />
-      )}
-    </div>
-  );
+  return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>
+    <section className="overflow-hidden rounded-[28px] bg-[#071826] p-6 text-white shadow-xl"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[.24em] text-cyan-300">ZERNIO FINANCE</p><h1 className="mt-2 text-3xl font-black">{text("Invoices command center", "مركز إدارة الفواتير")}</h1><p className="mt-2 text-sm text-slate-300">{text("Filter once to see completed patients and every financial detail for that day.", "اختر الطبيبة أو الخدمة والتاريخ لتظهر الحالات المكتملة وكل تفاصيلها المالية فورًا.")}</p></div>{clinicId > 0 && branchId > 0 && <AddPaymentDialog clinicId={clinicId} branchId={branchId}/>}</div></section>
+    <section className="space-y-3 rounded-2xl border bg-white p-4 shadow-sm"><DateRangeFilter/><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_.8fr]"><label className="flex items-center gap-2 rounded-xl border bg-slate-50 px-3"><Search className="size-4 text-slate-400"/><input value={search} onChange={e => setSearch(e.target.value)} className="h-11 w-full bg-transparent text-sm outline-none" placeholder={text("Patient, phone, file or invoice", "المريض أو الهاتف أو الملف أو الفاتورة")}/></label><select value={doctorId} onChange={e => setDoctorId(e.target.value)} className="h-11 rounded-xl border px-3 text-sm"><option value="all">{text("All doctors", "كل الطبيبات")}</option>{doctors.map(item => <option key={item.id} value={item.id}>{item.staff_name}</option>)}</select><select value={serviceFamily} onChange={e => setServiceFamily(e.target.value)} className="h-11 rounded-xl border px-3 text-sm"><option value="all">{text("All services", "كل الخدمات")}</option>{serviceFamilies.map(item => <option key={item.key} value={item.key}>{isArabic ? item.nameAr : item.nameEn}</option>)}</select><select value={status} onChange={e => setStatus(e.target.value)} className="h-11 rounded-xl border px-3 text-sm"><option value="all">{text("All statuses", "كل الحالات")}</option><option value="paid">{text("Paid", "مدفوع")}</option><option value="partial">{text("Partial", "مدفوع جزئيًا")}</option><option value="unpaid">{text("Unpaid", "غير مدفوع")}</option><option value="refunded">{text("Refunded", "مسترد")}</option></select></div></section>
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"><div className="rounded-2xl bg-cyan-500 p-4 text-white shadow-sm"><CalendarCheck2 className="size-5"/><p className="mt-4 text-xs font-bold opacity-80">{text("Completed patients", "المرضى المكتملون")}</p><p className="mt-1 text-3xl font-black">{completedPatients}</p></div>{cards.map(card => { const Icon = card.icon; return <div key={card.label} className={`rounded-2xl border p-4 shadow-sm ${card.surface}`}><Icon className={`size-5 ${card.tone}`}/><p className="mt-4 text-xs font-bold text-slate-500">{card.label}</p><p className={`mt-1 text-xl font-black ${card.tone}`}>{money(card.value)}</p></div>; })}</section>
+    {billingDue.length > 0 && <BillingDueQueue appointments={billingDue} clinicId={clinicId} branchId={branchId}/>}<PaymentTable payments={filtered}/>
+  </div>;
 }

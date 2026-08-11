@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "859389902693",
+    "project_id": "panthera-clinics",
+    "storage_bucket": "panthera-clinics.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:859389902693:android:bc8467bd9edb450ecbeb8c",
+        "android_client_info": {
+          "package_name": "sa.panthera.patient"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9HF39KgnBcQTelnXIjPuJqoobPXIlic4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

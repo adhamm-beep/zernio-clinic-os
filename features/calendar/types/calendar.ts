@@ -20,6 +20,14 @@ export interface CalendarEvent {
 
   customerName: string;
 
+  customerPhone: string | null;
+
+  customerNationalId: string | null;
+
+  customerGender: string | null;
+
+  customerNationality: string | null;
+
   doctorId: number | null;
 
   doctorName: string;

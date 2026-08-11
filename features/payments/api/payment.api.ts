@@ -13,6 +13,12 @@ export type CreatePaymentInput = {
   customer_id: number;
   appointment_id?: number | null;
   treatment_id?: number | null;
+  service_id?: number | null;
+  service_variant_id?: number | null;
+  material_quantity?: number | null;
+  material_unit?: string | null;
+  material_unit_price?: number | null;
+  material_line_total?: number | null;
   amount: number;
   tax_amount?: number;
   payment_method: PaymentMethod;
@@ -37,13 +43,25 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
         phone,
         customer_code
       ),
+      appointments (
+        id,
+        appointment_at,
+        status,
+        doctor_id,
+        service_id,
+        staff (id, staff_name),
+        services (id, name, name_en, name_ar)
+      ),
       treatments (
         id,
         service_name,
         final_price,
         price,
         discount
-      )
+      ),
+      services (id, name, name_en, name_ar),
+      service_variants (id, name, name_en, name_ar),
+      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar))
     `)
     .order("payment_date", {
       ascending: false,
@@ -61,6 +79,12 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
   return (data ?? []) as Payment[];
 }
 
+export type MultiInvoiceItemInput={service_id:number;service_variant_id:number|null;quantity:number};
+export async function createMultiServiceInvoice(input:{customer_id:number;appointment_id:number;items:MultiInvoiceItemInput[];tax_amount:number;discount_amount:number;paid_amount:number;payment_method:string;payment_status:string;payment_date:string;invoice_number?:string;reference_number?:string;notes?:string}){
+  const{data,error}=await supabase.rpc("create_multi_service_invoice",{p_customer_id:input.customer_id,p_appointment_id:input.appointment_id,p_items:input.items,p_tax:input.tax_amount,p_discount:input.discount_amount,p_paid:input.paid_amount,p_method:input.payment_method,p_status:input.payment_status,p_payment_date:input.payment_date,p_invoice_number:input.invoice_number||null,p_reference_number:input.reference_number||null,p_notes:input.notes||null});
+  if(error)throw new Error(error.message);return Number(data);
+}
+
 export async function createPayment(
   payment: CreatePaymentInput
 ): Promise<Payment> {
@@ -72,6 +96,12 @@ export async function createPayment(
       customer_id: payment.customer_id,
       appointment_id: payment.appointment_id ?? null,
       treatment_id: payment.treatment_id ?? null,
+      service_id: payment.service_id ?? null,
+      service_variant_id: payment.service_variant_id ?? null,
+      material_quantity: payment.material_quantity ?? null,
+      material_unit: payment.material_unit ?? null,
+      material_unit_price: payment.material_unit_price ?? null,
+      material_line_total: payment.material_line_total ?? null,
       amount: payment.amount,
       tax_amount: payment.tax_amount ?? 0,
       payment_method: payment.payment_method,
@@ -92,13 +122,25 @@ export async function createPayment(
         phone,
         customer_code
       ),
+      appointments (
+        id,
+        appointment_at,
+        status,
+        doctor_id,
+        service_id,
+        staff (id, staff_name),
+        services (id, name, name_en, name_ar)
+      ),
       treatments (
         id,
         service_name,
         final_price,
         price,
         discount
-      )
+      ),
+      services (id, name, name_en, name_ar),
+      service_variants (id, name, name_en, name_ar),
+      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar))
     `)
     .single();
 

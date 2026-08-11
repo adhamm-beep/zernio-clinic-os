@@ -31,6 +31,10 @@ type CalendarAppointmentRow = {
     | {
         first_name: string | null;
         last_name: string | null;
+        phone: string | null;
+        national_id: string | null;
+        gender: string | null;
+        nationality: string | null;
       }
     | null;
 
@@ -75,7 +79,11 @@ export async function getCalendarEvents(
 
       customers(
         first_name,
-        last_name
+        last_name,
+        phone,
+        national_id,
+        gender,
+        nationality
       ),
 
       staff(
@@ -152,6 +160,14 @@ export async function getCalendarEvents(
           item.customer_id,
 
         customerName,
+
+        customerPhone: item.customers?.phone ?? null,
+
+        customerNationalId: item.customers?.national_id ?? null,
+
+        customerGender: item.customers?.gender ?? null,
+
+        customerNationality: item.customers?.nationality ?? null,
 
         doctorId:
           item.doctor_id,

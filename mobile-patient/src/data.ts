@@ -1,3 +1,0 @@
-export const services=[{id:1,name:"Laser Hair Removal",detail:"Clarity II",duration:"30 min",icon:"sparkles"},{id:2,name:"Botox",detail:"Doctor consultation",duration:"30 min",icon:"medical"},{id:3,name:"ProFacial",detail:"Skin care session",duration:"45 min",icon:"water"},{id:4,name:"Filler",detail:"Doctor assessment",duration:"45 min",icon:"flask"}];
-export const appointments=[{id:1,service:"Laser Hair Removal",provider:"Laser 1",date:"Sun, 9 Aug",time:"6:30 PM",status:"Confirmed"},{id:2,service:"ProFacial",provider:"ProFacial Room",date:"Wed, 19 Aug",time:"4:00 PM",status:"Booked"}];
-export const invoices=[{id:"INV-1042",date:"3 Aug 2026",title:"Botox session",amount:1250,status:"Paid"},{id:"INV-1049",date:"6 Aug 2026",title:"ProFacial",amount:699,status:"Due"}];

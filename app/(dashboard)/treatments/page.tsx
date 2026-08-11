@@ -1,19 +1,29 @@
 "use client";
 
+import { useMemo } from "react";
+
 import TreatmentTable from "@/features/treatments/components/TreatmentTable";
 import { useTreatments } from "@/features/treatments/hooks/useTreatments";
 import AddTreatmentDialog from "@/features/treatments/components/AddTreatmentDialog";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import DateRangeFilter from "@/features/date-range/DateRangeFilter";
+import { isWithinDateRange } from "@/features/date-range/date-range";
+import { useDateRange } from "@/features/date-range/useDateRange";
 
 export default function TreatmentsPage() {
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
+  const range = useDateRange();
   const {
     data: treatments = [],
     isLoading,
     error,
   } = useTreatments(clinicId, branchId);
+  const visibleTreatments = useMemo(
+    () => treatments.filter((treatment) => isWithinDateRange(treatment.treatment_date ?? treatment.created_at, range)),
+    [treatments, range]
+  );
 
   return (
     <div className="space-y-6">
@@ -24,7 +34,7 @@ export default function TreatmentsPage() {
           </h1>
 
           <p className="mt-1 text-gray-500">
-            {treatments.length} treatments
+            {visibleTreatments.length} treatments
           </p>
         </div>
 
@@ -32,6 +42,8 @@ export default function TreatmentsPage() {
           <AddTreatmentDialog clinicId={clinicId} branchId={branchId} />
         )}
       </div>
+
+      <DateRangeFilter />
 
       {isLoading && (
         <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
@@ -48,7 +60,7 @@ export default function TreatmentsPage() {
       )}
 
       {!isLoading && !error && (
-        <TreatmentTable treatments={treatments} />
+        <TreatmentTable treatments={visibleTreatments} />
       )}
     </div>
   );

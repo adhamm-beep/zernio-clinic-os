@@ -39,9 +39,9 @@ begin
     ),'[]'::jsonb),
     'appointmentTracking',coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id',a.id,'status',a.status,'appointmentAt',a.appointment_at,
+        'id',a.id,'createdAt',a.created_at,'status',a.status,'appointmentAt',a.appointment_at,
         'service',s.name,'provider',st.staff_name
-      ) order by a.appointment_at desc)
+      ) order by a.created_at desc,a.id desc)
       from public.appointments a
       left join public.services s on s.id=a.service_id
       left join public.staff st on st.id=a.doctor_id

@@ -66,8 +66,8 @@ export async function getAppointments(
   let query = supabase
     .from("appointments")
     .select(APPOINTMENT_SELECT)
-    .order("appointment_at", {
-      ascending: true,
+    .order("created_at", {
+      ascending: false,
     });
 
   if (clinicId && clinicId > 0) {
@@ -814,12 +814,15 @@ export async function updateAppointment(
 export async function deleteAppointment(
   id: number
 ) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("appointments")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("customer_id")
+    .single();
 
   if (error) throw error;
+  return data;
 }
 
 export const cancelAppointment = (

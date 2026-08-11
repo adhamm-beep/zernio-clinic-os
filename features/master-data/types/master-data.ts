@@ -40,7 +40,11 @@ export type MasterRoom = {
 export type MasterService = {
   id: number;
   name: string;
+  name_en?: string;
+  name_ar?: string;
   category: string | null;
+  category_en?: string | null;
+  category_ar?: string | null;
   default_price: number;
   duration_minutes: number;
   is_active: boolean;
@@ -54,7 +58,7 @@ export type MasterDevice = { id: number; clinic_id: number; branch_id: number | 
 export type MasterStaffService = { staff_id: number; service_id: number };
 export type MasterServiceDevice = { service_id: number; device_id: number };
 export type MasterServicePrice = { id: number; service_id: number; staff_id: number | null; price: number; price_type: string; is_starting_from: boolean };
-export type MasterServiceVariant = { id: number; service_id: number; name: string; price: number; is_starting_from: boolean; is_active: boolean };
+export type MasterServiceVariant = { id: number; service_id: number; name: string; name_en?: string; name_ar?: string; price: number; is_starting_from: boolean; is_active: boolean };
 export type MasterServiceVariantPrice = { id: number; service_variant_id: number; staff_id: number; price: number; is_starting_from: boolean; is_active: boolean };
 export type MasterStaffRoom = { staff_id: number; room_id: number };
 export type MasterStaffDevice = { staff_id: number; device_id: number };

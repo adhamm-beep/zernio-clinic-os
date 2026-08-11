@@ -1,6 +1,7 @@
 node_modules/
 .expo/
 .expo-dist/
+.codex-tmp/
 .env
 .env.local
-
+expo-runtime*.log

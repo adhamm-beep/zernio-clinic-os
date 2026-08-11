@@ -10,6 +10,8 @@ export type CreateCustomerInput = {
   first_name: string;
   last_name?: string;
   phone: string;
+  national_id?: string;
+  nationality?: "saudi" | "non_saudi";
   email?: string;
   gender?: string;
   date_of_birth?: string;
@@ -62,6 +64,8 @@ export async function createCustomer(
       last_name: customer.last_name?.trim() || null,
       phone: customer.phone.trim(),
       phone_normalized: normalizePhone(customer.phone),
+      national_id: customer.national_id?.trim() || null,
+      nationality: customer.nationality || "saudi",
       email: customer.email?.trim() || null,
       gender: customer.gender || null,
       date_of_birth: customer.date_of_birth || null,
@@ -71,7 +75,7 @@ export async function createCustomer(
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw customerWriteError(error.message);
   }
 
   return data as Customer;
@@ -88,6 +92,8 @@ export async function updateCustomer(
       last_name: customer.last_name?.trim() || null,
       phone: customer.phone.trim(),
       phone_normalized: normalizePhone(customer.phone),
+      national_id: customer.national_id?.trim() || null,
+      nationality: customer.nationality || "saudi",
       email: customer.email?.trim() || null,
       gender: customer.gender || null,
       date_of_birth: customer.date_of_birth || null,
@@ -98,7 +104,7 @@ export async function updateCustomer(
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw customerWriteError(error.message);
   }
 
   return data as Customer;
@@ -158,6 +164,7 @@ export async function getCustomer360(
     paymentsResult,
     followUpsResult,
     treatmentSessionsResult,
+    membershipResult,
   ] = await Promise.all([
     supabase
       .from("customers")
@@ -224,6 +231,8 @@ export async function getCustomer360(
       .select("id, session_date, status")
       .eq("customer_id", customerId)
       .order("session_date", { ascending: false }),
+
+    supabase.rpc("staff_customer_membership_summary", { p_customer_id: customerId }),
   ]);
 
   const firstError =
@@ -232,7 +241,8 @@ export async function getCustomer360(
     treatmentsResult.error ||
     paymentsResult.error ||
     followUpsResult.error ||
-    treatmentSessionsResult.error;
+    treatmentSessionsResult.error ||
+    membershipResult.error;
 
   if (firstError) {
     throw new Error(firstError.message);
@@ -297,5 +307,13 @@ export async function getCustomer360(
       0
     ),
     lastVisit,
+    membership: membershipResult.data ?? null,
   } as Customer360;
+}
+
+function customerWriteError(message:string):Error{
+  if(message.includes("CUSTOMER_CODE_ALREADY_EXISTS")||message.includes("customers_customer_code_unique"))return new Error("This file number is already assigned to another customer.");
+  if(message.includes("CUSTOMER_PHONE_ALREADY_EXISTS"))return new Error("This customer already exists with the same phone number.");
+  if(message.includes("CUSTOMER_NATIONAL_ID_ALREADY_EXISTS"))return new Error("This customer already exists with the same national ID or Iqama.");
+  return new Error(message);
 }

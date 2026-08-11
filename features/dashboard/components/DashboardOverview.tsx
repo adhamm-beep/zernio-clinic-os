@@ -1,542 +1,65 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Banknote,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  CreditCard,
-  Stethoscope,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Banknote, CalendarDays, CheckCircle2, Clock3, CreditCard, FileText, RefreshCw, Search, Sparkles, UserRound, type LucideIcon } from "lucide-react";
+import { useLocale } from "@/components/LocaleProvider";
+import { useClinic } from "@/features/clinic/hooks/useClinic";
+import { useAppointments } from "@/features/appointments/hooks/useAppointments";
+import { useMasterData } from "@/features/appointments/hooks/useMasterData";
+import { usePayments } from "@/features/payments/hooks/usePayments";
+import type { AppointmentStatus } from "@/features/appointments/types/appointment";
+import DateRangeFilter from "@/features/date-range/DateRangeFilter";
+import { isWithinDateRange } from "@/features/date-range/date-range";
+import { useDateRange } from "@/features/date-range/useDateRange";
+import { groupServiceFamilies, serviceFamilyLabel } from "@/features/services/service-family";
 
-import { useDashboardStats } from "../hooks/useDashboardStats";
-import DashboardStatCard from "./DashboardStatCard";
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatShortDate(value: string) {
-  const date = new Date(value);
-
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "2-digit",
-  }).format(date);
-}
-
-function formatStatusLabel(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getAppointmentStatusColor(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-blue-500";
-
-    case "arrived":
-      return "bg-purple-500";
-
-    case "completed":
-      return "bg-green-500";
-
-    case "cancelled":
-      return "bg-red-500";
-
-    case "no_show":
-      return "bg-orange-500";
-
-    default:
-      return "bg-gray-500";
-  }
-}
+const statusStyles: Record<AppointmentStatus, string> = {
+  booked: "border-sky-200 bg-sky-50 text-sky-800", confirmed: "border-blue-200 bg-blue-50 text-blue-800",
+  arrived: "border-violet-200 bg-violet-50 text-violet-800",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-800", cancelled: "border-rose-200 bg-rose-50 text-rose-800",
+  no_show: "border-slate-200 bg-slate-100 text-slate-700",
+};
 
 export default function DashboardOverview() {
-  const {
-    data: stats,
-    isLoading,
-    error,
-    refetch,
-    isFetching,
-  } = useDashboardStats();
-
-  if (isLoading) {
-    return (
-      <div className="rounded-2xl bg-white p-12 text-center shadow-sm">
-        Loading executive dashboard...
-      </div>
-    );
-  }
-
-  if (error || !stats) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-7">
-        <h2 className="font-bold text-red-700">
-          Failed to load dashboard
-        </h2>
-
-        <p className="mt-2 text-sm text-red-600">
-          {error instanceof Error
-            ? error.message
-            : "Dashboard data is unavailable."}
-        </p>
-
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="mt-5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  const statusEntries = Object.entries(
-    stats.appointmentStatus
-  );
-
-  const highestRevenue = Math.max(
-    ...stats.revenueLastSevenDays.map(
-      (item) => item.amount
-    ),
-    1
-  );
-
-  const highestServiceRevenue = Math.max(
-    ...stats.topServices.map(
-      (service) => service.revenue
-    ),
-    1
-  );
-
-  return (
-    <div className="space-y-8">
-      <section className="overflow-hidden rounded-3xl bg-slate-950 p-7 text-white shadow-lg">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-400">
-              Panthera Clinics
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
-              Executive Dashboard
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              Live overview of clinic performance, revenue,
-              appointments, treatments and customer follow-ups.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-green-400" />
-              Live data
-            </span>
-
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
-            >
-              {isFetching ? "Refreshing..." : "Refresh"}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-white/10 p-5">
-            <p className="text-sm text-slate-300">
-              Revenue Today
-            </p>
-
-            <p className="mt-2 text-3xl font-bold">
-              {formatMoney(stats.revenueToday)}
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/10 p-5">
-            <p className="text-sm text-slate-300">
-              Revenue This Month
-            </p>
-
-            <p className="mt-2 text-3xl font-bold">
-              {formatMoney(stats.revenueThisMonth)}
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/10 p-5">
-            <p className="text-sm text-slate-300">
-              Appointments Today
-            </p>
-
-            <p className="mt-2 text-3xl font-bold">
-              {stats.appointmentsToday}
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/10 p-5">
-            <p className="text-sm text-slate-300">
-              Overdue Follow Ups
-            </p>
-
-            <p
-              className={`mt-2 text-3xl font-bold ${
-                stats.overdueFollowUps > 0
-                  ? "text-red-300"
-                  : "text-green-300"
-              }`}
-            >
-              {stats.overdueFollowUps}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {stats.overdueFollowUps > 0 && (
-        <section className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 text-red-600" />
-
-            <div>
-              <h2 className="font-bold text-red-800">
-                Follow-ups need attention
-              </h2>
-
-              <p className="mt-1 text-sm text-red-700">
-                You have {stats.overdueFollowUps} overdue customer
-                follow-up
-                {stats.overdueFollowUps === 1 ? "" : "s"}.
-              </p>
-            </div>
-          </div>
-
-          <a
-            href="/follow-ups"
-            className="w-fit rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
-          >
-            Open Follow Ups
-          </a>
-        </section>
-      )}
-
-      <section>
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-gray-950">
-            Clinic Performance
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Key numbers across the entire operation
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <DashboardStatCard
-            title="Total Customers"
-            value={stats.totalCustomers}
-            subtitle={`${stats.newCustomersToday} new today`}
-            icon={Users}
-          />
-
-          <DashboardStatCard
-            title="New Customers Today"
-            value={stats.newCustomersToday}
-            subtitle="New customer records"
-            icon={UserPlus}
-          />
-
-          <DashboardStatCard
-            title="Monthly Appointments"
-            value={stats.appointmentsThisMonth}
-            subtitle={`${stats.appointmentsToday} scheduled today`}
-            icon={CalendarDays}
-          />
-
-          <DashboardStatCard
-            title="Average Payment"
-            value={formatMoney(stats.averagePayment)}
-            subtitle="Average collected transaction"
-            icon={CreditCard}
-          />
-
-          <DashboardStatCard
-            title="Total Collected"
-            value={formatMoney(stats.totalCollected)}
-            subtitle="Last seven days in current version"
-            icon={Banknote}
-          />
-
-          <DashboardStatCard
-            title="Total Treatments"
-            value={stats.totalTreatments}
-            subtitle={`${stats.completedTreatments} completed`}
-            icon={Stethoscope}
-          />
-
-          <DashboardStatCard
-            title="Pending Follow Ups"
-            value={stats.pendingFollowUps}
-            subtitle={`${stats.completedFollowUps} completed`}
-            icon={Clock3}
-          />
-
-          <DashboardStatCard
-            title="Overdue Follow Ups"
-            value={stats.overdueFollowUps}
-            subtitle="Require immediate action"
-            icon={AlertTriangle}
-            alert={stats.overdueFollowUps > 0}
-          />
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-gray-950">
-                Revenue — Last 7 Days
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Daily collected payments
-              </p>
-            </div>
-
-            <Banknote className="text-gray-400" />
-          </div>
-
-          <div className="mt-8 flex h-64 items-end gap-3">
-            {stats.revenueLastSevenDays.map((item) => {
-              const height =
-                item.amount === 0
-                  ? 4
-                  : Math.max(
-                      (item.amount / highestRevenue) * 100,
-                      10
-                    );
-
-              return (
-                <div
-                  key={item.date}
-                  className="flex h-full flex-1 flex-col items-center justify-end gap-3"
-                >
-                  <div className="text-center text-xs font-medium text-gray-600">
-                    {item.amount > 0
-                      ? formatMoney(item.amount)
-                      : "—"}
-                  </div>
-
-                  <div className="flex h-44 w-full items-end rounded-xl bg-slate-100 p-1">
-                    <div
-                      className="w-full rounded-lg bg-slate-900 transition-all"
-                      style={{ height: `${height}%` }}
-                    />
-                  </div>
-
-                  <p className="text-xs text-gray-500">
-                    {formatShortDate(item.date)}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div>
-            <h2 className="text-lg font-bold text-gray-950">
-              Appointment Status
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Current month breakdown
-            </p>
-          </div>
-
-          <div className="mt-6 space-y-5">
-            {statusEntries.map(([status, count]) => {
-              const percentage =
-                stats.appointmentsThisMonth > 0
-                  ? (count / stats.appointmentsThisMonth) *
-                    100
-                  : 0;
-
-              return (
-                <div key={status}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${getAppointmentStatusColor(
-                          status
-                        )}`}
-                      />
-
-                      <span className="text-sm font-medium text-gray-700">
-                        {formatStatusLabel(status)}
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-bold text-gray-950">
-                      {count}
-                    </span>
-                  </div>
-
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full ${getAppointmentStatusColor(
-                        status
-                      )}`}
-                      style={{
-                        width: `${percentage}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div>
-            <h2 className="text-lg font-bold text-gray-950">
-              Top Services
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Ranked by treatment value
-            </p>
-          </div>
-
-          {stats.topServices.length === 0 ? (
-            <div className="py-12 text-center text-sm text-gray-500">
-              No treatment data available.
-            </div>
-          ) : (
-            <div className="mt-6 space-y-5">
-              {stats.topServices.map((service, index) => {
-                const width =
-                  (service.revenue /
-                    highestServiceRevenue) *
-                  100;
-
-                return (
-                  <div key={service.serviceName}>
-                    <div className="mb-2 flex items-center justify-between gap-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-sm font-bold text-white">
-                          {index + 1}
-                        </span>
-
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-gray-900">
-                            {service.serviceName}
-                          </p>
-
-                          <p className="text-xs text-gray-500">
-                            {service.count} treatment
-                            {service.count === 1 ? "" : "s"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="shrink-0 font-bold text-gray-950">
-                        {formatMoney(service.revenue)}
-                      </p>
-                    </div>
-
-                    <div className="ml-11 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-slate-900"
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="text-green-400" />
-
-            <div>
-              <h2 className="text-lg font-bold">
-                Operations Health
-              </h2>
-
-              <p className="text-sm text-slate-400">
-                Current operational overview
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-7 space-y-4">
-            <div className="flex items-center justify-between rounded-xl bg-white/10 p-4">
-              <span className="text-sm text-slate-300">
-                Completed treatments
-              </span>
-
-              <span className="font-bold">
-                {stats.completedTreatments}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl bg-white/10 p-4">
-              <span className="text-sm text-slate-300">
-                Completed follow-ups
-              </span>
-
-              <span className="font-bold">
-                {stats.completedFollowUps}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl bg-white/10 p-4">
-              <span className="text-sm text-slate-300">
-                Monthly appointments
-              </span>
-
-              <span className="font-bold">
-                {stats.appointmentsThisMonth}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl bg-white/10 p-4">
-              <span className="text-sm text-slate-300">
-                Active alerts
-              </span>
-
-              <span
-                className={`font-bold ${
-                  stats.overdueFollowUps > 0
-                    ? "text-red-300"
-                    : "text-green-300"
-                }`}
-              >
-                {stats.overdueFollowUps}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+  const { isArabic, text } = useLocale();
+  const { clinic, selectedBranch } = useClinic();
+  const clinicId = clinic?.id ?? 0;
+  const branchId = selectedBranch?.id ?? 0;
+  const range = useDateRange();
+  const [doctorId, setDoctorId] = useState("all");
+  const [serviceFamily, setServiceFamily] = useState("all");
+  const [search, setSearch] = useState("");
+  const appointmentsQuery = useAppointments(clinicId, branchId);
+  const paymentsQuery = usePayments(clinicId, branchId);
+  const masterQuery = useMasterData();
+  const doctors = useMemo(() => (masterQuery.data?.staff ?? []).filter(item => item.is_active && item.role?.toLowerCase() === "doctor"), [masterQuery.data]);
+  const services = useMemo(() => (masterQuery.data?.services ?? []).filter(item => item.is_active), [masterQuery.data]);
+  const serviceFamilies = useMemo(() => groupServiceFamilies(services), [services]);
+  const selectedServiceIds = useMemo(() => serviceFamilies.find(item => item.key === serviceFamily)?.serviceIds ?? [], [serviceFamilies, serviceFamily]);
+  const appointments = useMemo(() => (appointmentsQuery.data ?? []).filter(item => {
+    const patient = `${item.customers?.first_name ?? ""} ${item.customers?.last_name ?? ""} ${item.customers?.phone ?? ""}`.toLowerCase();
+    return isWithinDateRange(item.appointment_at, range) && (doctorId === "all" || item.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (item.service_id != null && selectedServiceIds.includes(item.service_id))) && (!search.trim() || patient.includes(search.trim().toLowerCase()));
+  }).sort((a, b) => new Date(a.appointment_at).getTime() - new Date(b.appointment_at).getTime()), [appointmentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds, search]);
+  const payments = useMemo(() => (paymentsQuery.data ?? []).filter(item => isWithinDateRange(item.payment_date ?? item.created_at, range) && (doctorId === "all" || item.appointments?.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (item.appointments?.service_id != null && selectedServiceIds.includes(item.appointments.service_id)) || item.payment_invoice_items?.some(line => selectedServiceIds.includes(line.service_id)))), [paymentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds]);
+  const completedPatients = new Set(appointments.filter(item => item.status === "completed").map(item => item.customer_id)).size;
+  const invoiced = payments.reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
+  const paid = payments.reduce((sum, item) => sum + Number(item.paid_amount ?? (item.payment_status === "paid" ? item.amount : 0)), 0);
+  const remaining = payments.reduce((sum, item) => sum + Number(item.balance_due ?? 0), 0);
+  const money = (value: number) => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
+  const statusLabel = (status: AppointmentStatus) => ({ booked: text("Booked", "محجوز"), confirmed: text("Confirmed", "مؤكد"), arrived: text("Arrived", "تم الوصول"), completed: text("Completed", "مكتمل"), cancelled: text("Cancelled", "ملغي"), no_show: text("No show", "لم يحضر") })[status];
+  const serviceName = (id: number | null) => { const item = services.find(service => service.id === id); return item ? serviceFamilyLabel(item, isArabic) : text("Service", "خدمة"); };
+  const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
+  const metrics: Array<[string, string | number, LucideIcon]> = [[text("Appointments", "المواعيد"), appointments.length, CalendarDays], [text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2], [text("Invoices", "الفواتير"), payments.length, FileText], [text("Collected", "المحصل"), money(paid), Banknote]];
+
+  return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>
+    <section className="overflow-hidden rounded-[28px] bg-[#071826] text-white shadow-xl">
+      <div className="flex flex-col gap-5 p-6 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[.26em] text-cyan-300">ZERNIO LIVE OPERATIONS</p><h1 className="mt-2 text-3xl font-black">{text("Your clinic, live and under control", "عيادتك لحظة بلحظة")}</h1><p className="mt-2 text-sm text-slate-300">{text("Appointments, completed patients and billing in one connected workspace.", "المواعيد والمرضى المكتملون والفواتير في مساحة تشغيل واحدة مترابطة.")}</p></div><div className="flex gap-2"><Link href="/appointments" className="rounded-xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950">{text("New appointment", "موعد جديد")}</Link><button onClick={() => { void appointmentsQuery.refetch(); void paymentsQuery.refetch(); }} className="grid size-11 place-items-center rounded-xl bg-white/10" aria-label={text("Refresh", "تحديث")}><RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`}/></button></div></div>
+      <div className="grid border-t border-white/10 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(([label, value, Icon]) => <div key={label} className="flex items-center gap-4 border-white/10 p-5 sm:border-s"><span className="grid size-11 place-items-center rounded-2xl bg-white/10"><Icon className="size-5 text-cyan-300"/></span><div><p className="text-xs font-bold text-slate-400">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div></div>)}</div>
+    </section>
+    <section className="space-y-3 rounded-2xl border bg-white p-4 shadow-sm"><DateRangeFilter/><div className="grid gap-3 xl:grid-cols-[1.25fr_1fr_1fr_auto]"><label className="flex items-center gap-2 rounded-xl border bg-slate-50 px-3"><Search className="size-4 text-slate-400"/><input value={search} onChange={e => setSearch(e.target.value)} placeholder={text("Search patient", "البحث عن مريض")} className="h-11 w-full bg-transparent text-sm outline-none"/></label><select value={doctorId} onChange={e => setDoctorId(e.target.value)} className="h-11 rounded-xl border px-3 text-sm"><option value="all">{text("All doctors", "كل الطبيبات")}</option>{doctors.map(item => <option key={item.id} value={item.id}>{item.staff_name}</option>)}</select><select value={serviceFamily} onChange={e => setServiceFamily(e.target.value)} className="h-11 rounded-xl border px-3 text-sm"><option value="all">{text("All services", "كل الخدمات")}</option>{serviceFamilies.map(item => <option key={item.key} value={item.key}>{isArabic ? item.nameAr : item.nameEn}</option>)}</select><button onClick={() => { setDoctorId("all"); setServiceFamily("all"); setSearch(""); range.setPreset("today"); }} className="h-11 rounded-xl border px-4 text-sm font-bold">{text("Reset filters", "إعادة ضبط الفلاتر")}</button></div></section>
+    <section className="grid gap-5 xl:grid-cols-[1.65fr_.75fr]"><div className="overflow-hidden rounded-3xl border bg-white shadow-sm"><div className="flex items-center justify-between border-b p-5"><div><h2 className="text-xl font-black">{text("Daily appointment flow", "سير مواعيد اليوم")}</h2><p className="text-sm text-slate-500">{appointments.length} {text("appointments match the active filters", "موعد مطابق للفلاتر")}</p></div><CalendarDays className="size-6 text-cyan-600"/></div><div className="grid gap-3 p-4">{appointments.length ? appointments.map(item => { const customer = `${item.customers?.first_name ?? ""} ${item.customers?.last_name ?? ""}`.trim() || text("Patient", "مريض"); const time = new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Riyadh" }).format(new Date(item.appointment_at)); return <article key={item.id} className={`rounded-2xl border p-4 ${statusStyles[item.status]}`}><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-white/70"><UserRound className="size-5"/></span><div><h3 className="font-black">{customer}</h3><p className="text-xs opacity-80" dir="ltr">{item.customers?.phone || "—"}</p></div></div><span className="rounded-full bg-white/80 px-3 py-1 text-xs font-black">{statusLabel(item.status)}</span></div><div className="mt-4 grid gap-2 text-sm sm:grid-cols-3"><span className="flex items-center gap-2"><Clock3 className="size-4"/>{time}</span><span>{item.staff?.staff_name || text("Department", "قسم")}</span><span>{serviceName(item.service_id)}</span></div></article>; }) : <div className="py-20 text-center text-slate-400"><CalendarDays className="mx-auto mb-3 size-10"/><p>{text("No appointments match these filters.", "لا توجد مواعيد مطابقة لهذه الفلاتر.")}</p></div>}</div></div>
+      <div className="space-y-4"><div className="rounded-3xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><CreditCard className="size-5"/></span><div><h2 className="font-black">{text("Financial snapshot", "الملخص المالي")}</h2><p className="text-xs text-slate-500">{text("For the active filters", "حسب الفلاتر الحالية")}</p></div></div><div className="mt-5 space-y-3">{[[text("Invoiced", "إجمالي الفواتير"), invoiced], [text("Paid", "المدفوع"), paid], [text("Remaining", "المتبقي"), remaining]].map(([label, value], index) => <div key={String(label)} className="flex items-center justify-between rounded-xl bg-slate-50 p-3"><span className="text-sm text-slate-600">{label}</span><strong className={index === 1 ? "text-emerald-700" : index === 2 ? "text-rose-700" : ""}>{money(Number(value))}</strong></div>)}</div><Link href="/payments" className="mt-4 block rounded-xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white">{text("Open invoices", "فتح الفواتير")}</Link></div><div className="rounded-3xl bg-gradient-to-br from-cyan-500 to-blue-700 p-5 text-white shadow-lg"><Sparkles className="size-6"/><h2 className="mt-5 text-xl font-black">{text("One filter, one truth", "فلتر واحد ورؤية موحدة")}</h2><p className="mt-2 text-sm leading-6 text-blue-50">{text("Doctor, service and date control appointments, completed patients and billing together.", "الطبيبة والخدمة والتاريخ يتحكمون في المواعيد والمرضى المكتملين والفواتير معًا.")}</p></div></div>
+    </section>
+  </div>;
 }

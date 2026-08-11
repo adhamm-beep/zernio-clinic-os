@@ -15,6 +15,10 @@ export async function invalidateCustomerWorkspace(
     queryClient.invalidateQueries({ queryKey: ["treatments"] }),
     queryClient.invalidateQueries({ queryKey: ["payments"] }),
     queryClient.invalidateQueries({ queryKey: ["follow-ups"] }),
+    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+    queryClient.invalidateQueries({ queryKey: ["clinic-analytics"] }),
+    queryClient.invalidateQueries({ queryKey: ["clinic-brain"] }),
+    queryClient.invalidateQueries({ queryKey: ["ai-agent-workspace"] }),
     queryClient.invalidateQueries({
       queryKey: id ? ["customer-360", id] : ["customer-360"],
     }),

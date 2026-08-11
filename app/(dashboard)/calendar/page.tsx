@@ -109,6 +109,8 @@ export default function CalendarPage() {
 
       {!isLoading && !isError && (
         <CalendarGrid
+          clinicId={clinicId}
+          branchId={branchId}
           view={view}
           currentDate={currentDate}
           events={filteredEvents}

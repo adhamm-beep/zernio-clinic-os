@@ -10,5 +10,7 @@ export function useAppointments(clinicId?: number, branchId?: number) {
     enabled:
       clinicId === undefined ||
       (clinicId > 0 && (branchId === undefined || branchId > 0)),
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
 }

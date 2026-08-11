@@ -27,11 +27,21 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub);
-  const publicAuthRoutes = ["/login", "/reset-password", "/api/auth/login"];
-  const isPublicAuthRoute = publicAuthRoutes.includes(request.nextUrl.pathname);
+  const publicRoutes = [
+    "/login", "/forgot-password", "/reset-password", "/privacy", "/terms", "/account-deletion", "/api/auth/login",
+    "/api/auth/forgot-password",
+    "/api/payments/moyasar/callback", "/api/payments/moyasar/return", "/api/health",
+  ];
+  const isPublicAuthRoute = publicRoutes.includes(request.nextUrl.pathname);
   const isLoginRoute = request.nextUrl.pathname === "/login";
 
   if (!isAuthenticated && !isPublicAuthRoute) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

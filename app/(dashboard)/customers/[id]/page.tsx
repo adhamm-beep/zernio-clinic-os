@@ -16,6 +16,9 @@ import {
   TrendingUp,
   UserRound,
   WalletCards,
+  BadgePercent,
+  Crown,
+  ReceiptText,
 } from "lucide-react";
 
 import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
@@ -265,6 +268,39 @@ export default function CustomerProfilePage() {
           const StatIcon = Icon as typeof CalendarDays;
           return <div key={String(label)} className="rounded-2xl bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-sm text-gray-500">{String(label)}</p><p className="mt-2 text-3xl font-bold">{String(value)}</p></div><StatIcon className={`h-10 w-10 ${String(color)}`} /></div></div>;
         })}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-7 text-white shadow-lg">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-300">Panthera Member</p>
+              <h2 className="mt-2 text-2xl font-bold">Membership & loyalty</h2>
+            </div>
+            <div className="rounded-2xl bg-white/10 p-3"><Crown /></div>
+          </div>
+          {customer.membership ? <>
+            <div className="mt-7 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">Current tier</p><p className="mt-2 text-xl font-bold capitalize">{customer.membership.tier}</p></div>
+              <div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">Available points</p><p className="mt-2 text-xl font-bold">{customer.membership.points.toLocaleString()}</p></div>
+              <div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">Lifetime points</p><p className="mt-2 text-xl font-bold">{customer.membership.lifetimePoints.toLocaleString()}</p></div>
+              <div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">Next tier at</p><p className="mt-2 text-xl font-bold">{customer.membership.nextTierPoints.toLocaleString()}</p></div>
+            </div>
+          </> : <p className="mt-7 rounded-2xl bg-white/10 p-5 text-slate-200">The membership account will be created automatically from paid transactions.</p>}
+        </div>
+
+        <div className="rounded-3xl border bg-white p-7 shadow-sm">
+          <div className="flex items-center gap-3"><div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700"><ReceiptText /></div><div><h2 className="text-xl font-bold">Financial details</h2><p className="text-sm text-slate-500">All payments and balances for this patient</p></div></div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <MetricCard label="Paid" value={formatMoney(customer.totalPaid)} tone="green" />
+            <MetricCard label="Services value" value={formatMoney(customer.treatmentValue)} tone="blue" />
+            <MetricCard label="Balance due" value={formatMoney(customer.outstandingBalance)} tone={customer.outstandingBalance > 0 ? "orange" : "green"} />
+          </div>
+          <div className="mt-5 space-y-2">
+            {customer.payments.slice(0, 6).map((payment) => <div key={payment.id} className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4"><div className="flex items-center gap-3"><BadgePercent className="text-slate-500" size={19}/><div><p className="font-semibold">{payment.invoice_number || `Payment #${payment.id}`}</p><p className="text-xs text-slate-500">{formatDateTime(payment.payment_date)} · {payment.payment_method || "Not specified"}</p></div></div><div className="text-right"><p className="font-bold">{formatMoney(payment.amount)}</p><p className="text-xs capitalize text-slate-500">{payment.payment_status}</p></div></div>)}
+            {!customer.payments.length && <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm text-slate-500">No payments recorded yet.</p>}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-5 md:grid-cols-3">

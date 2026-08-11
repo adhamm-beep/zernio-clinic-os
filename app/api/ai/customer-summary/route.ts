@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  privateJson,
+  rateLimit,
+  readJsonWithLimit,
+  RequestValidationError,
+} from "@/lib/security/request";
 
 const insightsSchema = z.object({
   visits: z.number().int().nonnegative(),
@@ -47,19 +53,28 @@ export async function POST(request: Request) {
   const { data } = await supabase.auth.getClaims();
 
   if (!data?.claims?.sub) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return privateJson({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limit = rateLimit(`ai-summary:${data.claims.sub}`, 20, 5 * 60_000);
+  if (!limit.allowed) {
+    return privateJson(
+      { error: "Too many AI requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json({ error: "AI is not configured" }, { status: 503 });
+    return privateJson({ error: "AI is not configured" }, { status: 503 });
   }
 
   let insights: z.infer<typeof insightsSchema>;
   try {
-    insights = insightsSchema.parse(await request.json());
-  } catch {
-    return Response.json({ error: "Invalid customer insights" }, { status: 400 });
+    insights = insightsSchema.parse(await readJsonWithLimit(request, 16_384));
+  } catch (error) {
+    const status = error instanceof RequestValidationError ? error.status : 400;
+    return privateJson({ error: "Invalid customer insights" }, { status });
   }
 
   const controller = new AbortController();
@@ -136,7 +151,7 @@ export async function POST(request: Request) {
         errorBody?.error?.code === "credit_balance_exhausted" ||
         errorBody?.error?.type === "insufficient_quota";
 
-      return Response.json(
+      return privateJson(
         {
           error: creditsRequired ? "OpenAI credits are required" : "AI service is unavailable",
           code: creditsRequired ? "AI_CREDITS_REQUIRED" : "AI_UNAVAILABLE",
@@ -150,11 +165,11 @@ export async function POST(request: Request) {
     if (!outputText) throw new Error("OpenAI response did not contain output text");
 
     const summary = aiSummarySchema.parse(JSON.parse(outputText));
-    return Response.json(summary);
+    return privateJson(summary);
   } catch (error) {
     const isTimeout = error instanceof Error && error.name === "AbortError";
     console.error("Customer AI summary error", isTimeout ? "timeout" : "invalid_response");
-    return Response.json(
+    return privateJson(
       { error: isTimeout ? "AI request timed out" : "AI response was invalid" },
       { status: isTimeout ? 504 : 502 }
     );

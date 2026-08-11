@@ -1,2 +1,15 @@
 import{createClient}from"@/lib/supabase/client";const s=createClient();export async function getEnterprise(c:number,b:number){const[t,n,a,w,r,p,current]=await Promise.all([s.from("enterprise_tasks").select("*,assignee:staff!enterprise_tasks_assigned_to_fkey(staff_name)").eq("clinic_id",c).eq("branch_id",b).order("created_at",{ascending:false}),s.from("enterprise_notifications").select("*").eq("clinic_id",c).order("created_at",{ascending:false}).limit(50),s.from("enterprise_audit_log").select("*,actor:staff(staff_name)").eq("clinic_id",c).order("created_at",{ascending:false}).limit(100),s.from("enterprise_workflows").select("*").eq("clinic_id",c).eq("branch_id",b).order("name"),s.from("enterprise_workflow_runs").select("*").eq("clinic_id",c).order("created_at",{ascending:false}).limit(50),s.from("enterprise_preferences").select("*").maybeSingle(),s.rpc("current_staff_id")]);const e=t.error||n.error||a.error||w.error||r.error||p.error||current.error;if(e)throw new Error(e.message);return{tasks:t.data??[],notifications:n.data??[],audit:a.data??[],workflows:w.data??[],runs:r.data??[],preference:p.data,currentStaffId:Number(current.data)};}
 async function ins(table:string,x:Record<string,unknown>){const{error}=await s.from(table).insert(x);if(error)throw new Error(error.message);}export const addTask=(x:Record<string,unknown>)=>ins("enterprise_tasks",x);export const addWorkflow=(x:Record<string,unknown>)=>ins("enterprise_workflows",x);export async function updateTask(id:number,x:Record<string,unknown>){const{error}=await s.from("enterprise_tasks").update(x).eq("id",id);if(error)throw new Error(error.message);}export async function readNotification(id:number){const{error}=await s.from("enterprise_notifications").update({is_read:true}).eq("id",id);if(error)throw new Error(error.message);}export async function savePreference(x:Record<string,unknown>){const{error}=await s.from("enterprise_preferences").upsert(x,{onConflict:"staff_id"});if(error)throw new Error(error.message);}
+
+export async function getStaffNotifications(clinicId:number,branchId?:number){
+  let query=s.from("enterprise_notifications").select("id,title,message,type,href,is_read,created_at,branch_id").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(30);
+  if(branchId)query=query.or(`branch_id.is.null,branch_id.eq.${branchId}`);
+  const{data,error}=await query;
+  if(error)throw new Error(error.message);
+  return data??[];
+}
+
+export async function readAllNotifications(clinicId:number){
+  const{error}=await s.from("enterprise_notifications").update({is_read:true}).eq("clinic_id",clinicId).eq("is_read",false);
+  if(error)throw new Error(error.message);
+}

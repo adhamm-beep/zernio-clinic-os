@@ -9,6 +9,8 @@ export type PaymentMethod =
 export type PaymentStatus =
   | "paid"
   | "partial"
+  | "pending"
+  | "unpaid"
   | "refunded"
   | "cancelled";
 
@@ -21,11 +23,21 @@ export interface Payment {
   customer_id: number;
   appointment_id: number | null;
   treatment_id: number | null;
+  service_id: number | null;
+  service_variant_id: number | null;
+  material_quantity: number | null;
+  material_unit: string | null;
+  material_unit_price: number | null;
+  material_line_total: number | null;
 
   dentolize_payment_id: number | null;
 
   amount: number;
   tax_amount: number | null;
+  subtotal_amount: number;
+  discount_amount: number;
+  paid_amount: number;
+  balance_due: number;
 
   payment_method: PaymentMethod | string;
   payment_status: PaymentStatus | string;
@@ -53,4 +65,17 @@ export interface Payment {
     price: number | null;
     discount: number | null;
   } | null;
+
+  appointments?: {
+    id: number;
+    appointment_at: string;
+    status: string;
+    doctor_id: number | null;
+    service_id: number | null;
+    staff?: { id: number; staff_name: string } | null;
+    services?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
+  } | null;
+  services?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
+  service_variants?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
+  payment_invoice_items?: Array<{ id:number; service_id:number; service_variant_id:number|null; description:string; quantity:number; unit:string; unit_price:number; line_total:number; services?:{name:string;name_en?:string|null;name_ar?:string|null}|null; service_variants?:{name:string;name_en?:string|null;name_ar?:string|null}|null }>;
 }

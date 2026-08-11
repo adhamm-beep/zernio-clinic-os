@@ -26,8 +26,11 @@ import { Input } from "@/components/ui/input";
 
 import { useEditAppointment } from "@/features/appointments/hooks/useEditAppointment";
 import { useDeleteAppointment } from "@/features/appointments/hooks/useDeleteAppointment";
+import { useUpdateAppointment } from "@/features/appointments/hooks/useUpdateAppointment";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
+import { useLocale } from "@/components/LocaleProvider";
+import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
 
 import type {
   CalendarEvent,
@@ -35,6 +38,8 @@ import type {
 } from "../types/calendar";
 
 type CalendarEventDialogProps = {
+  clinicId: number;
+  branchId: number;
   event: CalendarEvent | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -66,6 +71,39 @@ const appointmentSources = [
   "Other",
 ];
 
+const statusOptions: Array<{
+  value: CalendarEventStatus;
+  en: string;
+  ar: string;
+}> = [
+  { value: "booked", en: "Booked", ar: "محجوز" },
+  { value: "confirmed", en: "Confirmed", ar: "مؤكد" },
+  { value: "arrived", en: "Arrived", ar: "وصل" },
+  { value: "completed", en: "Completed", ar: "مكتمل" },
+  { value: "cancelled", en: "Cancelled", ar: "ملغي" },
+  { value: "no_show", en: "No show", ar: "لم يحضر" },
+];
+
+function customerGenderLabel(
+  value: string | null,
+  text: (english: string, arabic: string) => string
+): string {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "male") return text("Male", "ذكر");
+  if (normalized === "female") return text("Female", "أنثى");
+  return "—";
+}
+
+function customerNationalityLabel(
+  value: string | null,
+  text: (english: string, arabic: string) => string
+): string {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "saudi") return text("Saudi", "سعودي");
+  if (normalized === "non_saudi") return text("Non-Saudi", "غير سعودي");
+  return value?.trim() || "—";
+}
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
 
@@ -77,14 +115,6 @@ function formatDateTime(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-}
-
-function formatStatus(value: string): string {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (character) =>
-      character.toUpperCase()
-    );
 }
 
 function toLocalDate(value: string): string {
@@ -150,10 +180,13 @@ function createForm(
   };
 }
 export default function CalendarEventDialog({
+  clinicId,
+  branchId,
   event,
   open,
   onOpenChange,
 }: CalendarEventDialogProps) {
+  const { text } = useLocale();
   const [isEditing, setIsEditing] =
     useState(false);
 
@@ -170,6 +203,9 @@ export default function CalendarEventDialog({
 
   const deleteAppointment =
     useDeleteAppointment();
+
+  const updateAppointmentStatus =
+    useUpdateAppointment();
 
   useEffect(() => {
     if (event) {
@@ -196,6 +232,13 @@ export default function CalendarEventDialog({
       ) ?? null
     );
   }, [form, masterData?.services]);
+
+  const providerWorkingHours = useMemo(() => {
+    const providerId = Number(form?.doctorId);
+    return providerId > 0
+      ? { start: "14:00", end: "22:00", label: "2:00 PM - 10:00 PM" }
+      : { start: "10:00", end: "22:00", label: "10:00 AM - 10:00 PM" };
+  }, [form?.doctorId]);
 
   const doctorServices = useMemo(() => {
     const doctorId = Number(form?.doctorId);
@@ -273,8 +316,11 @@ export default function CalendarEventDialog({
       form.roomId
     );
 
+    const requiredMessage = (fieldEn: string, fieldAr: string) =>
+      text(`${fieldEn} is required.`, `\u062d\u0642\u0644 ${fieldAr} \u0645\u0637\u0644\u0648\u0628.`);
+
     if (availableDevices.length > 0 && !form.deviceId) {
-      toast.error("Please select the device used for this service.");
+      toast.error(requiredMessage("Device", "\u0627\u0644\u062c\u0647\u0627\u0632"));
       return;
     }
 
@@ -282,9 +328,7 @@ export default function CalendarEventDialog({
       !Number.isInteger(doctorId) ||
       (doctorId <= 0 && ![-1, -2, -3].includes(doctorId))
     ) {
-      toast.error(
-        "Please select a doctor."
-      );
+      toast.error(requiredMessage("Doctor or department", "\u0627\u0644\u0637\u0628\u064a\u0628 \u0623\u0648 \u0627\u0644\u0642\u0633\u0645"));
 
       return;
     }
@@ -293,9 +337,7 @@ export default function CalendarEventDialog({
       !Number.isInteger(serviceId) ||
       serviceId <= 0
     ) {
-      toast.error(
-        "Please select a service."
-      );
+      toast.error(requiredMessage("Service", "\u0627\u0644\u062e\u062f\u0645\u0629"));
 
       return;
     }
@@ -304,10 +346,18 @@ export default function CalendarEventDialog({
       !Number.isInteger(roomId) ||
       roomId <= 0
     ) {
-      toast.error(
-        "Please select a room."
-      );
+      toast.error(requiredMessage("Room", "\u0627\u0644\u063a\u0631\u0641\u0629"));
 
+      return;
+    }
+
+    if (!form.appointmentDate) {
+      toast.error(requiredMessage("Date", "\u0627\u0644\u062a\u0627\u0631\u064a\u062e"));
+      return;
+    }
+
+    if (!form.appointmentTime) {
+      toast.error(requiredMessage("Time", "\u0627\u0644\u0648\u0642\u062a"));
       return;
     }
 
@@ -324,6 +374,24 @@ export default function CalendarEventDialog({
         "Invalid appointment date or time."
       );
 
+      return;
+    }
+
+    if (appointmentDate.getDay() === 5) {
+      toast.error(text("Friday is closed. Please select another day.", "\u0627\u0644\u0639\u064a\u0627\u062f\u0629 \u0645\u063a\u0644\u0642\u0629 \u064a\u0648\u0645 \u0627\u0644\u062c\u0645\u0639\u0629. \u0627\u062e\u062a\u0631 \u064a\u0648\u0645\u064b\u0627 \u0622\u062e\u0631."));
+      return;
+    }
+
+    const startMinutes = Number(form.appointmentTime.slice(0, 2)) * 60 + Number(form.appointmentTime.slice(3, 5));
+    const openingMinutes = Number(providerWorkingHours.start.slice(0, 2)) * 60;
+    const closingMinutes = Number(providerWorkingHours.end.slice(0, 2)) * 60;
+    const durationMinutes = Math.max(Number(selectedService?.duration_minutes) || 30, 5);
+    if (startMinutes < openingMinutes || startMinutes + durationMinutes > closingMinutes) {
+      const range = providerWorkingHours.label;
+      toast.error(text(
+        `This appointment must be within working hours (${range}).`,
+        `\u064a\u062c\u0628 \u0623\u0646 \u064a\u0643\u0648\u0646 \u0627\u0644\u0645\u0648\u0639\u062f \u062f\u0627\u062e\u0644 \u0633\u0627\u0639\u0627\u062a \u0627\u0644\u0639\u0645\u0644 (${range}).`
+      ));
       return;
     }
 
@@ -403,6 +471,28 @@ export default function CalendarEventDialog({
     }
   }
 
+  async function handleStatusChange(status: CalendarEventStatus) {
+    if (!event || !form || status === form.status) return;
+
+    const previousStatus = form.status;
+    updateForm("status", status);
+
+    try {
+      await updateAppointmentStatus.mutateAsync({
+        id: event.appointmentId,
+        status,
+      });
+      toast.success(text("Appointment status updated.", "تم تحديث حالة الموعد."));
+    } catch (error) {
+      updateForm("status", previousStatus);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : text("Unable to update appointment status.", "تعذر تحديث حالة الموعد.")
+      );
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -418,18 +508,24 @@ export default function CalendarEventDialog({
             </DialogTitle>
 
             {!isEditing && event && (
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                onClick={() =>
-                  setIsEditing(true)
-                }
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-
-                Edit
-              </Button>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <AddPaymentDialog
+                  clinicId={clinicId}
+                  branchId={branchId}
+                  initialCustomerId={event.customerId}
+                  initialAppointmentId={event.appointmentId}
+                  triggerLabelEn="Issue invoice"
+                  triggerLabelAr="إصدار فاتورة"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {text("Edit", "تعديل")}
+                </Button>
+              </div>
             )}
           </div>
         </DialogHeader>
@@ -437,18 +533,65 @@ export default function CalendarEventDialog({
         {!event || !form ? null : (
           <div className="space-y-4">
             <div className="rounded-2xl bg-slate-950 p-5 text-white">
-              <p className="text-sm text-slate-400">
-                Customer
-              </p>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-5">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">{text("Customer name", "اسم العميل")}</p>
+                  <p className="mt-1 truncate text-sm font-bold" title={event.customerName}>
+                    {event.customerName || text("Unnamed customer", "عميل بدون اسم")}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">{text("National ID", "رقم الهوية")}</p>
+                  <p className="mt-1 truncate text-sm font-bold" dir="ltr">
+                    {event.customerNationalId || "—"}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">{text("Gender", "الجنس")}</p>
+                  <p className="mt-1 text-sm font-bold">
+                    {customerGenderLabel(event.customerGender, text)}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">{text("Phone number", "رقم الهاتف")}</p>
+                  <p className="mt-1 truncate text-sm font-bold" dir="ltr">
+                    {event.customerPhone || "—"}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">{text("Nationality", "الجنسية")}</p>
+                  <p className="mt-1 text-sm font-bold">
+                    {customerNationalityLabel(event.customerNationality, text)}
+                  </p>
+                </div>
+              </div>
 
-              <h2 className="mt-1 text-xl font-bold">
-                {event.customerName ||
-                  "Unnamed customer"}
-              </h2>
-
-              <span className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
-                {formatStatus(form.status)}
-              </span>
+              {!isEditing && (
+                <div className="mt-4 max-w-xs">
+                  <label className="mb-1 block text-xs font-medium text-slate-300">
+                    {text("Change status", "تغيير الحالة")}
+                  </label>
+                  <select
+                    value={form.status}
+                    disabled={updateAppointmentStatus.isPending}
+                    onChange={(changeEvent) => {
+                      void handleStatusChange(changeEvent.target.value as CalendarEventStatus);
+                    }}
+                    className="h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm font-bold text-white outline-none disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status.value} value={status.value} className="bg-white text-slate-950">
+                        {text(status.en, status.ar)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {updateAppointmentStatus.isPending
+                      ? text("Updating status...", "جارٍ تحديث الحالة...")
+                      : text("The patient and all related screens update automatically.", "يتم تحديث المريض وكل الشاشات المرتبطة تلقائيًا.")}
+                  </p>
+                </div>
+              )}
             </div>
                         {isEditing ? (
               <>
@@ -460,7 +603,7 @@ export default function CalendarEventDialog({
 
                     <select
                       value={form.doctorId}
-                      disabled={masterLoading || !form.doctorId}
+                      disabled={masterLoading}
                       onChange={(changeEvent) => setForm((current) => current ? {
                         ...current,
                         doctorId: changeEvent.target.value,
@@ -469,6 +612,7 @@ export default function CalendarEventDialog({
                         roomId: "",
                       } : current)}
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      required
                     >
                       <option value="">
                         Select doctor or department
@@ -501,6 +645,7 @@ export default function CalendarEventDialog({
                       disabled={masterLoading}
                       onChange={(changeEvent) => setForm((current) => current ? {...current, serviceId: changeEvent.target.value, deviceId: "", roomId: ""} : current)}
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      required
                     >
                       <option value="">
                         {form.doctorId ? "Select service" : "Select doctor first"}
@@ -545,6 +690,7 @@ export default function CalendarEventDialog({
                     disabled={masterLoading || !form.serviceId || availableDevices.length === 0}
                     onChange={(changeEvent) => setForm((current) => current ? {...current, deviceId: changeEvent.target.value, roomId: ""} : current)}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60"
+                    required={availableDevices.length > 0}
                   >
                     <option value="">{!form.serviceId ? "Select service first" : availableDevices.length ? "Select device" : "No device required"}</option>
                     {availableDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
@@ -566,6 +712,7 @@ export default function CalendarEventDialog({
                       )
                     }
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    required
                   >
                     <option value="">
                       Select room
@@ -592,6 +739,7 @@ export default function CalendarEventDialog({
 
                     <Input
                       type="date"
+                      required
                       value={
                         form.appointmentDate
                       }
@@ -611,8 +759,9 @@ export default function CalendarEventDialog({
 
                     <Input
                       type="time"
-                      min="10:00"
-                      max="22:00"
+                      required
+                      min={providerWorkingHours.start}
+                      max={providerWorkingHours.end}
                       step={1800}
                       value={
                         form.appointmentTime
@@ -624,6 +773,9 @@ export default function CalendarEventDialog({
                         )
                       }
                     />
+                    <p className="mt-2 text-xs font-medium text-slate-500">
+                      {text("Working hours", "\u0633\u0627\u0639\u0627\u062a \u0627\u0644\u0639\u0645\u0644")}: {providerWorkingHours.label}
+                    </p>
                   </div>
                 </div>
 
