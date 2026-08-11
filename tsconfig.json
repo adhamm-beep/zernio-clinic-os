@@ -36,5 +36,5 @@
     "**/*.mts"
   ],
 
-  "exclude": ["node_modules", "mobile-patient"]
+  "exclude": ["node_modules", "supabase/functions"]
 }
