@@ -11,6 +11,7 @@ import { useClinic } from "@/features/clinic/hooks/useClinic";
 import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 export default function AppointmentsPage() {
   const { text } = useLocale();
@@ -18,6 +19,10 @@ export default function AppointmentsPage() {
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const range = useDateRange();
+  const access = usePermissionAccess();
+  const canView = access.can("appointments.view", "appointments.manage");
+  const canCreate = access.can("appointments.create", "appointments.manage");
+  const canEdit = access.can("appointments.edit", "appointments.cancel", "appointments.manage");
   const { data: appointments = [], isLoading, isError, error, refetch, isFetching } = useAppointments(clinicId, branchId);
   const visibleAppointments = useMemo(
     () => appointments.filter((appointment) => isWithinDateRange(appointment.appointment_at, range)),
@@ -35,11 +40,13 @@ export default function AppointmentsPage() {
               : text(`${visibleAppointments.length} appointments`, `${visibleAppointments.length} موعد`)}
           </p>
         </div>
-        {clinicId > 0 && branchId > 0 && <AddAppointmentDialogV2 clinicId={clinicId} branchId={branchId} />}
+        {canCreate && clinicId > 0 && branchId > 0 && <AddAppointmentDialogV2 clinicId={clinicId} branchId={branchId} />}
       </header>
 
       <DateRangeFilter />
-      {clinicId > 0 && branchId > 0 && <PatientRequestQueue clinicId={clinicId} branchId={branchId} appointments={visibleAppointments} />}
+      {access.can("appointments.patient_requests.manage", "appointments.manage") && clinicId > 0 && branchId > 0 && <PatientRequestQueue clinicId={clinicId} branchId={branchId} appointments={visibleAppointments} />}
+
+      {!access.isLoading && !canView && <div className="rounded-2xl bg-amber-50 p-6 text-amber-800">{text("Appointment results are not available to you.", "نتائج المواعيد غير متوفرة لك حسب صلاحيات حسابك.")}</div>}
 
       {isLoading && (
         <div className="rounded-2xl border bg-white p-10 text-center shadow-sm">
@@ -69,8 +76,8 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {!isLoading && !isError && visibleAppointments.length > 0 && <AppointmentTable appointments={visibleAppointments} />}
-      {clinicId > 0 && branchId > 0 && <AppointmentCalendarPanel clinicId={clinicId} branchId={branchId} />}
+      {canView && !isLoading && !isError && visibleAppointments.length > 0 && <AppointmentTable appointments={visibleAppointments} canEdit={canEdit} />}
+      {access.can("calendar.view", "appointments.manage") && clinicId > 0 && branchId > 0 && <AppointmentCalendarPanel clinicId={clinicId} branchId={branchId} />}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useUpdateAppointment } from "../hooks/useUpdateAppointment";
 
 type AppointmentTableProps = {
   appointments: Appointment[];
+  canEdit?: boolean;
 };
 
 const appointmentStatuses: AppointmentStatus[] = [
@@ -84,6 +85,7 @@ function getStatusClasses(
 
 export default function AppointmentTable({
   appointments,
+  canEdit = false,
 }: AppointmentTableProps) {
   const updateAppointment =
     useUpdateAppointment();
@@ -223,9 +225,7 @@ export default function AppointmentTable({
                       value={
                         appointment.status
                       }
-                      disabled={
-                        updateAppointment.isPending
-                      }
+                      disabled={!canEdit || updateAppointment.isPending}
                       onChange={(event) => {
                         void handleStatusChange(
                           appointment.id,

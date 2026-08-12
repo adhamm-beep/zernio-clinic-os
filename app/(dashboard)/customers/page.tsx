@@ -8,11 +8,14 @@ import CustomerTable from "@/features/customers/components/CustomerTable";
 import AddCustomerDialog from "@/features/customers/components/AddCustomerDialog";
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 const CUSTOMERS_PER_PAGE = 25;
 
 export default function CustomersPage() {
   const { clinic, selectedBranch } = useClinic();
+  const access = usePermissionAccess();
+  const canView = access.can("customers.view", "customers.details.view", "customers.manage");
   const {
     data: customers = [],
     isLoading,
@@ -65,13 +68,13 @@ export default function CustomersPage() {
           </p>
         </div>
 
-        {clinic && selectedBranch && (
+        {clinic && selectedBranch && (access.can("customers.create", "customers.manage") || access.can("appointments.create", "appointments.manage")) && (
           <div className="flex flex-wrap gap-2">
-            <AddCustomerDialog clinicId={clinic.id} branchId={selectedBranch.id} />
-            <AddAppointmentDialogV2
+            {access.can("customers.create", "customers.manage") && <AddCustomerDialog clinicId={clinic.id} branchId={selectedBranch.id} />}
+            {access.can("appointments.create", "appointments.manage") && <AddAppointmentDialogV2
               clinicId={clinic.id}
               branchId={selectedBranch.id}
-            />
+            />}
           </div>
         )}
       </div>
@@ -98,7 +101,8 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!access.isLoading && !canView && <div className="rounded-2xl bg-amber-50 p-6 text-amber-800">نتائج المرضى غير متوفرة لك حسب صلاحيات حسابك.</div>}
+      {canView && !isLoading && !error && (
         <div className="space-y-4">
           <CustomerTable customers={visibleCustomers} />
 

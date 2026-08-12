@@ -9,12 +9,15 @@ import { useClinic } from "@/features/clinic/hooks/useClinic";
 import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 export default function FollowUpsPage() {
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const range = useDateRange();
+  const access = usePermissionAccess();
+  const canView = access.can("followups.view", "followups.manage");
   const {
     data: followUps = [],
     isLoading,
@@ -45,14 +48,14 @@ export default function FollowUpsPage() {
             {visibleFollowUps.length} follow ups
           </p>
         </div>
-        {clinicId > 0 && branchId > 0 && (
+        {access.can("followups.manage") && clinicId > 0 && branchId > 0 && (
           <AddFollowUpDialog clinicId={clinicId} branchId={branchId} />
         )}
       </div>
 
       <DateRangeFilter />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {canView && <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
           <p className="text-sm text-gray-500">Total Follow Ups</p>
           <p className="mt-2 text-2xl font-bold">{visibleFollowUps.length}</p>
@@ -67,7 +70,7 @@ export default function FollowUpsPage() {
           <p className="text-sm text-gray-500">Completed</p>
           <p className="mt-2 text-2xl font-bold">{completedCount}</p>
         </div>
-      </div>
+      </div>}
 
       {isLoading && (
         <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
@@ -83,7 +86,8 @@ export default function FollowUpsPage() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!access.isLoading && !canView && <div className="rounded-2xl bg-amber-50 p-6 text-amber-800">نتائج المتابعات غير متوفرة لك حسب صلاحيات حسابك.</div>}
+      {canView && !isLoading && !error && (
         <FollowUpTable followUps={visibleFollowUps} />
       )}
     </div>

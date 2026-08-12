@@ -9,12 +9,15 @@ import { useClinic } from "@/features/clinic/hooks/useClinic";
 import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 export default function TreatmentsPage() {
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const range = useDateRange();
+  const access = usePermissionAccess();
+  const canView = access.can("treatments.view", "treatments.manage");
   const {
     data: treatments = [],
     isLoading,
@@ -38,7 +41,7 @@ export default function TreatmentsPage() {
           </p>
         </div>
 
-        {clinicId > 0 && branchId > 0 && (
+        {access.can("treatments.create", "treatments.manage") && clinicId > 0 && branchId > 0 && (
           <AddTreatmentDialog clinicId={clinicId} branchId={branchId} />
         )}
       </div>
@@ -59,7 +62,8 @@ export default function TreatmentsPage() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!access.isLoading && !canView && <div className="rounded-2xl bg-amber-50 p-6 text-amber-800">نتائج العلاجات غير متوفرة لك حسب صلاحيات حسابك.</div>}
+      {canView && !isLoading && !error && (
         <TreatmentTable treatments={visibleTreatments} />
       )}
     </div>
