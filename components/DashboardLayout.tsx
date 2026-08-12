@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import SupportLauncher from "./SupportLauncher";
 
 type Props = {
   children: ReactNode;
@@ -20,7 +19,6 @@ export default function DashboardLayout({
         <main className="mx-auto min-w-0 max-w-[1800px] p-3 md:p-4">
           {children}
         </main>
-        <SupportLauncher />
       </div>
     </div>
   );

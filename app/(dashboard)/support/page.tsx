@@ -1,1 +1,1 @@
-import SupportCenter from"@/features/support/SupportCenter";export default function SupportPage(){return <SupportCenter/>}
+import SupportCenter from"@/features/support/SupportCenter";import SupportLauncher from"@/components/SupportLauncher";export default function SupportPage(){return <><SupportCenter/><SupportLauncher/></>}
