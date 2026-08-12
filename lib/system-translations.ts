@@ -221,6 +221,10 @@ const interfaceAuditTranslations: Record<string, string> = {
   "booking, confirmations and follow-ups": "الحجوزات والتأكيدات والمتابعات", "clinical workflow and treatment readiness": "سير العمل الطبي والاستعداد للعلاج",
   "collections and revenue forecast": "التحصيل وتوقع الإيرادات", "campaigns, roi and segmentation": "الحملات والعائد على الاستثمار وتقسيم الشرائح",
   "whole-clinic executive intelligence": "ذكاء تنفيذي شامل للعيادة", "ask": "اسأل", "today": "اليوم", "follow-ups": "المتابعات", "low stock": "مخزون منخفض",
+  "confirm today's bookings": "تأكيد حجوزات اليوم", "complete follow-ups": "إكمال المتابعات", "review treatment sessions": "مراجعة جلسات العلاج",
+  "check clinical materials": "فحص المواد الطبية", "work lead pipeline": "متابعة العملاء المحتملين", "review campaigns": "مراجعة الحملات",
+  "review collections": "مراجعة التحصيل", "open finance analytics": "فتح التحليلات المالية", "clinic today": "حالة العيادة اليوم", "review performance": "مراجعة الأداء",
+  "review collection and refund trends.": "راجع اتجاهات التحصيل والاسترداد.", "open revenue, doctors, marketing and booking analytics.": "افتح تحليلات الإيرادات والأطباء والتسويق والحجوزات.",
   "bookings": "حجوزات", "sar": "ر.س", "phase 8": "المرحلة 8", "retry": "إعادة المحاولة",
   "risks to watch": "مخاطر تحتاج متابعة", "only anonymous operational metrics are sent to openai.": "تُرسل مؤشرات تشغيلية مجهولة الهوية فقط إلى خدمة الذكاء الاصطناعي.",
   "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل زيرنيو ولا تُرسل إلى النموذج.",
@@ -262,6 +266,17 @@ export function translateSystemText(value: string): string {
   if (askAgent) return `${leading}اسأل ${interfaceAuditTranslations[`${askAgent[1].toLowerCase()} agent`] ?? askAgent[1]}${trailing}`;
   const bookingCount = clean.match(/^(\d+) bookings$/i);
   if (bookingCount) return `${leading}${bookingCount[1]} حجوزات${trailing}`;
+  const agentCounts: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+    [/^(\d+) appointment\(s\) need confirmation\.$/i,m=>`${m[1]} موعد يحتاج إلى تأكيد.`],
+    [/^(\d+) follow-up\(s\) are open\.$/i,m=>`${m[1]} متابعة مفتوحة.`],
+    [/^(\d+) session\(s\) completed this month\.$/i,m=>`${m[1]} جلسة مكتملة هذا الشهر.`],
+    [/^(\d+) product\(s\) are at or below minimum stock\.$/i,m=>`${m[1]} منتج عند أو أقل من الحد الأدنى للمخزون.`],
+    [/^(\d+) lead\(s\) recorded this month\.$/i,m=>`${m[1]} عميل محتمل مسجل هذا الشهر.`],
+    [/^(\d+) campaign\(s\) are active\.$/i,m=>`${m[1]} حملة نشطة.`],
+    [/^(.+) SAR collected this month\.$/i,m=>`تم تحصيل ${m[1]} ر.س هذا الشهر.`],
+    [/^(\d+) appointment\(s\), (\d+) staff present\.$/i,m=>`${m[1]} موعد، و${m[2]} موظف حاضر.`],
+  ];
+  for (const [pattern,format] of agentCounts) { const match=clean.match(pattern); if(match) return `${leading}${format(match)}${trailing}`; }
   const compositeSeparator = clean.includes(" · ") ? " · " : clean.includes(" | ") ? " | " : null;
   if (compositeSeparator) {
     const localizedParts = clean
