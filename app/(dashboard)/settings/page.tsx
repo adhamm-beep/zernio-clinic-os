@@ -20,6 +20,12 @@ const modules: SettingsModule[] = [
     href: "/price-list",
   },
   {
+    title: "User Management",
+    description:
+      "Add users, assign access roles and control account status.",
+    href: "/settings/users",
+  },
+  {
     title: "Clinic Context",
     description:
       "Review the active clinic and select the current branch.",

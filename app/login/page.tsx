@@ -61,7 +61,7 @@ export default function LoginPage() {
         className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg"
       >
         <h1 className="text-center text-3xl font-bold text-gray-900">
-          Zernio Clinic OS
+          OS Panthera Clinics
         </h1>
 
         <p className="mt-2 text-center text-gray-500">

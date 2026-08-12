@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function UnauthorizedPage(){return <main className="grid min-h-screen place-items-center bg-slate-50 p-6"><div className="max-w-md rounded-3xl border bg-white p-8 text-center shadow-sm"><h1 className="text-2xl font-black text-slate-950">لا تملك صلاحية الوصول</h1><p className="mt-3 text-sm leading-6 text-slate-500">اطلب من مدير النظام تفعيل صلاحية هذه الصفحة لحسابك.</p><Link href="/dashboard" className="mt-6 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">العودة للرئيسية</Link></div></main>}

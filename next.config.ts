@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  typescript: {
+    tsconfigPath: "./tsconfig.web.json",
+  },
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
