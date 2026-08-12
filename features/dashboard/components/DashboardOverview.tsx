@@ -13,6 +13,7 @@ import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import { groupServiceFamilies, serviceFamilyLabel } from "@/features/services/service-family";
+import { usePermission } from "@/features/users/hooks/usePermission";
 
 const statusStyles: Record<AppointmentStatus, string> = {
   booked: "border-sky-200 bg-sky-50 text-sky-800", confirmed: "border-blue-200 bg-blue-50 text-blue-800",
@@ -23,6 +24,7 @@ const statusStyles: Record<AppointmentStatus, string> = {
 
 export default function DashboardOverview() {
   const { isArabic, text } = useLocale();
+  const financeAllowed = usePermission("dashboard.finance.view").allowed;
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
@@ -50,7 +52,7 @@ export default function DashboardOverview() {
   const statusLabel = (status: AppointmentStatus) => ({ booked: text("Booked", "محجوز"), confirmed: text("Confirmed", "مؤكد"), arrived: text("Arrived", "تم الوصول"), completed: text("Completed", "مكتمل"), cancelled: text("Cancelled", "ملغي"), no_show: text("No show", "لم يحضر") })[status];
   const serviceName = (id: number | null) => { const item = services.find(service => service.id === id); return item ? serviceFamilyLabel(item, isArabic) : text("Service", "خدمة"); };
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
-  const metrics: Array<[string, string | number, LucideIcon]> = [[text("Appointments", "المواعيد"), appointments.length, CalendarDays], [text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2], [text("Invoices", "الفواتير"), payments.length, FileText], [text("Collected", "المحصل"), money(paid), Banknote]];
+  const metrics: Array<[string, string | number, LucideIcon]> = [[text("Appointments", "المواعيد"), appointments.length, CalendarDays], [text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2], [text("Invoices", "الفواتير"), payments.length, FileText], ...(financeAllowed ? [[text("Collected", "المحصل"), money(paid), Banknote] as [string, string | number, LucideIcon]] : [])];
 
   return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>
     <section className="overflow-hidden rounded-[28px] bg-[#071826] text-white shadow-xl">

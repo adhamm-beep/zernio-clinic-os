@@ -9,6 +9,7 @@ import { useClinicAnalytics } from "../hooks/useClinicAnalytics";
 import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import type { DoctorMetric, RankedMetric } from "../types/analytics";
+import { usePermission } from "@/features/users/hooks/usePermission";
 
 function money(value: number) {
   return new Intl.NumberFormat("en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 0 }).format(value);
@@ -38,6 +39,8 @@ function DoctorPerformance({ items }: { items: DoctorMetric[] }) {
 }
 
 export default function ClinicAnalyticsDashboard() {
+  const financeAllowed = usePermission("reports.finance.view").allowed;
+  const doctorRevenueAllowed = usePermission("reports.doctor_revenue.view").allowed;
   const range = useDateRange();
   const { clinic, selectedBranch, isLoading: clinicLoading } = useClinic();
   const clinicId = clinic?.id ?? 0;
@@ -64,12 +67,12 @@ export default function ClinicAnalyticsDashboard() {
       {[["Revenue", "revenue"], ["Doctors", "doctors"], ["Marketing", "marketing"], ["Booking", "booking"], ["Finance", "finance"]].map(([label, target]) => <a key={target} href={`#${target}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950 hover:text-white">{label}</a>)}
     </nav>
 
-    <section id="revenue" className="scroll-mt-24 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {financeAllowed&&<section id="revenue" className="scroll-mt-24 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric label="Revenue today" value={money(data.revenue.today)} tone="green" />
       <Metric label="Revenue this month" value={money(data.revenue.month)} hint={`${data.revenue.trendPercent >= 0 ? "+" : ""}${data.revenue.trendPercent.toFixed(1)}% vs previous month`} tone="blue" />
       <Metric label="Revenue forecast" value={money(data.revenue.forecast)} hint="Current-month run-rate estimate" />
       <Metric label="Outstanding" value={money(data.finance.outstanding)} hint={`${data.finance.collectionRate}% collection rate`} tone={data.finance.outstanding > 0 ? "orange" : "green"} />
-    </section>
+    </section>}
 
     <section id="booking" className="scroll-mt-24 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="Completion rate" value={`${data.booking.completionRate}%`} hint={`${data.booking.completed} completed`} />
@@ -90,7 +93,7 @@ export default function ClinicAnalyticsDashboard() {
 
     <div id="doctors" className="scroll-mt-24"><DoctorPerformance items={data.doctors} /></div>
 
-    <section className="grid gap-6 lg:grid-cols-2"><Ranking title="Doctor revenue ranking" icon={UserRound} items={data.doctors} /><Ranking title="Service performance" icon={Stethoscope} items={data.services} /></section>
+    <section className="grid gap-6 lg:grid-cols-2">{doctorRevenueAllowed&&<Ranking title="Doctor revenue ranking" icon={UserRound} items={data.doctors} />}<Ranking title="Service performance" icon={Stethoscope} items={data.services} showRevenue={doctorRevenueAllowed}/></section>
 
     <section id="marketing" className="scroll-mt-24 space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,9 +105,9 @@ export default function ClinicAnalyticsDashboard() {
       <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><Megaphone className="text-fuchsia-600" /><div><h2 className="font-bold">Lead sources & campaign attribution</h2><p className="text-sm text-slate-500">Bookings, conversion, spend, revenue and ROI by source</p></div></div>{data.marketing.sources.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No lead sources are recorded yet.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Source</th><th className="pb-3 font-medium">Leads</th><th className="pb-3 font-medium">Converted</th><th className="pb-3 font-medium">Conversion</th><th className="pb-3 font-medium">Spend</th><th className="pb-3 font-medium">Revenue</th><th className="pb-3 font-medium">ROI</th></tr></thead><tbody>{data.marketing.sources.map((item) => <tr key={item.source} className="border-b last:border-0"><td className="py-4 font-semibold capitalize">{item.source}</td><td className="py-4">{item.leads}</td><td className="py-4">{item.converted}</td><td className="py-4"><span className="inline-flex items-center gap-1"><Target className="h-4 w-4 text-emerald-600" />{item.conversionRate}%</span></td><td className="py-4">{money(item.spend)}</td><td className="py-4 font-semibold">{money(item.revenue)}</td><td className="py-4">{item.roi==null?"—":`${item.roi.toFixed(1)}%`}</td></tr>)}</tbody></table></div>}</div>
     </section>
 
-    <section id="finance" className="scroll-mt-24 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+    {financeAllowed&&<section id="finance" className="scroll-mt-24 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
       <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><CreditCard className="text-cyan-600" /><h2 className="font-bold">Payment methods</h2></div><div className="mt-5 space-y-3">{data.paymentMethods.map((item) => <div key={item.method} className="flex items-center justify-between rounded-xl bg-slate-50 p-4"><div><p className="font-semibold capitalize">{item.method.replaceAll("_", " ")}</p><p className="text-xs text-slate-500">{item.count} payments</p></div><strong>{money(item.amount)}</strong></div>)}</div></div>
       <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm"><div className="flex items-center gap-3"><Activity className="text-cyan-400" /><h2 className="text-lg font-bold">Finance signals</h2></div><div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-white/10 p-4"><CircleDollarSign className="text-emerald-400" /><p className="mt-3 text-sm text-slate-300">Average payment</p><strong className="text-xl">{money(data.revenue.averagePayment)}</strong></div><div className="rounded-xl bg-white/10 p-4"><RotateCcw className="text-orange-400" /><p className="mt-3 text-sm text-slate-300">Refund rate</p><strong className="text-xl">{data.finance.refundRate}%</strong></div></div></div>
-    </section>
+    </section>}
   </div>;
 }

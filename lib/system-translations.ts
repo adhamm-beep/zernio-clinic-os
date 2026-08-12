@@ -204,13 +204,42 @@ const sentenceTranslations: Record<string, string> = {
   ,"saturday": "السبت"
 };
 
+const interfaceAuditTranslations: Record<string, string> = {
+  "customer 360": "ملف المريض 360", "customer information": "بيانات المريض", "customer timeline": "السجل الزمني للمريض",
+  "customer intelligence overview": "نظرة ذكية شاملة على المريض", "complete chronological activity for this customer.": "سجل زمني كامل لجميع أنشطة هذا المريض.",
+  "financial details": "التفاصيل المالية", "membership & loyalty": "العضوية والولاء", "current tier": "المستوى الحالي", "lifetime points": "إجمالي النقاط",
+  "next tier at": "المستوى التالي عند", "panthera member": "عضو بانثيرا", "recommended next actions": "الإجراءات التالية المقترحة", "retention risk": "مخاطر فقد المريض",
+  "return to customers": "العودة إلى المرضى", "smart summary": "الملخص الذكي", "customer not found": "لم يتم العثور على المريض",
+  "the membership account will be created automatically from paid transactions.": "سيتم إنشاء حساب العضوية تلقائيًا من العمليات المدفوعة.",
+  "enterprise control center": "مركز إدارة المؤسسة", "workflow automation": "أتمتة مسارات العمل", "active workflows": "مسارات العمل النشطة",
+  "activate workflow": "تفعيل المسار", "task board": "لوحة المهام", "create task": "إنشاء مهمة", "assign employee": "إسناد موظف",
+  "audit log": "سجل التدقيق", "language & locale": "اللغة والإعدادات المحلية", "notifications": "الإشعارات",
+  "clinic isolation, permissions, audit, notifications, tasks, workflows and language.": "إدارة العيادات والصلاحيات والتدقيق والإشعارات والمهام ومسارات العمل واللغة.",
+  "preference is stored per employee. full translated content rolls out incrementally.": "يُحفظ اختيار اللغة لكل موظف وتظهر الواجهة كاملة بلغته.",
+  "zernio ai agents": "وكلاء زيرنيو الأذكياء", "live action queue": "قائمة الإجراءات المباشرة", "recommended actions": "الإجراءات المقترحة",
+  "risks to watch": "مخاطر تحتاج متابعة", "only anonymous operational metrics are sent to openai.": "تُرسل مؤشرات تشغيلية مجهولة الهوية فقط إلى خدمة الذكاء الاصطناعي.",
+  "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل زيرنيو ولا تُرسل إلى النموذج.",
+  "five specialized agents working from one anonymous clinic intelligence layer.": "خمسة وكلاء متخصصين يعملون عبر طبقة ذكاء موحدة ومجهولة الهوية.",
+  "ask zernio ai": "اسأل زيرنيو", "analyze": "تحليل", "loading clinic brain...": "جارٍ تحميل ذكاء العيادة...",
+  "ask the clinic brain about customers, retention, campaigns, revenue and daily operations.": "اسأل ذكاء العيادة عن المرضى والاحتفاظ والحملات والإيرادات والتشغيل اليومي.",
+  "ai notes": "ملاحظات ذكية", "a ready-to-use operational handover note": "ملاحظة تسليم تشغيلية جاهزة للاستخدام",
+  "generated locally from operational metrics. review before adding it to a clinical record.": "تم إنشاؤها محليًا من مؤشرات التشغيل؛ راجعها قبل إضافتها إلى السجل الطبي.",
+  "health score": "مؤشر الحالة", "lifetime value": "قيمة المريض طوال فترة التعامل", "predicted value": "القيمة المتوقعة", "segment": "الشريحة",
+  "unified customer intelligence": "ذكاء موحد للمريض", "rule-based recommendations": "توصيات مبنية على قواعد", "revenue forecast": "توقع الإيرادات",
+  "customer behavior": "سلوك المريض", "payment discipline": "الالتزام بالسداد", "engagement": "التفاعل", "loyalty": "الولاء", "cancellation": "الإلغاء",
+  "ai medical summary": "الملخص الطبي الذكي", "clinical handover:": "التسليم الطبي:",
+  "processed privately without sending medical text to ai services": "تتم المعالجة بخصوصية دون إرسال النص الطبي إلى خدمات الذكاء الاصطناعي",
+  "zernio live operations": "تشغيل زيرنيو المباشر", "zernio finance": "مالية زيرنيو", "english": "الإنجليزية", "arabic": "العربية",
+  "critical": "حرجة", "sensitive": "حساسة", "low": "منخفضة", "medium": "متوسطة", "high": "عالية", "urgent": "عاجلة",
+};
+
 export function translateSystemText(value: string): string {
   const leading = value.match(/^\s*/)?.[0] ?? "";
   const trailing = value.match(/\s*$/)?.[0] ?? "";
   const clean = value.trim();
   if (!clean) return value;
   const key = clean.toLowerCase();
-  const direct = translations[key] ?? sentenceTranslations[key];
+  const direct = translations[key] ?? sentenceTranslations[key] ?? interfaceAuditTranslations[key];
   if (direct) return `${leading}${direct}${trailing}`;
   const compositeSeparator = clean.includes(" · ") ? " · " : clean.includes(" | ") ? " | " : null;
   if (compositeSeparator) {

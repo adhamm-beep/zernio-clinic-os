@@ -1,0 +1,71 @@
+export type PermissionMeta = {
+  moduleAr: string;
+  moduleEn: string;
+  labelAr: string;
+  labelEn: string;
+  descriptionAr: string;
+  risk?: "sensitive" | "critical";
+};
+
+export const permissionMeta: Record<string, PermissionMeta> = {
+  "dashboard.view": { moduleAr: "لوحة التحكم", moduleEn: "Dashboard", labelAr: "عرض لوحة التحكم", labelEn: "View dashboard", descriptionAr: "فتح الصفحة الرئيسية والمؤشرات العامة" },
+  "dashboard.finance.view": { moduleAr: "لوحة التحكم", moduleEn: "Dashboard", labelAr: "عرض ملخص الدخل", labelEn: "View dashboard income", descriptionAr: "إظهار الإيراد والمدفوع والمتبقي في لوحة التحكم", risk: "sensitive" },
+  "customers.view": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "عرض المرضى", labelEn: "View patients", descriptionAr: "عرض القائمة والملفات الأساسية" },
+  "customers.details.view": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "عرض ملف المريض الكامل", labelEn: "View full patient profile", descriptionAr: "عرض التاريخ الطبي والمالي والتواصل", risk: "sensitive" },
+  "customers.create": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "إضافة مريض", labelEn: "Create patient", descriptionAr: "إنشاء ملف مريض جديد" },
+  "customers.edit": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "تعديل بيانات المريض", labelEn: "Edit patient", descriptionAr: "تعديل البيانات الشخصية والطبية" },
+  "customers.deactivate": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "تعطيل ملف المريض", labelEn: "Deactivate patient", descriptionAr: "إيقاف الملف دون حذفه", risk: "critical" },
+  "customers.export": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "تصدير بيانات المرضى", labelEn: "Export patients", descriptionAr: "تنزيل أو استخراج بيانات المرضى", risk: "critical" },
+  "customers.manage": { moduleAr: "المرضى", moduleEn: "Patients", labelAr: "إدارة المرضى - صلاحية شاملة", labelEn: "Manage patients - full", descriptionAr: "صلاحية توافقية تشمل إجراءات إدارة المرضى" },
+  "patient_app.analytics": { moduleAr: "تطبيق المرضى", moduleEn: "Patient app", labelAr: "عرض تحليلات التطبيق", labelEn: "View app analytics", descriptionAr: "عرض أعداد المستخدمين والجلسات" },
+  "patient_app.identity.view": { moduleAr: "تطبيق المرضى", moduleEn: "Patient app", labelAr: "عرض هوية النشطين", labelEn: "View active patient identity", descriptionAr: "إظهار أسماء وبيانات المرضى المستخدمين للتطبيق", risk: "sensitive" },
+  "appointments.view": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "عرض المواعيد", labelEn: "View appointments", descriptionAr: "عرض قوائم المواعيد" },
+  "appointments.create": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "إنشاء موعد", labelEn: "Create appointment", descriptionAr: "حجز موعد جديد" },
+  "appointments.edit": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "تعديل الموعد", labelEn: "Edit appointment", descriptionAr: "تغيير الوقت أو مقدم الخدمة أو الحالة" },
+  "appointments.cancel": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "إلغاء الموعد", labelEn: "Cancel appointment", descriptionAr: "إلغاء موعد قائم", risk: "critical" },
+  "appointments.patient_requests.manage": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "إدارة طلبات تطبيق المرضى", labelEn: "Manage patient requests", descriptionAr: "قبول ورفض طلبات الحجز الواردة من التطبيق" },
+  "appointments.manage": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "إدارة المواعيد - صلاحية شاملة", labelEn: "Manage appointments - full", descriptionAr: "صلاحية توافقية تشمل إجراءات إدارة المواعيد" },
+  "calendar.view": { moduleAr: "المواعيد", moduleEn: "Appointments", labelAr: "عرض التقويم", labelEn: "View calendar", descriptionAr: "فتح تقويم المواعيد" },
+  "followups.view": { moduleAr: "المتابعات", moduleEn: "Follow-ups", labelAr: "عرض المتابعات", labelEn: "View follow-ups", descriptionAr: "عرض قائمة المتابعات" },
+  "followups.manage": { moduleAr: "المتابعات", moduleEn: "Follow-ups", labelAr: "إدارة المتابعات", labelEn: "Manage follow-ups", descriptionAr: "إضافة وتحديث المتابعات" },
+  "treatments.view": { moduleAr: "العلاجات", moduleEn: "Treatments", labelAr: "عرض العلاجات", labelEn: "View treatments", descriptionAr: "عرض الجلسات والخطط العلاجية" },
+  "treatments.create": { moduleAr: "العلاجات", moduleEn: "Treatments", labelAr: "بدء جلسة علاج", labelEn: "Start treatment", descriptionAr: "إنشاء جلسة أو إجراء جديد" },
+  "treatments.edit": { moduleAr: "العلاجات", moduleEn: "Treatments", labelAr: "تعديل العلاج", labelEn: "Edit treatment", descriptionAr: "تعديل تفاصيل الجلسة والخطة" },
+  "treatments.complete": { moduleAr: "العلاجات", moduleEn: "Treatments", labelAr: "إنهاء جلسة علاج", labelEn: "Complete treatment", descriptionAr: "اعتماد انتهاء الجلسة ونتيجتها" },
+  "treatments.manage": { moduleAr: "العلاجات", moduleEn: "Treatments", labelAr: "إدارة العلاجات - صلاحية شاملة", labelEn: "Manage treatments - full", descriptionAr: "صلاحية توافقية تشمل إجراءات إدارة العلاجات" },
+  "medical.view": { moduleAr: "السجل الطبي", moduleEn: "Medical record", labelAr: "عرض السجل الطبي", labelEn: "View medical record", descriptionAr: "عرض الحساسية والأمراض والملاحظات", risk: "sensitive" },
+  "medical.edit": { moduleAr: "السجل الطبي", moduleEn: "Medical record", labelAr: "تعديل السجل الطبي", labelEn: "Edit medical record", descriptionAr: "تعديل البيانات الطبية الحساسة", risk: "critical" },
+  "payments.view": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "عرض الفواتير", labelEn: "View invoices", descriptionAr: "عرض الفواتير دون مؤشرات الدخل" },
+  "payments.amounts.view": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "عرض المبالغ والتحصيل", labelEn: "View amounts and collections", descriptionAr: "إظهار قيم الفواتير والمدفوع والمتبقي", risk: "sensitive" },
+  "payments.create": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "تسجيل دفعة", labelEn: "Record payment", descriptionAr: "إضافة عملية تحصيل جديدة", risk: "critical" },
+  "payments.refund": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "تنفيذ استرداد", labelEn: "Refund payment", descriptionAr: "إرجاع مبلغ مدفوع", risk: "critical" },
+  "payments.invoice.print": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "طباعة الفاتورة", labelEn: "Print invoice", descriptionAr: "عرض وتنزيل نسخة الفاتورة" },
+  "payments.manage": { moduleAr: "المالية", moduleEn: "Finance", labelAr: "إدارة المالية - صلاحية شاملة", labelEn: "Manage finance - full", descriptionAr: "صلاحية توافقية تشمل إجراءات المدفوعات", risk: "critical" },
+  "reports.view": { moduleAr: "التقارير", moduleEn: "Reports", labelAr: "عرض تقارير التشغيل", labelEn: "View operational reports", descriptionAr: "عرض مؤشرات المواعيد والخدمات" },
+  "reports.finance.view": { moduleAr: "التقارير", moduleEn: "Reports", labelAr: "عرض تقارير الدخل والتحصيل", labelEn: "View financial reports", descriptionAr: "عرض الإيرادات والتحصيل والمبالغ المستحقة", risk: "sensitive" },
+  "reports.doctor_revenue.view": { moduleAr: "التقارير", moduleEn: "Reports", labelAr: "عرض دخل وأداء الأطباء", labelEn: "View doctor revenue", descriptionAr: "إظهار ترتيب الدخل لكل طبيب", risk: "sensitive" },
+  "reports.export": { moduleAr: "التقارير", moduleEn: "Reports", labelAr: "تصدير التقارير", labelEn: "Export reports", descriptionAr: "تنزيل البيانات والتحليلات", risk: "critical" },
+  "services.view": { moduleAr: "الخدمات والأسعار", moduleEn: "Services & prices", labelAr: "عرض الخدمات والأسعار", labelEn: "View services and prices", descriptionAr: "عرض الكتالوج والأسعار" },
+  "services.manage": { moduleAr: "الخدمات والأسعار", moduleEn: "Services & prices", labelAr: "إدارة الخدمات والأسعار", labelEn: "Manage services and prices", descriptionAr: "إضافة وتعديل وإيقاف الخدمات" },
+  "inventory.view": { moduleAr: "المخزون", moduleEn: "Inventory", labelAr: "عرض المخزون", labelEn: "View inventory", descriptionAr: "عرض الأصناف والكميات" },
+  "inventory.cost.view": { moduleAr: "المخزون", moduleEn: "Inventory", labelAr: "عرض تكلفة المخزون", labelEn: "View inventory cost", descriptionAr: "إظهار أسعار التكلفة وقيمة المخزون", risk: "sensitive" },
+  "inventory.manage": { moduleAr: "المخزون", moduleEn: "Inventory", labelAr: "إدارة المخزون", labelEn: "Manage inventory", descriptionAr: "إضافة الأصناف والحركات والتسويات" },
+  "staff.view": { moduleAr: "الموظفون", moduleEn: "Staff", labelAr: "عرض الموظفين", labelEn: "View staff", descriptionAr: "عرض دليل الموظفين" },
+  "staff.salary.view": { moduleAr: "الموظفون", moduleEn: "Staff", labelAr: "عرض الرواتب والدخل", labelEn: "View salaries", descriptionAr: "إظهار رواتب الموظفين والبيانات المالية", risk: "sensitive" },
+  "staff.manage": { moduleAr: "الموظفون", moduleEn: "Staff", labelAr: "إدارة الموظفين", labelEn: "Manage staff", descriptionAr: "إضافة وتعديل وتعطيل الموظفين" },
+  "staff.attendance.manage": { moduleAr: "الموظفون", moduleEn: "Staff", labelAr: "إدارة الحضور", labelEn: "Manage attendance", descriptionAr: "تسجيل وتعديل الحضور والانصراف" },
+  "staff.schedule.manage": { moduleAr: "الموظفون", moduleEn: "Staff", labelAr: "إدارة جداول العمل", labelEn: "Manage schedules", descriptionAr: "تعديل الورديات وأيام العمل" },
+  "marketing.view": { moduleAr: "التسويق", moduleEn: "Marketing", labelAr: "عرض التسويق", labelEn: "View marketing", descriptionAr: "عرض الحملات والعملاء المحتملين" },
+  "marketing.spend.view": { moduleAr: "التسويق", moduleEn: "Marketing", labelAr: "عرض الإنفاق والعائد", labelEn: "View spend and ROI", descriptionAr: "إظهار تكاليف الحملات والعائد", risk: "sensitive" },
+  "marketing.manage": { moduleAr: "التسويق", moduleEn: "Marketing", labelAr: "إدارة الحملات", labelEn: "Manage campaigns", descriptionAr: "إنشاء وتعديل وإيقاف الحملات" },
+  "ai.view": { moduleAr: "ذكاء زيرنيو", moduleEn: "Zernio intelligence", labelAr: "عرض أدوات الذكاء", labelEn: "View AI tools", descriptionAr: "فتح صفحات الذكاء والأتمتة" },
+  "ai.use": { moduleAr: "ذكاء زيرنيو", moduleEn: "Zernio intelligence", labelAr: "استخدام الذكاء الاصطناعي", labelEn: "Use AI", descriptionAr: "إرسال طلبات وتحليلات للذكاء الاصطناعي" },
+  "enterprise.view": { moduleAr: "إدارة المؤسسة", moduleEn: "Enterprise", labelAr: "عرض مركز المؤسسة", labelEn: "View enterprise center", descriptionAr: "عرض الفروع والمهام وسجل النشاط" },
+  "enterprise.manage": { moduleAr: "إدارة المؤسسة", moduleEn: "Enterprise", labelAr: "إدارة المؤسسة", labelEn: "Manage enterprise", descriptionAr: "إدارة المهام ومسارات العمل والفروع", risk: "critical" },
+  "audit.view": { moduleAr: "إدارة المؤسسة", moduleEn: "Enterprise", labelAr: "عرض سجل التدقيق", labelEn: "View audit log", descriptionAr: "عرض سجل تغييرات المستخدمين", risk: "sensitive" },
+  "settings.view": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "عرض الإعدادات", labelEn: "View settings", descriptionAr: "فتح صفحات إعداد النظام" },
+  "settings.manage": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "تعديل إعدادات العيادة", labelEn: "Manage settings", descriptionAr: "تغيير إعدادات العيادة والبيانات الأساسية", risk: "critical" },
+  "users.manage": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "إدارة المستخدمين والصلاحيات", labelEn: "Manage users and permissions", descriptionAr: "دعوة وتعطيل المستخدمين ومنح الصلاحيات", risk: "critical" },
+};
+
+export const permissionModuleOrder = ["Dashboard", "Patients", "Patient app", "Appointments", "Follow-ups", "Treatments", "Medical record", "Finance", "Reports", "Services & prices", "Inventory", "Staff", "Marketing", "Zernio intelligence", "Enterprise", "Settings"];

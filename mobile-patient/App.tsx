@@ -28,6 +28,7 @@ import drMaram from "./assets/dr-maram.jpg";
 import drFatimaAlsatouf from "./assets/dr-fatima-alsatouf.jpg";
 import { colors } from "./src/theme";
 import { supabase } from "./src/supabase";
+import { beginNewPatientPresenceSession, sendPatientPresence } from "./src/patient-presence";
 import {
   acceptPatientConsent,
   createAppointment,
@@ -4720,6 +4721,22 @@ export default function App() {
       listener.remove();
     };
   }, [authenticated, refresh]);
+  useEffect(() => {
+    if (!authenticated) return;
+    beginNewPatientPresenceSession();
+    void sendPatientPresence("active").catch(() => undefined);
+    const heartbeat = setInterval(() => {
+      if (AppState.currentState === "active") void sendPatientPresence("active").catch(() => undefined);
+    }, 30000);
+    const listener = AppState.addEventListener("change", (state) => {
+      void sendPatientPresence(state === "active" ? "active" : state === "background" ? "background" : "inactive").catch(() => undefined);
+    });
+    return () => {
+      clearInterval(heartbeat);
+      listener.remove();
+      void sendPatientPresence("inactive").catch(() => undefined);
+    };
+  }, [authenticated]);
   const toggleLanguage = () => {
     const next = language === "en" ? "ar" : "en";
     setLanguage(next);
