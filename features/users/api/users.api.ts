@@ -29,7 +29,7 @@ export async function getUserManagementData(clinicId: number, branchId: number):
   const [users, roles,permissions] = await Promise.all([
     supabase
       .from("staff")
-      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides(permission_id,granted,updated_at,updated_by)")
+      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides!hr_staff_permission_overrides_staff_id_fkey(permission_id,granted,updated_at,updated_by)")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .order("staff_name"),
