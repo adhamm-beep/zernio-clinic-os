@@ -10,6 +10,7 @@ import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import type { DoctorMetric, RankedMetric } from "../types/analytics";
 import { usePermission } from "@/features/users/hooks/usePermission";
+import { useLocale } from "@/components/LocaleProvider";
 
 function money(value: number) {
   return new Intl.NumberFormat("en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 0 }).format(value);
@@ -39,6 +40,7 @@ function DoctorPerformance({ items }: { items: DoctorMetric[] }) {
 }
 
 export default function ClinicAnalyticsDashboard() {
+  const {text}=useLocale();
   const financeAllowed = usePermission("reports.finance.view").allowed;
   const doctorRevenueAllowed = usePermission("reports.doctor_revenue.view").allowed;
   const range = useDateRange();
@@ -64,19 +66,19 @@ export default function ClinicAnalyticsDashboard() {
     <DateRangeFilter />
 
     <nav aria-label="Analytics sections" className="sticky top-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur">
-      {[["Revenue", "revenue"], ["Doctors", "doctors"], ["Marketing", "marketing"], ["Booking", "booking"], ["Finance", "finance"]].map(([label, target]) => <a key={target} href={`#${target}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950 hover:text-white">{label}</a>)}
+      {[[text("Revenue","الإيرادات"), "revenue"], [text("Doctors","الأطباء"), "doctors"], [text("Marketing","التسويق"), "marketing"], [text("Booking","الحجوزات"), "booking"], [text("Finance","المالية"), "finance"]].map(([label, target]) => <a key={target} href={`#${target}`} className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950 hover:text-white">{label}</a>)}
     </nav>
 
     {financeAllowed&&<section id="revenue" className="scroll-mt-24 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric label="Revenue today" value={money(data.revenue.today)} tone="green" />
-      <Metric label="Revenue this month" value={money(data.revenue.month)} hint={`${data.revenue.trendPercent >= 0 ? "+" : ""}${data.revenue.trendPercent.toFixed(1)}% vs previous month`} tone="blue" />
+      <Metric label={text("Revenue this month","إيرادات هذا الشهر")} value={money(data.revenue.month)} hint={`${data.revenue.trendPercent >= 0 ? "+" : ""}${data.revenue.trendPercent.toFixed(1)}% ${text("vs previous month","مقارنة بالشهر السابق")}`} tone="blue" />
       <Metric label="Revenue forecast" value={money(data.revenue.forecast)} hint="Current-month run-rate estimate" />
-      <Metric label="Outstanding" value={money(data.finance.outstanding)} hint={`${data.finance.collectionRate}% collection rate`} tone={data.finance.outstanding > 0 ? "orange" : "green"} />
+      <Metric label={text("Outstanding","المبالغ المستحقة")} value={money(data.finance.outstanding)} hint={`${text("Collection rate","نسبة التحصيل")} ${data.finance.collectionRate}%`} tone={data.finance.outstanding > 0 ? "orange" : "green"} />
     </section>}
 
     <section id="booking" className="scroll-mt-24 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="Completion rate" value={`${data.booking.completionRate}%`} hint={`${data.booking.completed} completed`} />
-      <Metric label="No-show rate" value={`${data.booking.noShowRate}%`} hint={`${data.booking.noShows} no shows`} tone={data.booking.noShowRate > 15 ? "orange" : "slate"} />
+      <Metric label={text("No-show rate","نسبة عدم الحضور")} value={`${data.booking.noShowRate}%`} hint={`${data.booking.noShows} ${text("no shows","حالات عدم حضور")}`} tone={data.booking.noShowRate > 15 ? "orange" : "slate"} />
       <Metric label="Cancellation rate" value={`${data.booking.cancellationRate}%`} hint={`${data.booking.cancelled} cancelled`} />
       <Metric label="Refunded" value={money(data.finance.refunded)} />
     </section>
@@ -100,7 +102,7 @@ export default function ClinicAnalyticsDashboard() {
         <Metric label="Tracked leads" value={String(data.marketing.totalLeads)} tone="blue" />
         <Metric label="Converted bookings" value={String(data.marketing.convertedLeads)} tone="green" />
         <Metric label="Conversion rate" value={`${data.marketing.conversionRate}%`} />
-        <Metric label="Cost per booking" value={data.marketing.costPerBooking == null ? "Not available" : money(data.marketing.costPerBooking)} hint={`${money(data.marketing.spend)} tracked spend`} />
+        <Metric label={text("Cost per booking","تكلفة الحجز")} value={data.marketing.costPerBooking == null ? text("Not available","غير متاح") : money(data.marketing.costPerBooking)} hint={`${text("Tracked spend","الإنفاق المتتبع")}: ${money(data.marketing.spend)}`} />
       </div>
       <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><Megaphone className="text-fuchsia-600" /><div><h2 className="font-bold">Lead sources & campaign attribution</h2><p className="text-sm text-slate-500">Bookings, conversion, spend, revenue and ROI by source</p></div></div>{data.marketing.sources.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No lead sources are recorded yet.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Source</th><th className="pb-3 font-medium">Leads</th><th className="pb-3 font-medium">Converted</th><th className="pb-3 font-medium">Conversion</th><th className="pb-3 font-medium">Spend</th><th className="pb-3 font-medium">Revenue</th><th className="pb-3 font-medium">ROI</th></tr></thead><tbody>{data.marketing.sources.map((item) => <tr key={item.source} className="border-b last:border-0"><td className="py-4 font-semibold capitalize">{item.source}</td><td className="py-4">{item.leads}</td><td className="py-4">{item.converted}</td><td className="py-4"><span className="inline-flex items-center gap-1"><Target className="h-4 w-4 text-emerald-600" />{item.conversionRate}%</span></td><td className="py-4">{money(item.spend)}</td><td className="py-4 font-semibold">{money(item.revenue)}</td><td className="py-4">{item.roi==null?"—":`${item.roi.toFixed(1)}%`}</td></tr>)}</tbody></table></div>}</div>
     </section>
