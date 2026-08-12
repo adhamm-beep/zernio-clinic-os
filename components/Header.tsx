@@ -16,7 +16,7 @@ const titles: Record<string, [string, string]> = {
   calendar: ["Calendar", "التقويم"], treatments: ["Care & treatments", "العناية والعلاجات"], payments: ["Payments", "المدفوعات"],
   "price-list": ["Services & prices", "الخدمات والأسعار"], inventory: ["Inventory", "المخزون"], staff: ["Team", "الفريق"],
   marketing: ["Marketing", "التسويق"], reports: ["Reports", "التقارير"], accounting: ["Finance & accounting", "المالية والمحاسبة"], "ask-zernio": ["Ask Zernio", "اسأل زيرنيو"],
-  "ai-agents": ["Automation", "الأتمتة"], settings: ["Settings", "الإعدادات"], enterprise: ["Enterprise", "المؤسسة"], support: ["Technical support", "الدعم الفني"],
+  "ai-agents": ["Automation", "الأتمتة"], "patient-catalogs":["Patient catalogs","علامات المرضى والإحالات"],settings: ["Settings", "الإعدادات"], enterprise: ["Enterprise", "المؤسسة"], support: ["Technical support", "الدعم الفني"],
 };
 
 const arabicNotificationTerms: Record<string, string> = {

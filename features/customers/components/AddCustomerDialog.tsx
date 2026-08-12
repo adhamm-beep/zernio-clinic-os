@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { useCreateCustomer } from "../hooks/useCreateCustomer";
 import { useLocale } from "@/components/LocaleProvider";
 import {useMasterData} from "@/features/master-data/hooks/useMasterData";
+import { useQuery } from "@tanstack/react-query";
+import { getPatientTags, getReferralSources, setCustomerTags } from "../api/customer.api";
 
 const schema = z.object({
   customer_code: z.string().optional(),
@@ -33,7 +35,7 @@ const schema = z.object({
     .optional()
     .or(z.literal("")),
   assigned_doctor_id:z.string().optional(),
-  referral_source:z.string().optional(),
+  referral_source_id:z.string().optional(),
   referral_detail:z.string().optional(),
 });
 
@@ -44,6 +46,9 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
   const createCustomer = useCreateCustomer();
   const { text, isArabic } = useLocale();
   const{data:master}=useMasterData();
+  const tags = useQuery({queryKey:["patient-tags",clinicId],queryFn:()=>getPatientTags(clinicId),enabled:clinicId>0});
+  const referrals = useQuery({queryKey:["referral-sources",clinicId],queryFn:()=>getReferralSources(clinicId),enabled:clinicId>0});
+  const [selectedTags,setSelectedTags]=useState<number[]>([]);
 
   const {
     register,
@@ -57,17 +62,19 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
 
   async function onSubmit(values: FormData) {
     try {
-      await createCustomer.mutateAsync({
+      const created = await createCustomer.mutateAsync({
         clinic_id: clinicId,
         branch_id: branchId,
-        ...values,assigned_doctor_id:Number(values.assigned_doctor_id)||undefined,
+        ...values,assigned_doctor_id:Number(values.assigned_doctor_id)||undefined,referral_source_id:Number(values.referral_source_id)||undefined,
         gender: "",
         date_of_birth: "",
         status: "active",
       });
+      await setCustomerTags(created.id,selectedTags);
 
       toast.success(text("Customer added successfully", "تمت إضافة العميل بنجاح"));
       reset();
+      setSelectedTags([]);
       setOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to add customer";
@@ -105,7 +112,8 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
           </div>
 
           <select {...register("assigned_doctor_id")} className="w-full rounded-md border px-3 py-2"><option value="">{text("Assigned doctor","الطبيب المعالج")}</option>{master?.staff.filter(item=>item.is_active&&item.role?.toLowerCase()==="doctor").map(item=><option key={item.id} value={item.id}>{item.staff_name}</option>)}</select>
-          <div className="grid grid-cols-2 gap-3"><select {...register("referral_source")} className="rounded-md border px-3 py-2"><option value="">{text("Referral source","مصدر الإحالة")}</option><option value="patient">{text("Patient referral","إحالة مريض")}</option><option value="doctor">{text("Doctor referral","إحالة طبيب")}</option><option value="social_media">{text("Social media","التواصل الاجتماعي")}</option><option value="advertising">{text("Advertising","إعلان")}</option><option value="other">{text("Other","أخرى")}</option></select><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
+          <div className="grid grid-cols-2 gap-3"><select {...register("referral_source_id")} className="rounded-md border px-3 py-2"><option value="">{text("Referral source","مصدر الإحالة")}</option>{referrals.data?.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
+          <div className="rounded-xl border p-3"><p className="mb-2 font-bold">علامات المريض</p><div className="flex flex-wrap gap-2">{tags.data?.map(item=><label key={item.id} className="flex items-center gap-2 rounded-full border px-3 py-1"><input type="checkbox" checked={selectedTags.includes(item.id)} onChange={()=>setSelectedTags(old=>old.includes(item.id)?old.filter(id=>id!==item.id):[...old,item.id])}/><span className="size-3 rounded-full" style={{backgroundColor:item.color}}/>{item.name}</label>)}</div></div>
 
           <Input
             placeholder={text("Last name", "اسم العائلة")}

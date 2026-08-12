@@ -18,6 +18,7 @@ export type CreateCustomerInput = {
   status: string;
   assigned_doctor_id?: number;
   referral_source?: string;
+  referral_source_id?: number;
   referral_detail?: string;
 };
 
@@ -75,6 +76,7 @@ export async function createCustomer(
       status: customer.status,
       assigned_doctor_id: customer.assigned_doctor_id || null,
       referral_source: customer.referral_source?.trim() || null,
+      referral_source_id:customer.referral_source_id||null,
       referral_detail: customer.referral_detail?.trim() || null,
       selected_at: new Date().toISOString(),
     })
@@ -107,6 +109,7 @@ export async function updateCustomer(
       status: customer.status,
       assigned_doctor_id: customer.assigned_doctor_id || null,
       referral_source: customer.referral_source?.trim() || null,
+      referral_source_id:customer.referral_source_id||null,
       referral_detail: customer.referral_detail?.trim() || null,
     })
     .eq("id", customer.id)
@@ -121,10 +124,14 @@ export async function updateCustomer(
 }
 
 export type PatientTag={id:number;clinic_id:number;name:string;color:string;is_active:boolean};
-export async function getPatientTags(clinicId:number){const{data,error}=await supabase.from("patient_tags").select("id,clinic_id,name,color,is_active").eq("clinic_id",clinicId).eq("is_active",true).order("name");if(error)throw new Error(error.message);return(data??[])as PatientTag[]}
+export async function getPatientTags(clinicId:number,includeInactive=false){let query=supabase.from("patient_tags").select("id,clinic_id,name,color,is_active").eq("clinic_id",clinicId).order("name");if(!includeInactive)query=query.eq("is_active",true);const{data,error}=await query;if(error)throw new Error(error.message);return(data??[])as PatientTag[]}
 export async function createPatientTag(clinicId:number,name:string,color:string){const{data,error}=await supabase.from("patient_tags").insert({clinic_id:clinicId,name:name.trim(),color}).select().single();if(error)throw new Error(error.message);return data as PatientTag}
 export async function setCustomerTags(customerId:number,tagIds:number[]){const{error:removeError}=await supabase.from("customer_patient_tags").delete().eq("customer_id",customerId);if(removeError)throw new Error(removeError.message);if(tagIds.length){const{error}=await supabase.from("customer_patient_tags").insert(tagIds.map(tag_id=>({customer_id:customerId,tag_id})));if(error)throw new Error(error.message)}}
 export async function adjustCustomerWallet(customerId:number,amount:number,type:"credit"|"debit"|"refund"|"adjustment",description:string){const{data,error}=await supabase.rpc("staff_adjust_patient_wallet",{p_customer_id:customerId,p_amount:amount,p_type:type,p_description:description||null});if(error)throw new Error(error.message);return Number(data)}
+export type ReferralSource={id:number;clinic_id:number;name:string;color:string;referral_url:string|null;description:string|null;is_active:boolean;sort_order:number};
+export async function getReferralSources(clinicId:number,includeInactive=false){let query=supabase.from("patient_referral_sources").select("*").eq("clinic_id",clinicId).order("sort_order").order("name");if(!includeInactive)query=query.eq("is_active",true);const{data,error}=await query;if(error)throw new Error(error.message);return(data??[])as ReferralSource[]}
+export async function saveReferralSource(input:Partial<ReferralSource>&{clinic_id:number;name:string;color:string}){const payload={clinic_id:input.clinic_id,name:input.name.trim(),color:input.color,referral_url:input.referral_url?.trim()||null,description:input.description?.trim()||null,is_active:input.is_active??true,sort_order:input.sort_order??0};const query=input.id?supabase.from("patient_referral_sources").update(payload).eq("id",input.id):supabase.from("patient_referral_sources").insert(payload);const{data,error}=await query.select().single();if(error)throw new Error(error.message);return data as ReferralSource}
+export async function updatePatientTag(input:PatientTag){const{data,error}=await supabase.from("patient_tags").update({name:input.name.trim(),color:input.color,is_active:input.is_active}).eq("id",input.id).select().single();if(error)throw new Error(error.message);return data as PatientTag}
 
 export async function deactivateCustomer(
   id: number

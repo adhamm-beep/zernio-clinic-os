@@ -11,6 +11,7 @@ type SettingsModule = {
 };
 
 const modules: SettingsModule[] = [
+  {title:"Patient catalogs",titleAr:"علامات المرضى والإحالات",description:"Manage patient tags, colors and referral sources.",descriptionAr:"إدارة علامات المرضى وألوانها ومصادر الإحالة من مكان مركزي.",href:"/settings/patient-catalogs"},
   {
     title: "Master Data",
     titleAr: "البيانات الأساسية",
