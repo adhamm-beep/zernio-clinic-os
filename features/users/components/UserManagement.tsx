@@ -2,13 +2,13 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, KeyRound, Mail, Plus, RefreshCw, Search, ShieldCheck, SlidersHorizontal, UserRound, UsersRound } from "lucide-react";
+import { CheckCircle2, KeyRound, Mail, Pencil, Plus, RefreshCw, Search, ShieldCheck, SlidersHorizontal, UserRound, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/components/LocaleProvider";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
-import { changeManagedUserRole, createManagedUser, saveUserPermissions, sendUserInvitation, setManagedUserActive,type ManagedUser } from "../api/users.api";
+import { changeManagedUserRole, createManagedUser, saveUserPermissions, sendUserInvitation, setManagedUserActive, updateManagedUser, type ManagedUser } from "../api/users.api";
 import { useUserManagement } from "../hooks/useUserManagement";
 import { permissionMeta, permissionModuleOrder } from "../permission-catalog";
 
@@ -26,6 +26,7 @@ export default function UserManagement() {
   const [open, setOpen] = useState(false);
   const [permissionUser,setPermissionUser]=useState<ManagedUser|null>(null);
   const [permissionValues,setPermissionValues]=useState<Set<number>>(new Set());
+  const [editUser,setEditUser]=useState<ManagedUser|null>(null);
 
   const users = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -48,8 +49,10 @@ export default function UserManagement() {
       await action();
       await queryClient.invalidateQueries({ queryKey: ["user-management", clinicId, branchId] });
       setNotice({ kind: "ok", message: success });
+      return true;
     } catch (error) {
       setNotice({ kind: "error", message: error instanceof Error ? error.message : text("The operation failed.", "تعذر تنفيذ العملية.") });
+      return false;
     } finally {
       setBusy(null);
     }
@@ -72,6 +75,19 @@ export default function UserManagement() {
     });await sendUserInvitation(email,name);}, text("User added and invitation sent.", "تمت إضافة المستخدم وإرسال دعوة التفعيل."));
     form.reset();
     setOpen(false);
+  }
+
+  async function submitUserEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editUser) return;
+    const values = new FormData(event.currentTarget);
+    const saved = await run(editUser.id, () => updateManagedUser(editUser.id, {
+      name: String(values.get("name") || ""),
+      email: String(values.get("email") || ""),
+      phone: String(values.get("phone") || ""),
+      jobTitle: String(values.get("jobTitle") || ""),
+    }), text("User details updated.", "تم تحديث بيانات المستخدم."));
+    if (saved) setEditUser(null);
   }
 
   function editPermissions(user:ManagedUser){const role=roleById.get(user.roles[0]?.role_id);const enabled=new Set((role?.permissions??[]).flatMap(link=>link.permission?[link.permission.id]:[]));for(const override of user.overrides){if(override.granted)enabled.add(override.permission_id);else enabled.delete(override.permission_id);}setPermissionValues(enabled);setPermissionUser(user);}
@@ -153,7 +169,7 @@ export default function UserManagement() {
                 <td className="px-5 py-4"><p className="flex items-center gap-1.5"><Mail className="size-3.5 text-slate-400" />{user.email || "—"}</p><p className="mt-1 text-xs text-slate-500">{user.phone || "—"}</p></td>
                 <td className="px-5 py-4"><select aria-label={text("Change access role", "تغيير دور الوصول")} value={currentRole?.id ?? ""} disabled={busy === user.id} onChange={(event) => { const role = roleById.get(Number(event.target.value)); if (role) void run(user.id, () => changeManagedUserRole(user.id, role.id, role.name), text("Access role updated.", "تم تحديث دور الوصول.")); }} className="h-8 rounded-lg border bg-white px-2 text-xs font-semibold"><option value="">{text("No role", "بدون دور")}</option>{query.data.roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></td>
                 <td className="px-5 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{active ? text("Active", "نشط") : text("Inactive", "موقوف")}</span></td>
-                <td className="px-5 py-4"><div className="flex flex-wrap gap-1.5"><Button size="sm" variant="outline" onClick={()=>editPermissions(user)}><SlidersHorizontal/>{text("Permissions","الصلاحيات")}</Button><Button size="sm" variant="outline" disabled={!user.email||busy===user.id} onClick={()=>user.email&&void run(user.id,()=>sendUserInvitation(user.email!,user.staff_name||""),text("Invitation sent.","تم إرسال دعوة التفعيل."))}><KeyRound/>{text("Invite","دعوة")}</Button><Button size="sm" variant={active ? "outline" : "default"} disabled={busy === user.id} onClick={() => void run(user.id, () => setManagedUserActive(user.id, !active), active ? text("User access suspended.", "تم إيقاف وصول المستخدم.") : text("User access restored.", "تمت إعادة تفعيل وصول المستخدم."))}>{active ? text("Suspend", "إيقاف") : text("Activate", "تفعيل")}</Button></div></td>
+                <td className="px-5 py-4"><div className="flex flex-wrap gap-1.5"><Button size="sm" variant="outline" onClick={()=>setEditUser(user)}><Pencil/>{text("Edit","تعديل")}</Button><Button size="sm" variant="outline" onClick={()=>editPermissions(user)}><SlidersHorizontal/>{text("Permissions","الصلاحيات")}</Button><Button size="sm" variant="outline" disabled={!user.email||busy===user.id} onClick={()=>user.email&&void run(user.id,()=>sendUserInvitation(user.email!,user.staff_name||""),text("Invitation sent.","تم إرسال دعوة التفعيل."))}><KeyRound/>{text("Invite","دعوة")}</Button><Button size="sm" variant={active ? "outline" : "default"} disabled={busy === user.id} onClick={() => void run(user.id, () => setManagedUserActive(user.id, !active), active ? text("User access suspended.", "تم إيقاف وصول المستخدم.") : text("User access restored.", "تمت إعادة تفعيل وصول المستخدم."))}>{active ? text("Suspend", "إيقاف") : text("Activate", "تفعيل")}</Button></div></td>
               </tr>;
             })}
           </tbody>
@@ -161,6 +177,24 @@ export default function UserManagement() {
       </div>
       {!users.length && <div className="p-12 text-center text-sm text-slate-500">{text("No users match your search.", "لا يوجد مستخدمون مطابقون للبحث.")}</div>}
     </section>
+
+    <Dialog open={Boolean(editUser)} onOpenChange={next=>{if(!next)setEditUser(null)}}>
+      <DialogContent className="sm:max-w-lg">
+        <form onSubmit={submitUserEdit} className="contents">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">{text("Edit user", "تعديل المستخدم")}</DialogTitle>
+            <DialogDescription>{text("Add the Gmail address and mobile number, then save to enable sending the login invitation.", "أضف بريد Gmail ورقم الجوال ثم احفظ لتفعيل إرسال دعوة تسجيل الدخول.")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2 sm:grid-cols-2">
+            <label className="space-y-1.5 sm:col-span-2"><span className="text-xs font-bold text-slate-600">{text("Full name", "الاسم الكامل")}</span><Input name="name" required defaultValue={editUser?.staff_name??""}/></label>
+            <label className="space-y-1.5"><span className="text-xs font-bold text-slate-600">{text("Email", "البريد الإلكتروني")}</span><Input name="email" type="email" required inputMode="email" placeholder="name@gmail.com" defaultValue={editUser?.email??""}/></label>
+            <label className="space-y-1.5"><span className="text-xs font-bold text-slate-600">{text("Phone", "رقم الجوال")}</span><Input name="phone" type="tel" inputMode="tel" placeholder="+9665xxxxxxxx" defaultValue={editUser?.phone??""}/></label>
+            <label className="space-y-1.5 sm:col-span-2"><span className="text-xs font-bold text-slate-600">{text("Job title", "المسمى الوظيفي")}</span><Input name="jobTitle" defaultValue={editUser?.job_title??""}/></label>
+          </div>
+          <DialogFooter><Button type="button" variant="outline" onClick={()=>setEditUser(null)}>{text("Cancel", "إلغاء")}</Button><Button type="submit" disabled={!editUser||busy===editUser?.id}>{busy===editUser?.id?text("Saving...", "جارٍ الحفظ..."):text("Save changes", "حفظ التعديلات")}</Button></DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={Boolean(permissionUser)} onOpenChange={next=>{if(!next)setPermissionUser(null)}}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">

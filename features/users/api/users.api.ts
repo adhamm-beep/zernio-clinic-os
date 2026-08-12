@@ -109,3 +109,28 @@ export async function setManagedUserActive(staffId: number, active: boolean) {
     .eq("id", staffId);
   if (error) throw new Error(error.message);
 }
+
+export async function updateManagedUser(staffId: number, input: {
+  name: string;
+  email: string;
+  phone?: string;
+  jobTitle?: string;
+}) {
+  const email = input.email.trim().toLowerCase();
+  const { data: duplicate, error: duplicateError } = await supabase
+    .from("staff")
+    .select("id")
+    .ilike("email", email)
+    .neq("id", staffId)
+    .limit(1);
+  if (duplicateError) throw new Error(duplicateError.message);
+  if (duplicate?.length) throw new Error("هذا البريد الإلكتروني مستخدم بالفعل لمستخدم آخر.");
+
+  const { error } = await supabase.from("staff").update({
+    staff_name: input.name.trim(),
+    email,
+    phone: input.phone?.trim() || null,
+    job_title: input.jobTitle?.trim() || null,
+  }).eq("id", staffId);
+  if (error) throw new Error(error.message);
+}
