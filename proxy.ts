@@ -76,7 +76,7 @@ export async function proxy(request: NextRequest) {
     ["/accounting", "reports.finance.view"],
     ["/patient-app", "patient_app.analytics"],
     ["/support", "support.create"],
-    ["/ai-agents", "ai.view"], ["/enterprise", "enterprise.view"],
+    ["/ai-agents", "ai.view"], ["/enterprise", ["enterprise.view","enterprise.manage","audit.view"]],
     ["/dashboard", ["dashboard.view","dashboard.finance.view","dashboard.appointments_count.view","dashboard.completed_patients_count.view","dashboard.invoice_count.view","dashboard.collections_total.view","dashboard.invoiced_total.view","dashboard.paid_total.view","dashboard.remaining_total.view"]], ["/api/ai", "ai.use"],
     ["/api/payments", "payments.manage"], ["/api/admin/users", "users.manage"],
   ];

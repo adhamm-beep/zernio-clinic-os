@@ -16,7 +16,7 @@ function percent(part: number, total: number) {
   return total > 0 ? Math.min(Math.round((part / total) * 1000) / 10, 100) : 0;
 }
 
-export async function getClinicAnalytics(clinicId: number, branchId: number, from?: string, to?: string): Promise<ClinicAnalytics> {
+export async function getClinicAnalytics(clinicId: number, branchId: number, from?: string, to?: string, access?:{finance:boolean;doctorRevenue:boolean;marketingSpend:boolean}): Promise<ClinicAnalytics> {
   const now = new Date();
   const currentMonth = startOfMonth(now);
   const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -32,27 +32,27 @@ export async function getClinicAnalytics(clinicId: number, branchId: number, fro
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .gte("appointment_at", rangeStart.toISOString()).lt("appointment_at", rangeEnd.toISOString()),
-    supabase
+    access?.finance ? supabase
       .from("payments")
       .select("id, amount, payment_method, payment_status, payment_date, appointment_id")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
-      .gte("payment_date", rangeStart.toISOString()).lt("payment_date", rangeEnd.toISOString()),
-    supabase
+      .gte("payment_date", rangeStart.toISOString()).lt("payment_date", rangeEnd.toISOString()) : Promise.resolve({data:[],error:null}),
+    (access?.finance||access?.doctorRevenue) ? supabase
       .from("treatments")
       .select("id, doctor_name, service_name, price, discount, final_price, status, treatment_date")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
-      .gte("treatment_date", rangeStart.toISOString()).lt("treatment_date", rangeEnd.toISOString()),
-    supabase
+      .gte("treatment_date", rangeStart.toISOString()).lt("treatment_date", rangeEnd.toISOString()) : Promise.resolve({data:[],error:null}),
+    access?.doctorRevenue ? supabase
       .from("treatment_sessions")
       .select("id, status, doctor:staff!treatment_sessions_doctor_id_fkey(staff_name)")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
-      .gte("session_date", rangeStart.toISOString()).lt("session_date", rangeEnd.toISOString()),
+      .gte("session_date", rangeStart.toISOString()).lt("session_date", rangeEnd.toISOString()) : Promise.resolve({data:[],error:null}),
     supabase.from("marketing_leads").select("source,status,appointment_id").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()),
-    supabase.from("marketing_source_costs").select("source,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("period_month",rangeStart.toISOString().slice(0,10)).lte("period_month",rangeEnd.toISOString().slice(0,10)),
-    supabase.from("marketing_campaigns").select("channel,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()),
+    access?.marketingSpend ? supabase.from("marketing_source_costs").select("source,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("period_month",rangeStart.toISOString().slice(0,10)).lte("period_month",rangeEnd.toISOString().slice(0,10)) : Promise.resolve({data:[],error:null}),
+    access?.marketingSpend ? supabase.from("marketing_campaigns").select("channel,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()) : Promise.resolve({data:[],error:null}),
   ]);
 
   const firstError = appointmentsResult.error || paymentsResult.error || treatmentsResult.error || sessionsResult.error || leadsResult.error || costsResult.error || campaignsResult.error;

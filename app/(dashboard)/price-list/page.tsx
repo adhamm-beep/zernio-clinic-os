@@ -14,6 +14,7 @@ import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 import type { MasterService, MasterServiceVariant } from "@/features/master-data/types/master-data";
 import { saveService, saveVariant, setVariantActive, unlinkServiceFromProvider, type SaveServiceInput, type SaveVariantInput } from "@/features/price-list/api/price-list.api";
+import { usePermission } from "@/features/users/hooks/usePermission";
 
 const departments = [
   { id: -1, name: "Laser Department", subtitle: "Clarity II · Nurses", category: "Laser Hair Removal" },
@@ -38,6 +39,7 @@ export default function PriceListPage() {
   const [search, setSearch] = useState("");
   const [serviceForm, setServiceForm] = useState<ServiceForm | null>(null);
   const [variantForm, setVariantForm] = useState<VariantForm | null>(null);
+  const canManage = usePermission("services.manage").allowed;
 
   const doctors = useMemo(() => data?.staff.filter(isApprovedDoctor) ?? [], [data]);
   const selectedProviderId = providerId ?? doctors[0]?.id ?? -1;
@@ -123,7 +125,7 @@ export default function PriceListPage() {
       <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-7 text-white shadow-xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div><p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">{text("CLINIC CATALOG","دليل العيادة")}</p><h1 className="mt-2 text-3xl font-black sm:text-4xl">{text("Services & prices","الخدمات والأسعار")}</h1><p className="mt-2 max-w-2xl text-slate-300">{text("One trusted catalog for booking, treatments and invoices.","دليل موحد وموثوق للحجز والإجراءات والفواتير.")}</p></div>
-          <Button type="button" onClick={() => setServiceForm({ ...emptyService, category: selectedDepartment?.category ?? "" })} className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"><Plus className="mr-2 h-4 w-4" />{text("Add service", "إضافة خدمة")}</Button>
+          {canManage&&<Button type="button" onClick={() => setServiceForm({ ...emptyService, category: selectedDepartment?.category ?? "" })} className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"><Plus className="mr-2 h-4 w-4" />{text("Add service", "إضافة خدمة")}</Button>}
         </div>
         <div className="mt-7 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-white/10 p-4 backdrop-blur"><Stethoscope className="h-5 w-5 text-emerald-300" /><p className="mt-3 text-2xl font-bold">{services.length}</p><p className="text-sm text-slate-300">{text("Connected services", "الخدمات المرتبطة")}</p></div>
@@ -155,10 +157,10 @@ export default function PriceListPage() {
           return <article key={service.id} className="overflow-hidden rounded-3xl border bg-white shadow-sm transition hover:shadow-md">
             <header className="flex items-start justify-between gap-4 border-b bg-slate-50/80 p-5">
               <div><div className="flex flex-wrap items-center gap-2"><h3 className="text-lg font-black text-slate-900">{serviceLabel(service)}</h3><span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600">{service.code}</span></div><p className="mt-1 text-sm text-slate-500">{isArabic ? service.category_ar ?? service.category : service.category_en ?? service.category} · {service.duration_minutes} {text("min","دقيقة")}</p>{selectedProviderId < 0 && <p className="mt-2 font-bold text-emerald-700">{basePrice?.is_starting_from ? text("From ","يبدأ من ") : ""}{money(basePrice?.price ?? service.default_price)}</p>}</div>
-              <div className="flex gap-1"><Button type="button" size="icon" variant="ghost" onClick={() => editService(service)} aria-label="Edit service"><Edit3 className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" onClick={() => { if (window.confirm(`Remove ${service.name} from ${providerName}?`)) removeServiceMutation.mutate({ serviceId: service.id }); }} aria-label="Remove service"><Trash2 className="h-4 w-4 text-red-600" /></Button></div>
+              {canManage&&<div className="flex gap-1"><Button type="button" size="icon" variant="ghost" onClick={() => editService(service)} aria-label="Edit service"><Edit3 className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" onClick={() => { if (window.confirm(`Remove ${service.name} from ${providerName}?`)) removeServiceMutation.mutate({ serviceId: service.id }); }} aria-label="Remove service"><Trash2 className="h-4 w-4 text-red-600" /></Button></div>}
             </header>
             <div className="p-5">
-              <div className="mb-3 flex items-center justify-between"><p className="text-sm font-bold text-slate-700">{text("Materials / treatment options", "المواد وخيارات الإجراء")} ({variants.length})</p><Button type="button" size="sm" variant="outline" onClick={() => setVariantForm({ serviceId: service.id, name: "", nameEn: "", nameAr: "", price: "0", startingFrom: false })}><Plus className="mr-1 h-3.5 w-3.5" />{text("Add material", "إضافة مادة")}</Button></div>
+              <div className="mb-3 flex items-center justify-between"><p className="text-sm font-bold text-slate-700">{text("Materials / treatment options", "المواد وخيارات الإجراء")} ({variants.length})</p>{canManage&&<Button type="button" size="sm" variant="outline" onClick={() => setVariantForm({ serviceId: service.id, name: "", nameEn: "", nameAr: "", price: "0", startingFrom: false })}><Plus className="mr-1 h-3.5 w-3.5" />{text("Add material", "إضافة مادة")}</Button>}</div>
               {variants.length ? <div className="max-h-80 space-y-2 overflow-y-auto pr-1">{variants.map((variant) => { const pricing = variantPrice(variant); return <div key={variant.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{variantLabel(variant)}</p><p className="mt-0.5 text-sm font-bold text-emerald-700">{pricing.startingFrom ? text("From ", "يبدأ من ") : ""}{money(pricing.price)}</p></div><div className="flex shrink-0 gap-1"><Button type="button" size="icon" variant="ghost" onClick={() => setVariantForm({ id: variant.id, serviceId: service.id, name: variant.name, nameEn: variant.name_en ?? variant.name, nameAr: variant.name_ar ?? variant.name, price: String(pricing.price), startingFrom: pricing.startingFrom })}><Edit3 className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" onClick={() => { if (window.confirm(text(`Remove ${variantLabel(variant)} from ${providerName}?`, `إزالة ${variantLabel(variant)} من ${providerName}؟`))) removeVariantMutation.mutate({ variantId: variant.id }); }}><Trash2 className="h-4 w-4 text-red-600" /></Button></div></div>; })}</div> : <div className="rounded-2xl border border-dashed p-7 text-center text-sm text-slate-500">{text("No separate materials yet. Add one when this service has product or treatment options.", "لا توجد مواد منفصلة بعد. أضف مادة عندما تحتوي الخدمة على مواد أو خيارات علاجية.")}</div>}
             </div>
           </article>;

@@ -32,10 +32,10 @@ function Ranking({ title, icon: Icon, items, showRevenue = true }: { title: stri
   </section>;
 }
 
-function DoctorPerformance({ items }: { items: DoctorMetric[] }) {
+function DoctorPerformance({ items, showRevenue }: { items: DoctorMetric[]; showRevenue: boolean }) {
   return <section className="rounded-2xl border bg-white p-6 shadow-sm">
     <div className="flex items-center gap-3"><UserRound className="text-violet-600" /><div><h2 className="text-lg font-bold">Doctor performance</h2><p className="text-sm text-slate-500">Revenue, treatment success, and schedule utilization</p></div></div>
-    {items.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No doctor activity is recorded.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Doctor</th><th className="pb-3 font-medium">Sessions</th><th className="pb-3 font-medium">Revenue</th><th className="pb-3 font-medium">Success</th><th className="pb-3 font-medium">Utilization</th></tr></thead><tbody>{items.map((item) => <tr key={item.name} className="border-b last:border-0"><td className="py-4 font-semibold text-slate-900">{item.name}</td><td className="py-4">{item.count}</td><td className="py-4 font-semibold">{money(item.revenue)}</td><td className="py-4">{item.successRate}%</td><td className="py-4"><div className="flex items-center gap-2"><div className="h-2 w-20 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-cyan-500" style={{ width: `${item.utilizationRate}%` }} /></div>{item.utilizationRate}%</div></td></tr>)}</tbody></table></div>}
+    {items.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No doctor activity is recorded.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Doctor</th><th className="pb-3 font-medium">Sessions</th>{showRevenue&&<th className="pb-3 font-medium">Revenue</th>}<th className="pb-3 font-medium">Success</th><th className="pb-3 font-medium">Utilization</th></tr></thead><tbody>{items.map((item) => <tr key={item.name} className="border-b last:border-0"><td className="py-4 font-semibold text-slate-900">{item.name}</td><td className="py-4">{item.count}</td>{showRevenue&&<td className="py-4 font-semibold">{money(item.revenue)}</td>}<td className="py-4">{item.successRate}%</td><td className="py-4"><div className="flex items-center gap-2"><div className="h-2 w-20 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-cyan-500" style={{ width: `${item.utilizationRate}%` }} /></div>{item.utilizationRate}%</div></td></tr>)}</tbody></table></div>}
   </section>;
 }
 
@@ -43,11 +43,13 @@ export default function ClinicAnalyticsDashboard() {
   const {text}=useLocale();
   const financeAllowed = usePermission("reports.finance.view").allowed;
   const doctorRevenueAllowed = usePermission("reports.doctor_revenue.view").allowed;
+  const marketingSpendAllowed = usePermission("marketing.spend.view").allowed;
+  const exportAllowed = usePermission("reports.export").allowed;
   const range = useDateRange();
   const { clinic, selectedBranch, isLoading: clinicLoading } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
-  const { data, isLoading, error, refetch, isFetching } = useClinicAnalytics(clinicId, branchId, range.from, range.to);
+  const { data, isLoading, error, refetch, isFetching } = useClinicAnalytics(clinicId, branchId, range.from, range.to,{finance:financeAllowed,doctorRevenue:doctorRevenueAllowed,marketingSpend:marketingSpendAllowed});
 
   if (clinicLoading || isLoading) return <div className="rounded-2xl bg-white p-12 text-center shadow-sm">Loading clinic analytics...</div>;
   if (!clinicId || !branchId) return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">Select a clinic and branch to view analytics.</div>;
@@ -56,11 +58,12 @@ export default function ClinicAnalyticsDashboard() {
   const trendMax = Math.max(...data.monthlyTrend.map((item) => item.revenue), 1);
   const bookingMax = Math.max(...data.monthlyTrend.map((item) => item.bookings), 1);
   const dailyMax = Math.max(...data.dailyTrend.map((item) => item.revenue), 1);
+  function exportReport(){if(!data)return;const rows=[["metric","value"],["appointments",String(data.booking.total)],["completed",String(data.booking.completed)],["no_shows",String(data.booking.noShows)],...(financeAllowed?[["revenue_month",String(data.revenue.month)],["outstanding",String(data.finance.outstanding)]]:[])];const blob=new Blob([rows.map(row=>row.join(",")).join("\n")],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`zernio-report-${range.from}-${range.to}.csv`;link.click();URL.revokeObjectURL(url);}
 
   return <div className="space-y-7">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-sm font-semibold uppercase tracking-wide text-violet-600">Clinic Analytics</p><h1 className="mt-1 text-3xl font-bold text-slate-950">Reports & Performance</h1><p className="mt-2 text-sm text-slate-500">{clinic?.name} · {selectedBranch?.name}</p></div>
-      <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}><RefreshCw className={isFetching ? "animate-spin" : ""} />{isFetching ? "Refreshing" : "Refresh"}</Button>
+      <div className="flex gap-2">{exportAllowed&&<Button variant="outline" onClick={exportReport}>{text("Export","تصدير")}</Button>}<Button variant="outline" onClick={() => void refetch()} disabled={isFetching}><RefreshCw className={isFetching ? "animate-spin" : ""} />{isFetching ? "Refreshing" : "Refresh"}</Button></div>
     </header>
 
     <DateRangeFilter />
@@ -80,20 +83,20 @@ export default function ClinicAnalyticsDashboard() {
       <Metric label="Completion rate" value={`${data.booking.completionRate}%`} hint={`${data.booking.completed} completed`} />
       <Metric label={text("No-show rate","نسبة عدم الحضور")} value={`${data.booking.noShowRate}%`} hint={`${data.booking.noShows} ${text("no shows","حالات عدم حضور")}`} tone={data.booking.noShowRate > 15 ? "orange" : "slate"} />
       <Metric label="Cancellation rate" value={`${data.booking.cancellationRate}%`} hint={`${data.booking.cancelled} cancelled`} />
-      <Metric label="Refunded" value={money(data.finance.refunded)} />
+      {financeAllowed&&<Metric label="Refunded" value={money(data.finance.refunded)} />}
     </section>
 
-    <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+    {financeAllowed&&<section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
       <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><TrendingUp className="text-emerald-600" /><div><h2 className="font-bold">Six-month revenue trend</h2><p className="text-sm text-slate-500">Collected payments by month</p></div></div><div className="mt-8 flex h-64 items-end gap-3">{data.monthlyTrend.map((item) => <div key={item.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><span className="text-xs font-semibold text-slate-600">{item.revenue ? money(item.revenue) : "—"}</span><div className="flex h-44 w-full items-end rounded-xl bg-slate-100 p-1"><div className="w-full rounded-lg bg-emerald-500" style={{ height: `${item.revenue ? Math.max((item.revenue / trendMax) * 100, 6) : 2}%` }} /></div><span className="text-xs text-slate-500">{item.label}</span></div>)}</div></div>
       <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><CalendarCheck className="text-blue-600" /><div><h2 className="font-bold">Booking volume</h2><p className="text-sm text-slate-500">Appointments by month</p></div></div><div className="mt-7 space-y-4">{data.monthlyTrend.map((item) => <div key={item.label}><div className="mb-1 flex justify-between text-sm"><span>{item.label}</span><strong>{item.bookings}</strong></div><div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-blue-500" style={{ width: `${(item.bookings / bookingMax) * 100}%` }} /></div></div>)}</div></div>
-    </section>
+    </section>}
 
-    <section className="rounded-2xl border bg-white p-6 shadow-sm">
+    {financeAllowed&&<section className="rounded-2xl border bg-white p-6 shadow-sm">
       <div className="flex items-center gap-3"><BarChart3 className="text-cyan-600" /><div><h2 className="font-bold">Daily revenue</h2><p className="text-sm text-slate-500">Collected revenue over the last 14 days</p></div></div>
       <div className="mt-7 flex h-52 items-end gap-2 overflow-x-auto">{data.dailyTrend.map((item) => <div key={item.label} className="flex h-full min-w-10 flex-1 flex-col items-center justify-end gap-2"><div className="flex h-36 w-full items-end rounded-lg bg-slate-100 p-1" title={`${item.label}: ${money(item.revenue)}`}><div className="w-full rounded-md bg-cyan-500" style={{ height: `${item.revenue ? Math.max((item.revenue / dailyMax) * 100, 5) : 2}%` }} /></div><span className="text-[10px] text-slate-500">{item.label}</span></div>)}</div>
-    </section>
+    </section>}
 
-    <div id="doctors" className="scroll-mt-24"><DoctorPerformance items={data.doctors} /></div>
+    <div id="doctors" className="scroll-mt-24"><DoctorPerformance items={data.doctors} showRevenue={doctorRevenueAllowed}/></div>
 
     <section className="grid gap-6 lg:grid-cols-2">{doctorRevenueAllowed&&<Ranking title="Doctor revenue ranking" icon={UserRound} items={data.doctors} />}<Ranking title="Service performance" icon={Stethoscope} items={data.services} showRevenue={doctorRevenueAllowed}/></section>
 
@@ -102,9 +105,9 @@ export default function ClinicAnalyticsDashboard() {
         <Metric label="Tracked leads" value={String(data.marketing.totalLeads)} tone="blue" />
         <Metric label="Converted bookings" value={String(data.marketing.convertedLeads)} tone="green" />
         <Metric label="Conversion rate" value={`${data.marketing.conversionRate}%`} />
-        <Metric label={text("Cost per booking","تكلفة الحجز")} value={data.marketing.costPerBooking == null ? text("Not available","غير متاح") : money(data.marketing.costPerBooking)} hint={`${text("Tracked spend","الإنفاق المتتبع")}: ${money(data.marketing.spend)}`} />
+        {marketingSpendAllowed&&<Metric label={text("Cost per booking","تكلفة الحجز")} value={data.marketing.costPerBooking == null ? text("Not available","غير متاح") : money(data.marketing.costPerBooking)} hint={`${text("Tracked spend","الإنفاق المتتبع")}: ${money(data.marketing.spend)}`} />}
       </div>
-      <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><Megaphone className="text-fuchsia-600" /><div><h2 className="font-bold">Lead sources & campaign attribution</h2><p className="text-sm text-slate-500">Bookings, conversion, spend, revenue and ROI by source</p></div></div>{data.marketing.sources.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No lead sources are recorded yet.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Source</th><th className="pb-3 font-medium">Leads</th><th className="pb-3 font-medium">Converted</th><th className="pb-3 font-medium">Conversion</th><th className="pb-3 font-medium">Spend</th><th className="pb-3 font-medium">Revenue</th><th className="pb-3 font-medium">ROI</th></tr></thead><tbody>{data.marketing.sources.map((item) => <tr key={item.source} className="border-b last:border-0"><td className="py-4 font-semibold capitalize">{item.source}</td><td className="py-4">{item.leads}</td><td className="py-4">{item.converted}</td><td className="py-4"><span className="inline-flex items-center gap-1"><Target className="h-4 w-4 text-emerald-600" />{item.conversionRate}%</span></td><td className="py-4">{money(item.spend)}</td><td className="py-4 font-semibold">{money(item.revenue)}</td><td className="py-4">{item.roi==null?"—":`${item.roi.toFixed(1)}%`}</td></tr>)}</tbody></table></div>}</div>
+      <div className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><Megaphone className="text-fuchsia-600" /><div><h2 className="font-bold">Lead sources & campaign attribution</h2><p className="text-sm text-slate-500">Bookings and conversion by source</p></div></div>{data.marketing.sources.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">No lead sources are recorded yet.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="pb-3 font-medium">Source</th><th className="pb-3 font-medium">Leads</th><th className="pb-3 font-medium">Converted</th><th className="pb-3 font-medium">Conversion</th>{marketingSpendAllowed&&<><th className="pb-3 font-medium">Spend</th><th className="pb-3 font-medium">Revenue</th><th className="pb-3 font-medium">ROI</th></>}</tr></thead><tbody>{data.marketing.sources.map((item) => <tr key={item.source} className="border-b last:border-0"><td className="py-4 font-semibold capitalize">{item.source}</td><td className="py-4">{item.leads}</td><td className="py-4">{item.converted}</td><td className="py-4"><span className="inline-flex items-center gap-1"><Target className="h-4 w-4 text-emerald-600" />{item.conversionRate}%</span></td>{marketingSpendAllowed&&<><td className="py-4">{money(item.spend)}</td><td className="py-4 font-semibold">{money(item.revenue)}</td><td className="py-4">{item.roi==null?"—":`${item.roi.toFixed(1)}%`}</td></>}</tr>)}</tbody></table></div>}</div>
     </section>
 
     {financeAllowed&&<section id="finance" className="scroll-mt-24 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
