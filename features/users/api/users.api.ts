@@ -29,7 +29,7 @@ export async function getUserManagementData(clinicId: number, branchId: number):
   const [users, roles,permissions] = await Promise.all([
     supabase
       .from("staff")
-      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides(permission_id,granted,updated_at,updated_by,editor:staff!hr_staff_permission_overrides_updated_by_fkey(staff_name))")
+      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides(permission_id,granted,updated_at,updated_by)")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .order("staff_name"),
@@ -43,8 +43,11 @@ export async function getUserManagementData(clinicId: number, branchId: number):
 
   const error = users.error || roles.error||permissions.error;
   if (error) throw new Error(error.message);
+  const managedUsers=(users.data??[]) as unknown as ManagedUser[];
+  const names=new Map(managedUsers.map(user=>[user.id,user.staff_name]));
+  managedUsers.forEach(user=>user.overrides.forEach(override=>{override.editor=override.updated_by?{staff_name:names.get(override.updated_by)??null}:null}));
   return {
-    users: (users.data ?? []) as unknown as ManagedUser[],
+    users: managedUsers,
     roles: (roles.data ?? []) as unknown as ManagedRole[],
     permissions:(permissions.data??[]) as ManagedPermission[],
   };
