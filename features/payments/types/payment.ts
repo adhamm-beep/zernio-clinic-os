@@ -78,4 +78,5 @@ export interface Payment {
   services?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
   service_variants?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
   payment_invoice_items?: Array<{ id:number; service_id:number; service_variant_id:number|null; description:string; quantity:number; unit:string; unit_price:number; line_total:number; services?:{name:string;name_en?:string|null;name_ar?:string|null}|null; service_variants?:{name:string;name_en?:string|null;name_ar?:string|null}|null }>;
+  payment_tenders?:Array<{id:number;method:string;amount:number;reference_number:string|null}>;
 }

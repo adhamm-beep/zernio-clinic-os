@@ -61,7 +61,8 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
       ),
       services (id, name, name_en, name_ar),
       service_variants (id, name, name_en, name_ar),
-      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar))
+      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar)),
+      payment_tenders (id, method, amount, reference_number)
     `)
     .order("payment_date", {
       ascending: false,
@@ -86,9 +87,9 @@ export async function getPaymentById(id:number):Promise<Payment>{
 }
 
 export type MultiInvoiceItemInput={service_id:number;service_variant_id:number|null;quantity:number};
-export async function createMultiServiceInvoice(input:{customer_id:number;appointment_id:number;items:MultiInvoiceItemInput[];tax_amount:number;discount_amount:number;paid_amount:number;payment_method:string;payment_status:string;payment_date:string;invoice_number?:string;reference_number?:string;notes?:string}){
+export async function createMultiServiceInvoice(input:{customer_id:number;appointment_id:number;items:MultiInvoiceItemInput[];tax_amount:number;discount_amount:number;paid_amount:number;payment_method:string;payment_status:string;payment_date:string;invoice_number?:string;reference_number?:string;notes?:string;tenders?:Array<{method:string;amount:number}>}){
   const{data,error}=await supabase.rpc("create_multi_service_invoice",{p_customer_id:input.customer_id,p_appointment_id:input.appointment_id,p_items:input.items,p_tax:input.tax_amount,p_discount:input.discount_amount,p_paid:input.paid_amount,p_method:input.payment_method,p_status:input.payment_status,p_payment_date:input.payment_date,p_invoice_number:input.invoice_number||null,p_reference_number:input.reference_number||null,p_notes:input.notes||null});
-  if(error)throw new Error(error.message);return Number(data);
+  if(error)throw new Error(error.message);const paymentId=Number(data);if(input.tenders?.length){const{error:tenderError}=await supabase.from("payment_tenders").insert(input.tenders.filter(x=>x.amount>0).map(x=>({payment_id:paymentId,method:x.method,amount:x.amount})));if(tenderError)throw new Error(tenderError.message);const{error:refreshError}=await supabase.from("payments").update({payment_method:"split"}).eq("id",paymentId);if(refreshError)throw new Error(refreshError.message)}return paymentId;
 }
 
 export async function createPayment(
@@ -146,7 +147,8 @@ export async function createPayment(
       ),
       services (id, name, name_en, name_ar),
       service_variants (id, name, name_en, name_ar),
-      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar))
+      payment_invoice_items (id, service_id, service_variant_id, description, quantity, unit, unit_price, line_total, services (name, name_en, name_ar), service_variants (name, name_en, name_ar)),
+      payment_tenders (id, method, amount, reference_number)
     `)
     .single();
 
