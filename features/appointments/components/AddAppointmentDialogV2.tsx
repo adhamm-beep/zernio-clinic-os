@@ -334,7 +334,8 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
         (slot) =>
           slot.value ===
           values.appointment_time &&
-          slot.is_available
+          slot.is_available &&
+          new Date(slot.appointment_at)>new Date()
       );
 
     if (!selectedSlot) {
@@ -652,7 +653,7 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
                   : "Select available time"}
               </option>
 
-              {slots.data?.map(
+              {slots.data?.filter(slot=>new Date(slot.appointment_at)>new Date()).map(
                 (slot) => (
                   <option
                     key={slot.appointment_at}

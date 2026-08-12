@@ -112,6 +112,8 @@ export async function createAppointment(
     appointment.appointment_at
   );
 
+  if (appointmentTime <= new Date()) throw new Error("A past appointment time cannot be booked.");
+
   const hour = appointmentTime.getHours();
 
   if (appointmentTime.getDay() === 5) throw new Error("The clinic is closed on Friday.");
@@ -576,6 +578,8 @@ export async function updateAppointmentTime(
     input.appointment_at
   );
 
+  if (appointmentTime <= new Date()) throw new Error("A past appointment time cannot be booked.");
+
   const { data: current, error: currentError } = await supabase.from("appointments")
     .select("clinic_id, branch_id, doctor_id, service_id, room_id, device_id")
     .eq("id", input.id).single();
@@ -657,6 +661,8 @@ export async function updateAppointment(
       "Invalid appointment date or time."
     );
   }
+
+  if (appointmentTime <= new Date()) throw new Error("A past appointment time cannot be booked.");
 
   const { data: currentAppointment, error: currentError } =
     await supabase

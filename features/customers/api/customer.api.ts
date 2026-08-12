@@ -6,7 +6,7 @@ const supabase = createClient();
 export type CreateCustomerInput = {
   clinic_id: number;
   branch_id: number;
-  customer_code: string;
+  customer_code?: string;
   first_name: string;
   last_name?: string;
   phone: string;
@@ -59,7 +59,7 @@ export async function createCustomer(
     .insert({
       clinic_id: customer.clinic_id,
       branch_id: customer.branch_id,
-      customer_code: customer.customer_code.trim(),
+      customer_code: customer.customer_code?.trim() || null,
       first_name: customer.first_name.trim(),
       last_name: customer.last_name?.trim() || null,
       phone: customer.phone.trim(),
@@ -87,7 +87,7 @@ export async function updateCustomer(
   const { data, error } = await supabase
     .from("customers")
     .update({
-      customer_code: customer.customer_code.trim(),
+      customer_code: customer.customer_code?.trim() || null,
       first_name: customer.first_name.trim(),
       last_name: customer.last_name?.trim() || null,
       phone: customer.phone.trim(),

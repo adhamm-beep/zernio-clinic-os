@@ -79,6 +79,12 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
   return (data ?? []) as Payment[];
 }
 
+export async function getPaymentById(id:number):Promise<Payment>{
+  const payment=(await getPayments()).find(item=>item.id===id);
+  if(!payment)throw new Error("Invoice could not be loaded after issuing it.");
+  return payment;
+}
+
 export type MultiInvoiceItemInput={service_id:number;service_variant_id:number|null;quantity:number};
 export async function createMultiServiceInvoice(input:{customer_id:number;appointment_id:number;items:MultiInvoiceItemInput[];tax_amount:number;discount_amount:number;paid_amount:number;payment_method:string;payment_status:string;payment_date:string;invoice_number?:string;reference_number?:string;notes?:string}){
   const{data,error}=await supabase.rpc("create_multi_service_invoice",{p_customer_id:input.customer_id,p_appointment_id:input.appointment_id,p_items:input.items,p_tax:input.tax_amount,p_discount:input.discount_amount,p_paid:input.paid_amount,p_method:input.payment_method,p_status:input.payment_status,p_payment_date:input.payment_date,p_invoice_number:input.invoice_number||null,p_reference_number:input.reference_number||null,p_notes:input.notes||null});

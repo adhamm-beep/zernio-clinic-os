@@ -20,7 +20,7 @@ import { useCreateCustomer } from "../hooks/useCreateCustomer";
 import { useLocale } from "@/components/LocaleProvider";
 
 const schema = z.object({
-  customer_code: z.string().min(1, "Customer code is required"),
+  customer_code: z.string().optional(),
   first_name: z.string().min(2, "First name is required"),
   last_name: z.string().optional(),
   phone: z.string().min(9, "Enter a valid phone number"),
@@ -85,17 +85,7 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-4"
         >
-          <div>
-            <Input
-              placeholder={text("File number", "رقم الملف")}
-              {...register("customer_code")}
-            />
-            {errors.customer_code && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.customer_code.message}
-              </p>
-            )}
-          </div>
+          <p className="rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800">{text("The file number will be assigned automatically in sequence.","سيتم تعيين رقم الملف تلقائيًا بالتسلسل.")}</p>
 
           <div>
             <Input

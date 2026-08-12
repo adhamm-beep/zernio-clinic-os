@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import AddAppointmentDialogV2 from "@/features/appointments/components/AddAppointmentDialogV2";
+import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
 import CustomerIntelligenceCards from "@/features/customers/components/CustomerIntelligenceCards";
 import CustomerAINotes from "@/features/customers/components/CustomerAINotes";
 import ExecutiveDashboard from "@/features/customers/dashboard/ExecutiveDashboard";
@@ -155,8 +156,9 @@ export default function CustomerProfilePage() {
             <span className={`w-fit rounded-full px-4 py-2 text-sm font-medium ${customer.status === "inactive" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>{customer.status || "Unknown"}</span>
             <div className="flex flex-wrap gap-3">
               {workspaceReady && (
-                <AddAppointmentDialogV2 clinicId={clinicId!} branchId={branchId!} />
+                <AddAppointmentDialogV2 clinicId={clinicId!} branchId={branchId!} defaultCustomerId={numericCustomerId} />
               )}
+              {workspaceReady && <AddPaymentDialog clinicId={clinicId!} branchId={branchId!} initialCustomerId={numericCustomerId} triggerLabelEn="Issue invoice" triggerLabelAr="إصدار فاتورة" />}
               <EditCustomerDialog customer={customer} />
               {workspaceReady && (
                 <StartTreatmentSessionButton clinicId={clinicId!} branchId={branchId!} customerId={numericCustomerId} customerName={fullName} />
