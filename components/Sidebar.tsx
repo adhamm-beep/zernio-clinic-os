@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {usePathname} from "next/navigation";
-import {ChevronLeft,ChevronRight,LayoutDashboard} from "lucide-react";
+import {ChevronLeft,ChevronRight} from "lucide-react";
 import {useLocale} from "@/components/LocaleProvider";
 import {useCurrentPermissions} from "@/features/users/hooks/useCurrentPermissions";
 

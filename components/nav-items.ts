@@ -1,4 +1,5 @@
 import {BarChart3,Boxes,Building2,CalendarDays,CircleDollarSign,ClipboardPlus,ContactRound,Headphones,Landmark,LayoutDashboard,Megaphone,PackageSearch,Settings,Smartphone,Sparkles,Stethoscope,UsersRound} from "lucide-react";
+import {PAGE_PERMISSION_GROUPS} from "@/lib/access/permission-routes";
 
 export type NavItem=readonly[string,string,string,typeof LayoutDashboard,string,readonly string[]];
 export const primary:readonly NavItem[]=[
@@ -25,13 +26,4 @@ export const intelligence:readonly NavItem[]=[
  ["Settings","الإعدادات","/settings",Settings,"settings.view",["المستخدمين","الصلاحيات","settings","users"]],
 ];
 export const allNavItems=[...primary,...management,...intelligence] as const;
-export const pagePermissionGroups:Record<string,readonly string[]>={
- "/dashboard":["dashboard.view","dashboard.finance.view"],"/customers":["customers.view","customers.details.view","customers.create","customers.edit","customers.deactivate","customers.export","customers.manage"],
- "/appointments":["appointments.view","appointments.create","appointments.edit","appointments.cancel","appointments.patient_requests.manage","appointments.manage","calendar.view"],
- "/treatments":["treatments.view","treatments.create","treatments.edit","treatments.complete","treatments.manage","medical.view","medical.edit"],
- "/payments":["payments.view","payments.amounts.view","payments.create","payments.refund","payments.invoice.print","payments.manage"],
- "/price-list":["services.view","services.manage"],"/inventory":["inventory.view","inventory.cost.view","inventory.manage"],"/staff":["staff.view","staff.salary.view","staff.manage","staff.attendance.manage","staff.schedule.manage"],
- "/marketing":["marketing.view","marketing.spend.view","marketing.manage"],"/reports":["reports.view","reports.finance.view","reports.doctor_revenue.view","reports.export"],"/accounting":["reports.finance.view"],
- "/patient-app":["patient_app.analytics","patient_app.identity.view"],"/ask-zernio":["ai.view","ai.use"],"/ai-agents":["ai.view","ai.use"],"/enterprise":["enterprise.view","enterprise.manage","audit.view"],"/support":["support.create","support.manage"],"/settings":["settings.view","settings.manage","users.manage"]};
-const metricPermissions:Record<string,readonly string[]>={"/dashboard":["dashboard.appointments_count.view","dashboard.completed_patients_count.view","dashboard.invoice_count.view","dashboard.collections_total.view","dashboard.invoiced_total.view","dashboard.paid_total.view","dashboard.remaining_total.view"],"/payments":["payments.invoice_count.view","payments.total.view","payments.paid_total.view","payments.remaining_total.view"]};
-export function permissionsForNav(item:NavItem){return [...(pagePermissionGroups[item[2]]??[item[4]]),...(metricPermissions[item[2]]??[])]}
+export function permissionsForNav(item:NavItem){return PAGE_PERMISSION_GROUPS[item[2]]??[item[4]]}

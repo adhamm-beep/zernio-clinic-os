@@ -1,4 +1,6 @@
 "use client";
+/* The current timestamp is a deliberate snapshot for the live-presence calculation. */
+/* eslint-disable react-hooks/purity */
 import {Activity,Clock3,RefreshCw,Smartphone,UserCheck,UsersRound} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {useLocale} from "@/components/LocaleProvider";

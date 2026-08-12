@@ -94,7 +94,7 @@ export default function UserManagement() {
   async function submitPermissions(){if(!permissionUser)return;await run(permissionUser.id,()=>saveUserPermissions(permissionUser.id,permissionCatalog.map(permission=>({permission_id:permission.id,granted:permissionValues.has(permission.id)}))),text("User permissions updated.","تم تحديث صلاحيات المستخدم."));setPermissionUser(null);}
   const permissionCatalog=query.data?.permissions??[];
   const lastPermissionUpdate=permissionUser?.overrides.slice().sort((a,b)=>new Date(b.updated_at).getTime()-new Date(a.updated_at).getTime())[0];
-  const permissionGroups=Object.entries(permissionCatalog.reduce<Record<string,typeof permissionCatalog>>((groups,permission)=>{const module=permissionMeta[permission.code]?.moduleEn??permission.module;(groups[module]??=[]).push(permission);return groups;},{})).sort(([a],[b])=>permissionModuleOrder.indexOf(a)-permissionModuleOrder.indexOf(b));
+  const permissionGroups=Object.entries(permissionCatalog.reduce<Record<string,typeof permissionCatalog>>((groups,permission)=>{const moduleName=permissionMeta[permission.code]?.moduleEn??permission.module;(groups[moduleName]??=[]).push(permission);return groups;},{})).sort(([a],[b])=>permissionModuleOrder.indexOf(a)-permissionModuleOrder.indexOf(b));
 
   if (clinicLoading || query.isLoading) {
     return <div className="rounded-3xl border bg-white p-12 text-center text-slate-500">{text("Loading users...", "جارٍ تحميل المستخدمين...")}</div>;

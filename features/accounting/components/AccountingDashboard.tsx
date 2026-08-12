@@ -32,7 +32,6 @@ export default function AccountingDashboard(){
  const roots=useMemo(()=>data?.accounts.filter(a=>!a.parent_id)??[],[data]);const children=(id:number)=>data?.accounts.filter(a=>a.parent_id===id)??[];const postable=data?.accounts.filter(a=>a.is_postable)??[];
  const bankAccount=data?.accounts.find(a=>a.code==="1120");const selectedAccount=data?.accounts.find(a=>a.id===selectedAccountId);const accountLines=(data?.journals??[]).flatMap(j=>j.lines.filter(l=>l.account_id===selectedAccountId).map(l=>({j,l})));const accountBalance=accountLines.reduce((s,x)=>s+Number(x.l.debit)-Number(x.l.credit),0);const bankLines=(data?.journals??[]).flatMap(j=>j.lines.filter(l=>l.account_id===bankAccount?.id).map(l=>({j,l})));const bankBalance=bankLines.reduce((s,x)=>s+Number(x.l.debit)-Number(x.l.credit),0);
  const patientName=(line:(typeof bankLines)[number]["l"])=>line.customer?[line.customer.first_name,line.customer.last_name].filter(Boolean).join(" ")||line.customer.customer_code||"—":"—";
- const openStatement=(id:number)=>{setSelectedAccountId(id);setTab("statement")};
  const done=(message:string)=>{toast.success(message);setShowAccount(false);setShowJournal(false);setShowEmployee(false)};const failed=(e:unknown)=>toast.error(e instanceof Error?e.message:String(e));
  if(!clinic||!selectedBranch)return <div className="p-8 text-center">{text("Select a branch first","اختر الفرع أولًا")}</div>;
  return <main className="space-y-5" dir={isArabic?"rtl":"ltr"}>

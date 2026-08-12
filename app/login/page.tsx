@@ -1,13 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [permissionsUpdated,setPermissionsUpdated]=useState(false);
-  useEffect(()=>setPermissionsUpdated(new URLSearchParams(window.location.search).get("reason")==="permissions-updated"),[]);
+  const [permissionsUpdated]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("reason")==="permissions-updated");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

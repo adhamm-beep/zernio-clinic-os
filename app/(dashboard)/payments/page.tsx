@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Banknote, CalendarCheck2, FileText, Percent, ReceiptText, Search, WalletCards, type LucideIcon } from "lucide-react";
+import { Banknote, CalendarCheck2, ReceiptText, Search, WalletCards, type LucideIcon } from "lucide-react";
 import { useLocale } from "@/components/LocaleProvider";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useAppointments } from "@/features/appointments/hooks/useAppointments";
@@ -47,7 +47,6 @@ export default function PaymentsPage() {
     return isWithinDateRange(payment.payment_date ?? payment.created_at, range) && (doctorId === "all" || payment.appointments?.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (payment.appointments?.service_id != null && selectedServiceIds.includes(payment.appointments.service_id)) || payment.payment_invoice_items?.some(item => selectedServiceIds.includes(item.service_id))) && (status === "all" || payment.payment_status === status) && (!query || customer.includes(query) || payment.customers?.phone?.includes(query) || payment.customers?.customer_code?.toLowerCase().includes(query) || payment.invoice_number?.toLowerCase().includes(query));
   }), [paymentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds, status, search]);
   const completedPatients = useMemo(() => new Set((appointmentsQuery.data ?? []).filter(item => item.status === "completed" && isWithinDateRange(item.appointment_at, range) && (doctorId === "all" || item.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (item.service_id != null && selectedServiceIds.includes(item.service_id)))).map(item => item.customer_id)).size, [appointmentsQuery.data, range, doctorId, serviceFamily, selectedServiceIds]);
-  const totals = filtered.reduce((result, payment) => ({ total: result.total + Number(payment.amount ?? 0), paid: result.paid + Number(payment.paid_amount ?? (payment.payment_status === "paid" ? payment.amount : 0)), remaining: result.remaining + Number(payment.balance_due ?? 0), tax: result.tax + Number(payment.tax_amount ?? 0), discount: result.discount + Number(payment.discount_amount ?? 0) }), { total: 0, paid: 0, remaining: 0, tax: 0, discount: 0 });
   const money = (value: number) => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
   const cards: Array<{ label: string; value: number; icon: LucideIcon; tone: string; surface: string }> = [
     ...(totalAllowed||amountsAllowed?[{ label: text("Invoice total", "إجمالي الفواتير"), value: secureMetrics.data?.invoiced??0, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" }]:[]),

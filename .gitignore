@@ -98,3 +98,12 @@ service-account*.json
 **/service-account*.json
 google-service-account*.json
 **/google-service-account*.json
+# Local Codex diagnostics and generated inspection artifacts
+.codex-build-*
+.codex-check-*
+.codex-config-*
+.codex-root-*
+.codex-release-*
+.codex-status*
+.codex-vercel-*
+.inspect-*.png
