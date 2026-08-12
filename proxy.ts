@@ -58,6 +58,7 @@ export async function proxy(request: NextRequest) {
     ["/price-list", "services.view"], ["/inventory", "inventory.view"],
     ["/staff", "staff.view"], ["/marketing", "marketing.view"],
     ["/reports", "reports.view"], ["/ask-zernio", "ai.view"],
+    ["/accounting", "reports.finance.view"],
     ["/patient-app", "patient_app.analytics"],
     ["/ai-agents", "ai.view"], ["/enterprise", "enterprise.view"],
     ["/dashboard", "dashboard.view"], ["/api/ai", "ai.use"],

@@ -13,7 +13,7 @@ const titles: Record<string, [string, string]> = {
   dashboard: ["Today", "اليوم"], customers: ["Customers", "العملاء"], appointments: ["Appointments", "المواعيد"],
   calendar: ["Calendar", "التقويم"], treatments: ["Care & treatments", "العناية والعلاجات"], payments: ["Payments", "المدفوعات"],
   "price-list": ["Services & prices", "الخدمات والأسعار"], inventory: ["Inventory", "المخزون"], staff: ["Team", "الفريق"],
-  marketing: ["Marketing", "التسويق"], reports: ["Reports", "التقارير"], "ask-zernio": ["Ask Zernio", "اسأل زيرنيو"],
+  marketing: ["Marketing", "التسويق"], reports: ["Reports", "التقارير"], accounting: ["Finance & accounting", "المالية والمحاسبة"], "ask-zernio": ["Ask Zernio", "اسأل زيرنيو"],
   "ai-agents": ["Automation", "الأتمتة"], settings: ["Settings", "الإعدادات"], enterprise: ["Enterprise", "المؤسسة"],
 };
 

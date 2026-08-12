@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {usePathname} from "next/navigation";
-import {BarChart3,Boxes,CalendarDays,ChevronLeft,ChevronRight,CircleDollarSign,ClipboardPlus,ContactRound,LayoutDashboard,Megaphone,PackageSearch,Settings,Smartphone,Sparkles,Stethoscope,UsersRound} from "lucide-react";
+import {BarChart3,Boxes,CalendarDays,ChevronLeft,ChevronRight,CircleDollarSign,ClipboardPlus,ContactRound,Landmark,LayoutDashboard,Megaphone,PackageSearch,Settings,Smartphone,Sparkles,Stethoscope,UsersRound} from "lucide-react";
 import {useLocale} from "@/components/LocaleProvider";
 import {useCurrentPermissions} from "@/features/users/hooks/useCurrentPermissions";
 
@@ -15,6 +15,7 @@ const management:readonly NavItem[]=[
  ["Services & prices","الخدمات والأسعار","/price-list",ClipboardPlus,"services.view"],["Inventory","المخزون","/inventory",PackageSearch,"inventory.view"],
  ["Team","الفريق","/staff",ContactRound,"staff.view"],["Marketing","التسويق","/marketing",Megaphone,"marketing.view"],
  ["Reports","التقارير","/reports",BarChart3,"reports.view"],
+ ["Finance & accounting","المالية والمحاسبة","/accounting",Landmark,"reports.finance.view"],
  ["Patient app","تطبيق المرضى","/patient-app",Smartphone,"patient_app.analytics"],
 ];
 const intelligence:readonly NavItem[]=[
