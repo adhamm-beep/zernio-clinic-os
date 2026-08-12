@@ -12,6 +12,10 @@ export interface AppointmentCustomer {
   last_name: string | null;
   phone: string | null;
   customer_code: string | null;
+  email: string | null;
+  national_id: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
 }
 
 export interface AppointmentDoctor {

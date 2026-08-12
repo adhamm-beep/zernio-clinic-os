@@ -34,7 +34,11 @@ id,
 first_name,
 last_name,
 phone,
-customer_code
+customer_code,
+email,
+national_id,
+gender,
+date_of_birth
 ),
 
 staff(
