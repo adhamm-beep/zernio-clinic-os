@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateCustomer } from "../hooks/useCreateCustomer";
 import { useLocale } from "@/components/LocaleProvider";
+import {useMasterData} from "@/features/master-data/hooks/useMasterData";
 
 const schema = z.object({
   customer_code: z.string().optional(),
@@ -31,6 +32,9 @@ const schema = z.object({
     .email("Enter a valid email")
     .optional()
     .or(z.literal("")),
+  assigned_doctor_id:z.string().optional(),
+  referral_source:z.string().optional(),
+  referral_detail:z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -39,6 +43,7 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
   const [open, setOpen] = useState(false);
   const createCustomer = useCreateCustomer();
   const { text, isArabic } = useLocale();
+  const{data:master}=useMasterData();
 
   const {
     register,
@@ -55,7 +60,7 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
       await createCustomer.mutateAsync({
         clinic_id: clinicId,
         branch_id: branchId,
-        ...values,
+        ...values,assigned_doctor_id:Number(values.assigned_doctor_id)||undefined,
         gender: "",
         date_of_birth: "",
         status: "active",
@@ -98,6 +103,9 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
               </p>
             )}
           </div>
+
+          <select {...register("assigned_doctor_id")} className="w-full rounded-md border px-3 py-2"><option value="">{text("Assigned doctor","الطبيب المعالج")}</option>{master?.staff.filter(item=>item.is_active&&item.role?.toLowerCase()==="doctor").map(item=><option key={item.id} value={item.id}>{item.staff_name}</option>)}</select>
+          <div className="grid grid-cols-2 gap-3"><select {...register("referral_source")} className="rounded-md border px-3 py-2"><option value="">{text("Referral source","مصدر الإحالة")}</option><option value="patient">{text("Patient referral","إحالة مريض")}</option><option value="doctor">{text("Doctor referral","إحالة طبيب")}</option><option value="social_media">{text("Social media","التواصل الاجتماعي")}</option><option value="advertising">{text("Advertising","إعلان")}</option><option value="other">{text("Other","أخرى")}</option></select><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
 
           <Input
             placeholder={text("Last name", "اسم العائلة")}

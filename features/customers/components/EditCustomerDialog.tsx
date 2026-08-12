@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import type { Customer } from "../types/customer";
 import { useUpdateCustomer } from "../hooks/useUpdateCustomer";
 import { useLocale } from "@/components/LocaleProvider";
+import {useMasterData} from "@/features/master-data/hooks/useMasterData";
 
 const schema = z.object({
   customer_code: z.string().min(1, "Customer code is required"),
@@ -36,6 +37,9 @@ const schema = z.object({
   gender: z.string().optional(),
   date_of_birth: z.string().optional(),
   status: z.string().min(1),
+  assigned_doctor_id:z.string().optional(),
+  referral_source:z.string().optional(),
+  referral_detail:z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -50,6 +54,7 @@ export default function EditCustomerDialog({
   const [open, setOpen] = useState(false);
   const updateCustomer = useUpdateCustomer();
   const { text, isArabic } = useLocale();
+  const{data:master}=useMasterData();
 
   const {
     register,
@@ -69,6 +74,9 @@ export default function EditCustomerDialog({
       gender: customer.gender ?? "",
       date_of_birth: customer.date_of_birth ?? "",
       status: customer.status ?? "active",
+      assigned_doctor_id:customer.assigned_doctor_id?String(customer.assigned_doctor_id):"",
+      referral_source:customer.referral_source??"",
+      referral_detail:customer.referral_detail??"",
     },
   });
 
@@ -85,6 +93,9 @@ export default function EditCustomerDialog({
         gender: customer.gender ?? "",
         date_of_birth: customer.date_of_birth ?? "",
         status: customer.status ?? "active",
+        assigned_doctor_id:customer.assigned_doctor_id?String(customer.assigned_doctor_id):"",
+        referral_source:customer.referral_source??"",
+        referral_detail:customer.referral_detail??"",
       });
     }
   }, [customer, open, reset]);
@@ -93,7 +104,7 @@ export default function EditCustomerDialog({
     try {
       await updateCustomer.mutateAsync({
         id: customer.id,
-        ...values,
+        ...values,assigned_doctor_id:Number(values.assigned_doctor_id)||undefined,
       });
 
       toast.success(text("Customer updated successfully", "تم تحديث بيانات العميل بنجاح"));
@@ -199,6 +210,9 @@ export default function EditCustomerDialog({
             type="date"
             {...register("date_of_birth")}
           />
+
+          <select {...register("assigned_doctor_id")} className="w-full rounded-md border px-3 py-2"><option value="">{text("Assigned doctor","الطبيب المعالج")}</option>{master?.staff.filter(item=>item.is_active&&item.role?.toLowerCase()==="doctor").map(item=><option key={item.id} value={item.id}>{item.staff_name}</option>)}</select>
+          <div className="grid grid-cols-2 gap-3"><select {...register("referral_source")} className="rounded-md border px-3 py-2"><option value="">{text("Referral source","مصدر الإحالة")}</option><option value="patient">{text("Patient referral","إحالة مريض")}</option><option value="doctor">{text("Doctor referral","إحالة طبيب")}</option><option value="social_media">{text("Social media","التواصل الاجتماعي")}</option><option value="advertising">{text("Advertising","إعلان")}</option><option value="other">{text("Other","أخرى")}</option></select><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
 
           <select
             {...register("status")}

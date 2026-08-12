@@ -27,6 +27,7 @@ import CustomerIntelligenceCards from "@/features/customers/components/CustomerI
 import CustomerAINotes from "@/features/customers/components/CustomerAINotes";
 import ExecutiveDashboard from "@/features/customers/dashboard/ExecutiveDashboard";
 import EditCustomerDialog from "@/features/customers/components/EditCustomerDialog";
+import {CustomerTools} from "@/features/customers/components/CustomerTable";
 import { useCustomer360 } from "@/features/customers/hooks/useCustomer360";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { buildCustomerInsights } from "@/features/customers/engine/buildCustomerInsights";
@@ -160,16 +161,18 @@ export default function CustomerProfilePage() {
               )}
               {workspaceReady && <AddPaymentDialog clinicId={clinicId!} branchId={branchId!} initialCustomerId={numericCustomerId} triggerLabelEn="Issue invoice" triggerLabelAr="إصدار فاتورة" />}
               <EditCustomerDialog customer={customer} />
+              <CustomerTools customer={customer}/>
               {workspaceReady && (
                 <StartTreatmentSessionButton clinicId={clinicId!} branchId={branchId!} customerId={numericCustomerId} customerName={fullName} />
               )}
             </div>
           </div>
         </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Total Paid" value={formatMoney(customer.totalPaid)} />
           <MetricCard label="Treatment Value" value={formatMoney(customer.treatmentValue)} />
           <MetricCard label="Outstanding Balance" value={formatMoney(customer.outstandingBalance)} tone={customer.outstandingBalance > 0 ? "orange" : "green"} />
+          <MetricCard label="رصيد المحفظة" value={formatMoney(Number(customer.wallet_balance??0))} tone="green" />
           <MetricCard label="Total Activity" value={String(totalActivity)} tone="blue" />
         </div>
       </section>

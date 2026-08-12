@@ -178,6 +178,7 @@ export type FinanceHealthHub = {
   wallet: {
     totalPaid: number;
     outstanding: number;
+    creditBalance: number;
     currency: string;
     transactions: WalletTransaction[];
   };
@@ -427,18 +428,19 @@ export async function loadBeautyCalendar(): Promise<BeautyCalendarData> {
 }
 
 export async function loadFinanceHealth(): Promise<FinanceHealthHub> {
-  const { data, error } = await supabase.rpc("patient_finance_health_hub");
+  const [{data,error},{data:walletSummary}] = await Promise.all([supabase.rpc("patient_finance_health_hub"),supabase.rpc("patient_wallet_summary")]);
   if (error)
     return {
       wallet: {
         totalPaid: 0,
         outstanding: 0,
+        creditBalance:0,
         currency: "SAR",
         transactions: [],
       },
       health: { record: null, completeness: 0, updateRequests: [] },
     };
-  return data as FinanceHealthHub;
+  const result=data as FinanceHealthHub;return{...result,wallet:{...result.wallet,creditBalance:Number((walletSummary as{balance?:number}|null)?.balance??0)}};
 }
 
 export async function requestMedicalUpdate(note: string, fields: string[]) {

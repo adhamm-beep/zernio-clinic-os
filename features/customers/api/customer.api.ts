@@ -16,6 +16,9 @@ export type CreateCustomerInput = {
   gender?: string;
   date_of_birth?: string;
   status: string;
+  assigned_doctor_id?: number;
+  referral_source?: string;
+  referral_detail?: string;
 };
 
 export type UpdateCustomerInput = Omit<CreateCustomerInput, "clinic_id" | "branch_id"> & {
@@ -24,7 +27,7 @@ export type UpdateCustomerInput = Omit<CreateCustomerInput, "clinic_id" | "branc
 
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
-    .from("customers")
+    .from("customer_directory")
     .select("*")
     .order("customer_code", { ascending: true });
 
@@ -70,6 +73,10 @@ export async function createCustomer(
       gender: customer.gender || null,
       date_of_birth: customer.date_of_birth || null,
       status: customer.status,
+      assigned_doctor_id: customer.assigned_doctor_id || null,
+      referral_source: customer.referral_source?.trim() || null,
+      referral_detail: customer.referral_detail?.trim() || null,
+      selected_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -98,6 +105,9 @@ export async function updateCustomer(
       gender: customer.gender || null,
       date_of_birth: customer.date_of_birth || null,
       status: customer.status,
+      assigned_doctor_id: customer.assigned_doctor_id || null,
+      referral_source: customer.referral_source?.trim() || null,
+      referral_detail: customer.referral_detail?.trim() || null,
     })
     .eq("id", customer.id)
     .select()
@@ -109,6 +119,12 @@ export async function updateCustomer(
 
   return data as Customer;
 }
+
+export type PatientTag={id:number;clinic_id:number;name:string;color:string;is_active:boolean};
+export async function getPatientTags(clinicId:number){const{data,error}=await supabase.from("patient_tags").select("id,clinic_id,name,color,is_active").eq("clinic_id",clinicId).eq("is_active",true).order("name");if(error)throw new Error(error.message);return(data??[])as PatientTag[]}
+export async function createPatientTag(clinicId:number,name:string,color:string){const{data,error}=await supabase.from("patient_tags").insert({clinic_id:clinicId,name:name.trim(),color}).select().single();if(error)throw new Error(error.message);return data as PatientTag}
+export async function setCustomerTags(customerId:number,tagIds:number[]){const{error:removeError}=await supabase.from("customer_patient_tags").delete().eq("customer_id",customerId);if(removeError)throw new Error(removeError.message);if(tagIds.length){const{error}=await supabase.from("customer_patient_tags").insert(tagIds.map(tag_id=>({customer_id:customerId,tag_id})));if(error)throw new Error(error.message)}}
+export async function adjustCustomerWallet(customerId:number,amount:number,type:"credit"|"debit"|"refund"|"adjustment",description:string){const{data,error}=await supabase.rpc("staff_adjust_patient_wallet",{p_customer_id:customerId,p_amount:amount,p_type:type,p_description:description||null});if(error)throw new Error(error.message);return Number(data)}
 
 export async function deactivateCustomer(
   id: number
@@ -167,7 +183,7 @@ export async function getCustomer360(
     membershipResult,
   ] = await Promise.all([
     supabase
-      .from("customers")
+      .from("customer_directory")
       .select("*")
       .eq("id", customerId)
       .maybeSingle(),

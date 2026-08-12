@@ -2692,6 +2692,7 @@ function Wallet({
           </Text>
         </View>
       </View>
+      <View style={{backgroundColor:"#E8F5FF",borderRadius:22,padding:18,marginTop:14,flexDirection:ar?"row-reverse":"row",justifyContent:"space-between",alignItems:"center"}}><View><Text style={{fontSize:11,color:colors.muted,textAlign:ar?"right":"left"}}>{ar?"الرصيد المتاح":"AVAILABLE CREDIT"}</Text><Text style={{fontSize:24,fontWeight:"900",color:"#0876A8",marginTop:6}}>{data.currency} {Number(data.creditBalance??0).toLocaleString(ar?"ar-SA":"en-US")}</Text></View><Icon name="wallet" color="#0876A8"/></View>
       <View
         style={{
           backgroundColor: "#F3EEE6",
@@ -4532,6 +4533,7 @@ export default function App() {
       wallet: {
         totalPaid: 0,
         outstanding: 0,
+        creditBalance:0,
         currency: "SAR",
         transactions: [],
       },

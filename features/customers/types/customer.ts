@@ -12,6 +12,23 @@ export interface Customer {
   status: string | null;
   date_of_birth: string | null;
   created_at: string;
+  clinic_id?: number;
+  branch_id?: number;
+  branch_name?: string | null;
+  assigned_doctor_id?: number | null;
+  assigned_doctor_name?: string | null;
+  referral_source?: string | null;
+  referral_detail?: string | null;
+  selected_at?: string | null;
+  total_paid?: number;
+  remaining?: number;
+  wallet_balance?: number;
+  points_available?: number;
+  previous_appointment_at?: string | null;
+  previous_appointment_doctor?: string | null;
+  active_appointment_at?: string | null;
+  active_appointment_doctor?: string | null;
+  tags?: Array<{id:number;name:string;color:string}>;
 }
 export type CustomerAppointmentSummary = {
   id: number;
