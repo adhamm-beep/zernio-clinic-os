@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [permissionsUpdated,setPermissionsUpdated]=useState(false);
+  useEffect(()=>setPermissionsUpdated(new URLSearchParams(window.location.search).get("reason")==="permissions-updated"),[]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,6 +69,8 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-gray-500">
           Sign in to continue
         </p>
+
+        {permissionsUpdated && <p className="mt-5 rounded-xl bg-amber-50 p-3 text-center text-sm leading-6 text-amber-800">تم تحديث صلاحيات حسابك وتسجيل خروجك لحمايته. أدخل البريد الإلكتروني وكلمة المرور مرة أخرى للدخول بالصلاحيات الجديدة.</p>}
 
         <label className="mt-8 block text-sm font-medium text-gray-700">
           Email

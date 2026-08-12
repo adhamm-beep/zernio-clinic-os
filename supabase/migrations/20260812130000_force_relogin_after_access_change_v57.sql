@@ -1,0 +1,10 @@
+begin;
+alter table public.staff add column if not exists access_changed_at timestamptz not null default '1970-01-01 00:00:00+00';
+create or replace function public.current_access_changed_at() returns timestamptz language sql stable security definer set search_path=public as $$select coalesce((select access_changed_at from public.staff where id=public.current_staff_id()),'1970-01-01 00:00:00+00'::timestamptz)$$;
+grant execute on function public.current_access_changed_at() to authenticated;
+create or replace function public.mark_staff_access_changed() returns trigger language plpgsql security definer set search_path=public as $$begin update public.staff set access_changed_at=clock_timestamp() where id=coalesce(new.staff_id,old.staff_id);return coalesce(new,old);end$$;
+drop trigger if exists staff_permission_override_access_changed on public.hr_staff_permission_overrides;
+create trigger staff_permission_override_access_changed after insert or update or delete on public.hr_staff_permission_overrides for each row execute function public.mark_staff_access_changed();
+drop trigger if exists staff_role_access_changed on public.hr_staff_roles;
+create trigger staff_role_access_changed after insert or update or delete on public.hr_staff_roles for each row execute function public.mark_staff_access_changed();
+commit;

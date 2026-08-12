@@ -50,6 +50,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  if (isAuthenticated && !isPublicAuthRoute) {
+    const issuedAt = Number(data?.claims?.iat ?? 0);
+    const { data: accessChangedAt, error: accessError } = await supabase.rpc("current_access_changed_at");
+    const accessChangedSecond = accessChangedAt ? Math.floor(new Date(accessChangedAt).getTime() / 1000) : 0;
+    if (!accessError && issuedAt < accessChangedSecond) {
+      await supabase.auth.signOut({ scope: "local" });
+      if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.json({ error: "Session expired after an access change" }, { status: 401 });
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("reason", "permissions-updated");
+      const redirect = NextResponse.redirect(loginUrl);
+      response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
+      return redirect;
+    }
+  }
+
   const permissionRoutes: Array<[string, string]> = [
     ["/settings/users", "users.manage"], ["/settings", "settings.view"],
     ["/customers", "customers.view"], ["/appointments", "appointments.view"],
