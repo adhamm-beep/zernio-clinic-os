@@ -17,7 +17,7 @@ export default function DashboardLayout({
       <div className="min-w-0 flex-1 overflow-x-hidden">
         <Header />
 
-        <main className="mx-auto min-w-0 max-w-[1600px] p-4 md:p-8">
+        <main className="mx-auto min-w-0 max-w-[1800px] p-3 md:p-4">
           {children}
         </main>
         <SupportLauncher />
