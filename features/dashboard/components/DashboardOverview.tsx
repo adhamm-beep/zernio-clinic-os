@@ -14,6 +14,7 @@ import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import { groupServiceFamilies, serviceFamilyLabel } from "@/features/services/service-family";
 import { usePermission } from "@/features/users/hooks/usePermission";
+import { useSecureUiMetrics } from "@/features/dashboard/hooks/useSecureUiMetrics";
 
 const statusStyles: Record<AppointmentStatus, string> = {
   booked: "border-sky-200 bg-sky-50 text-sky-800", confirmed: "border-blue-200 bg-blue-50 text-blue-800",
@@ -46,6 +47,7 @@ export default function DashboardOverview() {
   const services = useMemo(() => (masterQuery.data?.services ?? []).filter(item => item.is_active), [masterQuery.data]);
   const serviceFamilies = useMemo(() => groupServiceFamilies(services), [services]);
   const selectedServiceIds = useMemo(() => serviceFamilies.find(item => item.key === serviceFamily)?.serviceIds ?? [], [serviceFamilies, serviceFamily]);
+  const secureMetrics=useSecureUiMetrics(branchId,range.from,range.to,doctorId==="all"?null:Number(doctorId),serviceFamily==="all"?null:selectedServiceIds);
   const appointments = useMemo(() => (appointmentsQuery.data ?? []).filter(item => {
     const patient = `${item.customers?.first_name ?? ""} ${item.customers?.last_name ?? ""} ${item.customers?.phone ?? ""}`.toLowerCase();
     return isWithinDateRange(item.appointment_at, range) && (doctorId === "all" || item.doctor_id === Number(doctorId)) && (serviceFamily === "all" || (item.service_id != null && selectedServiceIds.includes(item.service_id))) && (!search.trim() || patient.includes(search.trim().toLowerCase()));
@@ -59,7 +61,7 @@ export default function DashboardOverview() {
   const statusLabel = (status: AppointmentStatus) => ({ booked: text("Booked", "محجوز"), confirmed: text("Confirmed", "مؤكد"), arrived: text("Arrived", "تم الوصول"), completed: text("Completed", "مكتمل"), cancelled: text("Cancelled", "ملغي"), no_show: text("No show", "لم يحضر") })[status];
   const serviceName = (id: number | null) => { const item = services.find(service => service.id === id); return item ? serviceFamilyLabel(item, isArabic) : text("Service", "خدمة"); };
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
-  const metrics: Array<[string, string | number, LucideIcon]> = [...(appointmentsCountAllowed ? [[text("Appointments", "المواعيد"), appointments.length, CalendarDays] as [string,string|number,LucideIcon]] : []), ...(completedCountAllowed ? [[text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2] as [string,string|number,LucideIcon]] : []), ...(invoiceCountAllowed ? [[text("Invoices", "الفواتير"), payments.length, FileText] as [string,string|number,LucideIcon]] : []), ...((collectionsAllowed||financeAllowed) ? [[text("Collected", "المحصل"), money(paid), Banknote] as [string,string|number,LucideIcon]] : [])];
+  const metrics: Array<[string, string | number, LucideIcon]> = [...(appointmentsCountAllowed ? [[text("Appointments", "المواعيد"), secureMetrics.data?.appointments??0, CalendarDays] as [string,string|number,LucideIcon]] : []), ...(completedCountAllowed ? [[text("Completed patients", "المرضى المكتملون"), secureMetrics.data?.completedPatients??0, CheckCircle2] as [string,string|number,LucideIcon]] : []), ...(invoiceCountAllowed ? [[text("Invoices", "الفواتير"), secureMetrics.data?.invoiceCount??0, FileText] as [string,string|number,LucideIcon]] : []), ...((collectionsAllowed||financeAllowed) ? [[text("Collected", "المحصل"), money(secureMetrics.data?.collected??0), Banknote] as [string,string|number,LucideIcon]] : [])];
   const financialMetrics = [[text("Invoiced", "إجمالي الفواتير"), invoiced, invoicedAllowed||financeAllowed], [text("Paid", "المدفوع"), paid, paidAllowed||financeAllowed], [text("Remaining", "المتبقي"), remaining, remainingAllowed||financeAllowed]].filter(item=>item[2]) as Array<[string,number,boolean]>;
 
   return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>

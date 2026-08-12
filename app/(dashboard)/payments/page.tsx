@@ -16,6 +16,7 @@ import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import { groupServiceFamilies } from "@/features/services/service-family";
 import { usePermission } from "@/features/users/hooks/usePermission";
+import { useSecureUiMetrics } from "@/features/dashboard/hooks/useSecureUiMetrics";
 
 export default function PaymentsPage() {
   const { isArabic, text } = useLocale();
@@ -39,6 +40,7 @@ export default function PaymentsPage() {
   const services = useMemo(() => (masterQuery.data?.services ?? []).filter(item => item.is_active), [masterQuery.data]);
   const serviceFamilies = useMemo(() => groupServiceFamilies(services), [services]);
   const selectedServiceIds = useMemo(() => serviceFamilies.find(item => item.key === serviceFamily)?.serviceIds ?? [], [serviceFamilies, serviceFamily]);
+  const secureMetrics=useSecureUiMetrics(branchId,range.from,range.to,doctorId==="all"?null:Number(doctorId),serviceFamily==="all"?null:selectedServiceIds);
   const filtered = useMemo(() => (paymentsQuery.data ?? []).filter(payment => {
     const customer = `${payment.customers?.first_name ?? ""} ${payment.customers?.last_name ?? ""}`.trim().toLowerCase();
     const query = search.trim().toLowerCase();
@@ -48,9 +50,9 @@ export default function PaymentsPage() {
   const totals = filtered.reduce((result, payment) => ({ total: result.total + Number(payment.amount ?? 0), paid: result.paid + Number(payment.paid_amount ?? (payment.payment_status === "paid" ? payment.amount : 0)), remaining: result.remaining + Number(payment.balance_due ?? 0), tax: result.tax + Number(payment.tax_amount ?? 0), discount: result.discount + Number(payment.discount_amount ?? 0) }), { total: 0, paid: 0, remaining: 0, tax: 0, discount: 0 });
   const money = (value: number) => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
   const cards: Array<{ label: string; value: number; icon: LucideIcon; tone: string; surface: string }> = [
-    ...(totalAllowed||amountsAllowed?[{ label: text("Invoice total", "إجمالي الفواتير"), value: totals.total, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" }]:[]),
-    ...(paidAllowed||amountsAllowed?[{ label: text("Paid", "المدفوع"), value: totals.paid, icon: Banknote, tone: "text-emerald-700", surface: "bg-emerald-50" }]:[]),
-    ...(remainingAllowed||amountsAllowed?[{ label: text("Remaining", "المتبقي"), value: totals.remaining, icon: WalletCards, tone: "text-rose-700", surface: "bg-rose-50" }]:[]),
+    ...(totalAllowed||amountsAllowed?[{ label: text("Invoice total", "إجمالي الفواتير"), value: secureMetrics.data?.invoiced??0, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" }]:[]),
+    ...(paidAllowed||amountsAllowed?[{ label: text("Paid", "المدفوع"), value: secureMetrics.data?.paid??0, icon: Banknote, tone: "text-emerald-700", surface: "bg-emerald-50" }]:[]),
+    ...(remainingAllowed||amountsAllowed?[{ label: text("Remaining", "المتبقي"), value: secureMetrics.data?.remaining??0, icon: WalletCards, tone: "text-rose-700", surface: "bg-rose-50" }]:[]),
   ];
 
   return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>
