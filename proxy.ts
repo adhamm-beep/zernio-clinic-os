@@ -65,14 +65,14 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const permissionRoutes: Array<[string, string]> = [
-    ["/settings/users", "users.manage"], ["/settings", "settings.view"],
-    ["/customers", "customers.view"], ["/appointments", "appointments.view"],
+  const permissionRoutes: Array<[string, string | string[]]> = [
+    ["/settings/users", ["users.manage"]], ["/settings", ["settings.view","settings.manage","users.manage"]],
+    ["/customers", ["customers.view","customers.details.view","customers.create","customers.edit","customers.deactivate","customers.export","customers.manage"]], ["/appointments", ["appointments.view","appointments.create","appointments.edit","appointments.cancel","appointments.patient_requests.manage","appointments.manage","calendar.view"]],
     ["/calendar", "calendar.view"], ["/follow-ups", "followups.view"],
     ["/treatments", "treatments.view"], ["/payments", "payments.view"],
     ["/price-list", "services.view"], ["/inventory", "inventory.view"],
-    ["/staff", "staff.view"], ["/marketing", "marketing.view"],
-    ["/reports", "reports.view"], ["/ask-zernio", "ai.view"],
+    ["/staff", ["staff.view","staff.salary.view","staff.manage","staff.attendance.manage","staff.schedule.manage"]], ["/marketing", ["marketing.view","marketing.spend.view","marketing.manage"]],
+    ["/reports", ["reports.view","reports.finance.view","reports.doctor_revenue.view","reports.export"]], ["/ask-zernio", ["ai.view","ai.use"]],
     ["/accounting", "reports.finance.view"],
     ["/patient-app", "patient_app.analytics"],
     ["/support", "support.create"],
@@ -82,7 +82,8 @@ export async function proxy(request: NextRequest) {
   ];
   const match = permissionRoutes.find(([prefix]) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`));
   if (isAuthenticated && match) {
-    const { data: allowed, error } = await supabase.rpc("has_hr_permission", { permission_code: match[1] });
+    const required=Array.isArray(match[1])?match[1]:[match[1]];
+    const { data: allowed, error } = await supabase.rpc("has_any_hr_permission", { permission_codes: required });
     // Until the access-control migration is installed, preserve the existing behavior.
     if (!error && !allowed) {
       if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
