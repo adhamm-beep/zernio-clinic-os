@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, Globe2, LogOut, Search } from "lucide-react";
+import { Bell, CheckCheck, Globe2, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "@/components/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { getStaffNotifications, readAllNotifications, readNotification } from "@/features/enterprise/api/enterprise.api";
+import GlobalSearch from "@/components/GlobalSearch";
+import MobileNavigation from "@/components/MobileNavigation";
 
 const titles: Record<string, [string, string]> = {
   dashboard: ["Today", "اليوم"], customers: ["Customers", "العملاء"], appointments: ["Appointments", "المواعيد"],
@@ -97,8 +99,9 @@ export default function Header() {
 
   return <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f7f8f7]/90 px-4 backdrop-blur-xl md:px-8">
     <div className="flex h-[76px] items-center gap-3">
+      <MobileNavigation/>
       <div className="min-w-0 flex-1"><h1 className="truncate text-xl font-black text-slate-900">{isArabic ? title[1] : title[0]}</h1><p className="truncate text-xs text-slate-500">{clinic?.name ?? text("Panthera Clinics", "عيادات بانثيرا")}{selectedBranch ? ` · ${selectedBranch.name}` : ""}</p></div>
-      <button aria-label={text("Search", "بحث")} className="hidden h-10 min-w-48 items-center gap-2 rounded-xl border bg-white px-3 text-sm text-slate-400 shadow-sm md:flex"><Search className="size-4"/>{text("Search anything", "ابحث عن أي شيء")}</button>
+      <GlobalSearch/>
       <button type="button" onClick={toggleLocale} className="h-10 rounded-xl border bg-white px-3 text-xs font-black text-slate-700 shadow-sm"><Globe2 className="me-1 inline size-4"/>{isArabic ? "EN" : "عربي"}</button>
       <div className="relative">
         <button type="button" onClick={()=>setNotificationsOpen(value=>!value)} aria-label={text("Notifications", "الإشعارات")} className="relative grid size-10 place-items-center rounded-xl border bg-white text-slate-600 shadow-sm"><Bell className="size-[18px]"/>{unread>0&&<span className="absolute -end-1.5 -top-1.5 grid min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-black leading-5 text-white ring-2 ring-white">{unread>99?"99+":unread}</span>}</button>
