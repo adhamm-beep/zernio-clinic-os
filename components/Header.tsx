@@ -101,7 +101,7 @@ export default function Header() {
   return <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f7f8f7]/90 px-3 backdrop-blur-xl md:px-4">
     <div className="flex h-[60px] items-center gap-2">
       <MobileNavigation/>
-      <div className="min-w-0 flex-1"><h1 className="truncate text-lg font-black text-slate-900">{isArabic ? title[1] : title[0]}</h1><p className="truncate text-[11px] text-slate-500">{clinic?.name ?? text("Panthera Clinics", "عيادات بانثيرا")}{selectedBranch ? ` · ${selectedBranch.name}` : ""}</p></div>
+      <div className="min-w-0 flex-1"><h1 className="truncate text-lg font-black text-slate-900">{isArabic && key === "dashboard" ? "اللوحة الرئيسية" : isArabic ? title[1] : title[0]}</h1><p className="truncate text-[11px] text-slate-500">{clinic?.name ?? text("Panthera Clinics", "عيادات بانثيرا")}{selectedBranch ? ` · ${selectedBranch.name}` : ""}</p></div>
       <div className="hidden text-end sm:block"><p className="max-w-40 truncate text-sm font-black text-slate-900">{currentStaff.data?.staff_name||text("User","مستخدم")}</p><p className="max-w-40 truncate text-[10px] text-slate-500">{currentStaff.data?.email}</p></div>
       <GlobalSearch/>
       <button type="button" onClick={toggleLocale} className="h-10 rounded-xl border bg-white px-3 text-xs font-black text-slate-700 shadow-sm"><Globe2 className="me-1 inline size-4"/>{isArabic ? "EN" : "عربي"}</button>
