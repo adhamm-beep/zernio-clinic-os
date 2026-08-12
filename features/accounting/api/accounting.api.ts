@@ -9,7 +9,7 @@ export async function getAccountingData(clinicId:number,branchId:number,from:str
   supabase.from("accounting_accounts").select("id,parent_id,code,name_en,name_ar,account_type,normal_balance,is_postable,is_active").eq("clinic_id",clinicId).order("code"),
   supabase.rpc("accounting_trial_balance",{p_from:from,p_to:to}),
   supabase.rpc("accounting_financial_statements",{p_from:from,p_to:to}),
-  supabase.from("accounting_journal_entries").select("id,entry_number,entry_date,description_en,description_ar,status,source_type,lines:accounting_journal_lines(id,debit,credit,account:accounting_accounts(code,name_en,name_ar))").eq("clinic_id",clinicId).gte("entry_date",from).lte("entry_date",to).order("entry_date",{ascending:false}).limit(100),
+  supabase.from("accounting_journal_entries").select("id,entry_number,entry_date,description_en,description_ar,status,source_type,lines:accounting_journal_lines(id,account_id,debit,credit,account:accounting_accounts(code,name_en,name_ar))").eq("clinic_id",clinicId).gte("entry_date",from).lte("entry_date",to).order("entry_date",{ascending:false}).limit(500),
   supabase.from("employee_financial_transactions").select("id,staff_id,transaction_type,reference_number,issued_on,due_on,amount,settled_amount,outstanding_amount,status,purpose_en,purpose_ar,member:staff(staff_name,employee_code)").eq("clinic_id",clinicId).eq("branch_id",branchId).order("issued_on",{ascending:false}),
   supabase.from("staff").select("id,staff_name,employee_code").eq("clinic_id",clinicId).eq("branch_id",branchId).eq("is_active",true).order("staff_name")
  ]);
