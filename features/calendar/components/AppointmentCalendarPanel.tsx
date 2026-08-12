@@ -16,7 +16,7 @@ export default function AppointmentCalendarPanel({ clinicId, branchId }: { clini
   return (
     <section className="space-y-4">
       <CalendarHeader
-        title={formatCalendarTitle(calendar.currentDate, calendar.view, isArabic ? "ar-SA" : "en-GB")}
+        title={formatCalendarTitle(calendar.currentDate, calendar.view, isArabic ? "ar-SA-u-nu-latn" : "en-GB")}
         view={calendar.view}
         onViewChange={calendar.setView}
         onPrevious={calendar.goToPrevious}

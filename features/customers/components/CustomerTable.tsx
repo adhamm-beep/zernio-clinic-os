@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Customer } from "../types/customer";
 
-const money = (value: number) => new Intl.NumberFormat("ar-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
-const date = (value?: string | null) => value ? new Intl.DateTimeFormat("ar-SA", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Riyadh" }).format(new Date(value)) : "—";
+const money = (value: number) => new Intl.NumberFormat("ar-SA-u-nu-latn", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
+const date = (value?: string | null) => value ? new Intl.DateTimeFormat("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Riyadh" }).format(new Date(value)) : "—";
 const headers = ["", "اسم العميل", "رقم الملف", "الهاتف", "إجمالي المدفوعات", "المتبقي", "الرصيد", "النقاط المتوفرة", "علامات المرضى", "البريد الإلكتروني", "الفرع", "الطبيب", "الموعد السابق", "الموعد النشط", "الإحالة", "رقم الهوية الوطنية", "الجنسية", "تم الإنشاء", "تم التحديد"];
 
 export default function CustomerTable({ customers }: { customers: Customer[] }) {

@@ -30,7 +30,7 @@ export default function PatientRequestQueue({clinicId,branchId,appointments}:{cl
     }
   }
 
-  const formatDate=(value:string)=>new Intl.DateTimeFormat(isArabic?"ar-SA":"en-SA",{
+  const formatDate=(value:string)=>new Intl.DateTimeFormat(isArabic?"ar-SA-u-nu-latn":"en-SA",{
     weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"numeric",minute:"2-digit",hour12:true,timeZone:"Asia/Riyadh",
   }).format(new Date(value));
   const requestLabel=(type:string)=>({

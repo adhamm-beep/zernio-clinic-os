@@ -91,7 +91,7 @@ function DraggableEvent({ event, locale, onClick }: { event: CalendarEventType; 
 export default function WeekView({ currentDate, events, onEventClick, days }: Props) {
   const weekDays = days ?? getWeekDays(currentDate);
   const { isArabic, text } = useLocale();
-  const locale = isArabic ? "ar-SA" : "en-GB";
+  const locale = isArabic ? "ar-SA-u-nu-latn" : "en-GB";
   const updateAppointmentTime = useUpdateAppointmentTime();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, index) => START_HOUR + index);

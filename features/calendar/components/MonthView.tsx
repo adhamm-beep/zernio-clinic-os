@@ -81,7 +81,7 @@ export default function MonthView({ currentDate, events, onEventClick }: Props) 
       <DialogHeader>
         <DialogTitle>{text("Appointments for the day", "مواعيد اليوم")}</DialogTitle>
         <DialogDescription>
-          {expandedDay?.toLocaleDateString(isArabic ? "ar-SA" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          {expandedDay?.toLocaleDateString(isArabic ? "ar-SA-u-nu-latn" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </DialogDescription>
       </DialogHeader>
       <div className="max-h-[60vh] space-y-2 overflow-y-auto pe-1">

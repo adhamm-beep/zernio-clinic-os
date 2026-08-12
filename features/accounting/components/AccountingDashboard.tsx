@@ -11,7 +11,7 @@ import {useClinic} from "@/features/clinic/hooks/useClinic";
 import {useAccounting,useAccountingActions} from "../hooks/useAccounting";
 import type {StatementLine} from "../types/accounting";
 
-const money=(v:number,locale:string)=>new Intl.NumberFormat(locale==="ar"?"ar-SA":"en-SA",{style:"currency",currency:"SAR",maximumFractionDigits:2}).format(v);
+const money=(v:number,locale:string)=>new Intl.NumberFormat(locale==="ar"?"ar-SA-u-nu-latn":"en-SA",{style:"currency",currency:"SAR",maximumFractionDigits:2}).format(v);
 const sum=(rows:StatementLine[])=>rows.reduce((a,b)=>a+Number(b.amount),0);
 const field="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 outline-none focus:border-cyan-500";
 const accountTypeLabels={asset:["Asset","أصل"],liability:["Liability","التزام"],equity:["Equity","حقوق ملكية"],revenue:["Revenue","إيراد"],expense:["Expense","مصروف"]} as const;

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Barcode from "@/components/Barcode";
 import type { Payment } from "../types/payment";
 
-const money = (value: number, currency: string) => new Intl.NumberFormat("ar-SA", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
+const money = (value: number, currency: string) => new Intl.NumberFormat("ar-SA-u-nu-latn", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
 const safe = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
 const tenderLabels: Record<string, string> = { cash: "نقدي", bank_transfer: "بنك / تحويل", card: "بطاقة / بوابة", online: "دفع إلكتروني", tabby: "تابي", tamara: "تمارا", other: "أخرى" };
 
@@ -22,7 +22,7 @@ export default function InvoiceDialog({ payment, open: controlledOpen, onOpenCha
   const subtotal = Number(payment.subtotal_amount ?? Math.max(total - tax + discount, 0));
   const paid = Number(payment.paid_amount ?? (payment.payment_status === "paid" ? total : 0));
   const balance = Number(payment.balance_due ?? Math.max(total - paid, 0));
-  const date = payment.payment_date ? new Date(payment.payment_date).toLocaleString("ar-SA", { hour12: true }) : "—";
+  const date = payment.payment_date ? new Date(payment.payment_date).toLocaleString("ar-SA-u-nu-latn", { hour12: true }) : "—";
   const tenders = payment.payment_tenders ?? [];
   const items = payment.payment_invoice_items?.length ? payment.payment_invoice_items : [{ id: payment.id, description: payment.service_variants?.name_ar || payment.service_variants?.name || payment.services?.name_ar || payment.services?.name || payment.treatments?.service_name || "خدمة العيادة", quantity: Number(payment.material_quantity ?? 1), unit: payment.material_unit || "service", unit_price: Number(payment.material_unit_price ?? subtotal), line_total: subtotal, service_id: payment.service_id ?? 0, service_variant_id: payment.service_variant_id }];
   const rows = [["قبل الضريبة", subtotal, ""], ["الضريبة", tax, ""], ["الخصم", discount, "text-amber-700"], ["الإجمالي", total, "text-slate-950 text-lg border-t pt-3"], ["المدفوع", paid, "text-emerald-700"], ["المتبقي", balance, "text-rose-700"]] as const;

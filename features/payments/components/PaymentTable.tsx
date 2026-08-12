@@ -12,8 +12,8 @@ export default function PaymentTable({ payments }: { payments: Payment[] }) {
   const { isArabic, text } = useLocale();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
-  const money = (value: number | null | undefined, currency = "SAR") => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value ?? 0));
-  const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "—";
+  const money = (value: number | null | undefined, currency = "SAR") => new Intl.NumberFormat(isArabic ? "ar-SA-u-nu-latn" : "en-SA", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value ?? 0));
+  const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat(isArabic ? "ar-SA-u-nu-latn" : "en-GB", { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "—";
   const statusLabel = (value: string) => ({ paid: text("Paid", "مدفوع"), partial: text("Partially paid", "مدفوع جزئيًا"), pending: text("Due", "مستحق"), unpaid: text("Unpaid", "غير مدفوع"), refunded: text("Refunded", "مسترد"), cancelled: text("Cancelled", "ملغي") }[value] ?? value);
   const grouped = new Map<number, { id: number; name: string; phone: string; code: string; invoices: Payment[] }>();
   for (const payment of payments) { const old = grouped.get(payment.customer_id); const name = `${payment.customers?.first_name ?? ""} ${payment.customers?.last_name ?? ""}`.trim() || text("Customer", "عميل"); if (old) old.invoices.push(payment); else grouped.set(payment.customer_id, { id: payment.customer_id, name, phone: payment.customers?.phone || "—", code: payment.customers?.customer_code || "—", invoices: [payment] }); }

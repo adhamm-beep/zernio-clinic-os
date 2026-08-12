@@ -1134,7 +1134,7 @@ function Booking({
               >
                 <Text style={[s.dateText, i === day && { color: "#fff" }]}>
                   {x
-                    .toLocaleDateString(rtl ? "ar-SA" : "en", {
+                    .toLocaleDateString(rtl ? "ar-SA-u-nu-latn" : "en", {
                       weekday: "short",
                     })
                     .toUpperCase()}
@@ -1182,7 +1182,7 @@ function Booking({
               {"\n"}
               {service?.name}
               {"\n"}
-              {appointmentAt()?.toLocaleDateString(rtl ? "ar-SA" : "en", {
+              {appointmentAt()?.toLocaleDateString(rtl ? "ar-SA-u-nu-latn" : "en", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -1459,7 +1459,7 @@ function Appointments({
                       color: future ? "#fff" : colors.navy,
                     }}
                   >
-                    {d.toLocaleDateString(ar ? "ar-SA" : "en", {
+                    {d.toLocaleDateString(ar ? "ar-SA-u-nu-latn" : "en", {
                       month: "short",
                     })}
                   </Text>
@@ -1521,7 +1521,7 @@ function Appointments({
                     textAlign: ar ? "right" : "left",
                   }}
                 >
-                  {d.toLocaleTimeString(ar ? "ar-SA" : "en", {
+                  {d.toLocaleTimeString(ar ? "ar-SA-u-nu-latn" : "en", {
                     hour: "numeric",
                     minute: "2-digit",
                   })}
@@ -1645,7 +1645,7 @@ function Care({
                   </Text>
                   <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
                     {new Date(item.appointmentAt).toLocaleString(
-                      ar ? "ar-SA" : "en-US",
+                      ar ? "ar-SA-u-nu-latn" : "en-US",
                       {
                         day: "numeric",
                         month: "short",
@@ -1820,7 +1820,7 @@ function Notifications({
                   </Text>
                   <Text style={s.noticeTime}>
                     {new Date(n.created_at).toLocaleDateString(
-                      ar ? "ar-SA" : "en-US",
+                      ar ? "ar-SA-u-nu-latn" : "en-US",
                     )}
                   </Text>
                 </View>
@@ -1953,7 +1953,7 @@ function Membership({
                 <Text
                   style={{ color: "#fff", fontSize: 28, fontWeight: "900" }}
                 >
-                  {data.points.toLocaleString(ar ? "ar-SA" : "en-US")}
+                  {data.points.toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US")}
                 </Text>
               </View>
               <View
@@ -2022,7 +2022,7 @@ function Membership({
                   ? "استمتعي بكل مزايا بانثيرا"
                   : "Enjoy every Panthera benefit"
                 : ar
-                  ? `${data.lifetimePoints.toLocaleString("ar-SA")} من ${target.toLocaleString("ar-SA")} نقطة`
+                  ? `${data.lifetimePoints.toLocaleString("ar-SA-u-nu-latn")} من ${target.toLocaleString("ar-SA-u-nu-latn")} نقطة`
                   : `${data.lifetimePoints.toLocaleString()} of ${target.toLocaleString()} points`}
             </Text>
           </View>
@@ -2204,7 +2204,7 @@ function Results({
                 >
                   {item.caption ??
                     new Date(item.capturedAt).toLocaleDateString(
-                      ar ? "ar-SA" : "en-US",
+                      ar ? "ar-SA-u-nu-latn" : "en-US",
                     )}
                 </Text>
               </View>
@@ -2411,7 +2411,7 @@ function BeautyCalendar({
                     textAlign: ar ? "right" : "left",
                   }}
                 >
-                  {date.toLocaleString(ar ? "ar-SA" : "en-US", {
+                  {date.toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US", {
                     weekday: "short",
                     day: "numeric",
                     month: "short",
@@ -2659,7 +2659,7 @@ function Wallet({
             }}
           >
             {data.currency}{" "}
-            {Number(data.totalPaid).toLocaleString(ar ? "ar-SA" : "en-US")}
+            {Number(data.totalPaid).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US")}
           </Text>
         </LinearGradient>
         <View
@@ -2688,11 +2688,11 @@ function Wallet({
             }}
           >
             {data.currency}{" "}
-            {Number(data.outstanding).toLocaleString(ar ? "ar-SA" : "en-US")}
+            {Number(data.outstanding).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US")}
           </Text>
         </View>
       </View>
-      <View style={{backgroundColor:"#E8F5FF",borderRadius:22,padding:18,marginTop:14,flexDirection:ar?"row-reverse":"row",justifyContent:"space-between",alignItems:"center"}}><View><Text style={{fontSize:11,color:colors.muted,textAlign:ar?"right":"left"}}>{ar?"الرصيد المتاح":"AVAILABLE CREDIT"}</Text><Text style={{fontSize:24,fontWeight:"900",color:"#0876A8",marginTop:6}}>{data.currency} {Number(data.creditBalance??0).toLocaleString(ar?"ar-SA":"en-US")}</Text></View><Icon name="wallet" color="#0876A8"/></View>
+      <View style={{backgroundColor:"#E8F5FF",borderRadius:22,padding:18,marginTop:14,flexDirection:ar?"row-reverse":"row",justifyContent:"space-between",alignItems:"center"}}><View><Text style={{fontSize:11,color:colors.muted,textAlign:ar?"right":"left"}}>{ar?"الرصيد المتاح":"AVAILABLE CREDIT"}</Text><Text style={{fontSize:24,fontWeight:"900",color:"#0876A8",marginTop:6}}>{data.currency} {Number(data.creditBalance??0).toLocaleString(ar?"ar-SA-u-nu-latn":"en-US")}</Text></View><Icon name="wallet" color="#0876A8"/></View>
       <View
         style={{
           backgroundColor: "#F3EEE6",
@@ -2737,7 +2737,7 @@ function Wallet({
                   `${ar ? "فاتورة" : "Invoice"} #${item.id}`}
               </Text>
               <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                {new Date(item.date).toLocaleDateString(ar ? "ar-SA" : "en-US")}{" "}
+                {new Date(item.date).toLocaleDateString(ar ? "ar-SA-u-nu-latn" : "en-US")}{" "}
                 ·{" "}
                 {item.method ??
                   (ar ? "طريقة غير محددة" : "Method not specified")}
@@ -3167,7 +3167,7 @@ function Experience({
                 }}
               >
                 {new Date(moment.date).toLocaleDateString(
-                  ar ? "ar-SA" : "en-US",
+                  ar ? "ar-SA-u-nu-latn" : "en-US",
                   { day: "numeric", month: "long", year: "numeric" },
                 )}
               </Text>
@@ -3200,7 +3200,7 @@ function Experience({
               : `How was your ${visit.service} visit?`}
           </Text>
           <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-            {new Date(visit.date).toLocaleDateString(ar ? "ar-SA" : "en-US")}{" "}
+            {new Date(visit.date).toLocaleDateString(ar ? "ar-SA-u-nu-latn" : "en-US")}{" "}
             {visit.provider ? `· ${visit.provider}` : ""}
           </Text>
           <View style={{alignItems:"center",paddingVertical:22}}>
@@ -3287,7 +3287,7 @@ function Today({
             icon: "calendar",
             title: ar ? "موعدك القادم جاهز" : "Your next visit is ready",
             copy: new Date(next.appointmentAt).toLocaleString(
-              ar ? "ar-SA" : "en-US",
+              ar ? "ar-SA-u-nu-latn" : "en-US",
               { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" },
             ),
             tab: "appointments" as Tab,
@@ -3520,7 +3520,7 @@ function Today({
                 style={{ fontSize: 10, fontWeight: "800", color: "#D7E3E8" }}
               >
                 {new Date(next.appointmentAt).toLocaleDateString(
-                  ar ? "ar-SA" : "en-US",
+                  ar ? "ar-SA-u-nu-latn" : "en-US",
                   { month: "short" },
                 )}
               </Text>
@@ -4062,7 +4062,7 @@ function Concierge({
                 {appointmentService(a, ar) ?? (ar ? "موعد بانثيرا" : "Panthera visit")}
               </Text>
               <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                {new Date(a.date).toLocaleString(ar ? "ar-SA" : "en-SA")} ·{" "}
+                {new Date(a.date).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-SA")} ·{" "}
                 {appointmentProvider(a, ar) ?? "Panthera"}
               </Text>
               <View
@@ -4317,7 +4317,7 @@ function Concierge({
                 <Text style={s.cardMuted}>
                   {r.status} ·{" "}
                   {new Date(r.createdAt).toLocaleDateString(
-                    ar ? "ar-SA" : "en-SA",
+                    ar ? "ar-SA-u-nu-latn" : "en-SA",
                   )}
                 </Text>
               </View>
