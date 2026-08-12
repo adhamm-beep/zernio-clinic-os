@@ -17,6 +17,12 @@ export type ClinicWorkspace = {
 export async function getClinicWorkspace(
   clinicCode = DEFAULT_CLINIC_CODE
 ): Promise<ClinicWorkspace> {
+  const { data: secureWorkspace, error: secureError } = await supabase.rpc("current_staff_workspace");
+  if (!secureError && secureWorkspace) {
+    const workspace = secureWorkspace as unknown as { clinic: Clinic; branches: ClinicBranch[] };
+    return { clinic: workspace.clinic, branches: workspace.branches ?? [] };
+  }
+
   const { data: clinic, error: clinicError } = await supabase
     .from("clinics")
     .select(`
@@ -33,7 +39,7 @@ export async function getClinicWorkspace(
     .maybeSingle();
 
   if (clinicError) {
-    throw new Error(clinicError.message);
+    throw new Error(secureError?.message || clinicError.message);
   }
 
   if (!clinic) {
