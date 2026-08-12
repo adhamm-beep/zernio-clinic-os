@@ -217,6 +217,11 @@ const interfaceAuditTranslations: Record<string, string> = {
   "clinic isolation, permissions, audit, notifications, tasks, workflows and language.": "إدارة العيادات والصلاحيات والتدقيق والإشعارات والمهام ومسارات العمل واللغة.",
   "preference is stored per employee. full translated content rolls out incrementally.": "يُحفظ اختيار اللغة لكل موظف وتظهر الواجهة كاملة بلغته.",
   "zernio ai agents": "وكلاء زيرنيو الأذكياء", "live action queue": "قائمة الإجراءات المباشرة", "recommended actions": "الإجراءات المقترحة",
+  "reception agent": "وكيل الاستقبال", "doctor agent": "وكيل الطبيب", "finance agent": "الوكيل المالي", "marketing agent": "وكيل التسويق", "ceo agent": "وكيل الإدارة التنفيذية",
+  "booking, confirmations and follow-ups": "الحجوزات والتأكيدات والمتابعات", "clinical workflow and treatment readiness": "سير العمل الطبي والاستعداد للعلاج",
+  "collections and revenue forecast": "التحصيل وتوقع الإيرادات", "campaigns, roi and segmentation": "الحملات والعائد على الاستثمار وتقسيم الشرائح",
+  "whole-clinic executive intelligence": "ذكاء تنفيذي شامل للعيادة", "ask": "اسأل", "today": "اليوم", "follow-ups": "المتابعات", "low stock": "مخزون منخفض",
+  "bookings": "حجوزات", "sar": "ر.س", "phase 8": "المرحلة 8", "retry": "إعادة المحاولة",
   "risks to watch": "مخاطر تحتاج متابعة", "only anonymous operational metrics are sent to openai.": "تُرسل مؤشرات تشغيلية مجهولة الهوية فقط إلى خدمة الذكاء الاصطناعي.",
   "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل زيرنيو ولا تُرسل إلى النموذج.",
   "five specialized agents working from one anonymous clinic intelligence layer.": "خمسة وكلاء متخصصين يعملون عبر طبقة ذكاء موحدة ومجهولة الهوية.",
@@ -230,6 +235,18 @@ const interfaceAuditTranslations: Record<string, string> = {
   "ai medical summary": "الملخص الطبي الذكي", "clinical handover:": "التسليم الطبي:",
   "processed privately without sending medical text to ai services": "تتم المعالجة بخصوصية دون إرسال النص الطبي إلى خدمات الذكاء الاصطناعي",
   "zernio live operations": "تشغيل زيرنيو المباشر", "zernio finance": "مالية زيرنيو", "english": "الإنجليزية", "arabic": "العربية",
+  "settings": "الإعدادات", "master data": "البيانات الأساسية", "services": "الخدمات والأسعار", "user management": "إدارة المستخدمين", "clinic context": "العيادة والفرع الحالي", "open": "فتح",
+  "configure your clinic workspace and master data.": "إعداد مساحة عمل العيادة وبياناتها الأساسية.",
+  "review clinics, branches, staff, rooms and services.": "راجع العيادات والفروع والموظفين والغرف والخدمات.",
+  "manage clinic services, prices, categories and duration.": "إدارة خدمات العيادة والأسعار والتصنيفات ومدد الخدمات.",
+  "add users, assign access roles and control account status.": "إضافة المستخدمين وتعيين الأدوار والصلاحيات والتحكم في حالة الحساب.",
+  "review the active clinic and select the current branch.": "راجع العيادة النشطة وحدد الفرع المستخدم حاليًا.",
+  "all payments and balances for this patient": "كل المدفوعات والأرصدة الخاصة بهذا المريض", "available points": "النقاط المتاحة",
+  "based on appointments, treatments, payments, follow-ups, and recency.": "بناءً على المواعيد والعلاجات والمدفوعات والمتابعات وحداثة النشاط.",
+  "clinic brain": "ذكاء العيادة", "no payments recorded yet.": "لم تُسجل مدفوعات بعد.", "loading customer 360...": "جارٍ تحميل ملف المريض 360...",
+  "expected customer value": "قيمة المريض المتوقعة", "suggested next visit": "الزيارة التالية المقترحة", "zernio ai summary": "ملخص زيرنيو الذكي",
+  "risk": "المخاطر", "campaign": "الحملة", "vip": "كبار العملاء", "timeline ai": "ذكاء السجل الزمني", "private on-device activity analysis": "تحليل خاص للنشاط داخل النظام",
+  "no immediate timeline action is required.": "لا يوجد إجراء فوري مطلوب في السجل الزمني.", "ai timeline note:": "ملاحظة ذكية للسجل:",
   "critical": "حرجة", "sensitive": "حساسة", "low": "منخفضة", "medium": "متوسطة", "high": "عالية", "urgent": "عاجلة",
 };
 
@@ -241,6 +258,10 @@ export function translateSystemText(value: string): string {
   const key = clean.toLowerCase();
   const direct = translations[key] ?? sentenceTranslations[key] ?? interfaceAuditTranslations[key];
   if (direct) return `${leading}${direct}${trailing}`;
+  const askAgent = clean.match(/^Ask (Reception|Doctor|Finance|Marketing|CEO) Agent$/i);
+  if (askAgent) return `${leading}اسأل ${interfaceAuditTranslations[`${askAgent[1].toLowerCase()} agent`] ?? askAgent[1]}${trailing}`;
+  const bookingCount = clean.match(/^(\d+) bookings$/i);
+  if (bookingCount) return `${leading}${bookingCount[1]} حجوزات${trailing}`;
   const compositeSeparator = clean.includes(" · ") ? " · " : clean.includes(" | ") ? " | " : null;
   if (compositeSeparator) {
     const localizedParts = clean
