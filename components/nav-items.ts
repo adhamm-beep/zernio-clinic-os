@@ -1,4 +1,4 @@
-import {BarChart3,Boxes,CalendarDays,CircleDollarSign,ClipboardPlus,ContactRound,Landmark,LayoutDashboard,Megaphone,PackageSearch,Settings,Smartphone,Sparkles,Stethoscope,UsersRound} from "lucide-react";
+import {BarChart3,Boxes,CalendarDays,CircleDollarSign,ClipboardPlus,ContactRound,Headphones,Landmark,LayoutDashboard,Megaphone,PackageSearch,Settings,Smartphone,Sparkles,Stethoscope,UsersRound} from "lucide-react";
 
 export type NavItem=readonly[string,string,string,typeof LayoutDashboard,string,readonly string[]];
 export const primary:readonly NavItem[]=[
@@ -18,6 +18,7 @@ export const management:readonly NavItem[]=[
  ["Patient app","تطبيق المرضى","/patient-app",Smartphone,"patient_app.analytics",["النشطين","استخدام التطبيق","mobile","app"]],
 ];
 export const intelligence:readonly NavItem[]=[
+ ["Technical support","الدعم الفني","/support",Headphones,"support.create",["مساعدة","مشكلة","استفسار","support","help"]],
  ["Ask Zernio","اسأل زيرنيو","/ask-zernio",Sparkles,"ai.view",["الذكاء","زيرنيو","ai","ask"]],
  ["Automation","الأتمتة","/ai-agents",Boxes,"ai.view",["الوكلاء","automation","agents"]],
  ["Settings","الإعدادات","/settings",Settings,"settings.view",["المستخدمين","الصلاحيات","settings","users"]],

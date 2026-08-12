@@ -1,0 +1,2 @@
+export type SupportTicket={id:number;subject:string;category:"question"|"problem"|"suggestion";priority:"low"|"normal"|"high"|"urgent";status:"open"|"in_progress"|"resolved"|"closed";requester_staff_id:number;created_at:string;updated_at:string;requester?:{staff_name:string|null;email:string|null}|null};
+export type SupportMessage={id:number;ticket_id:number;sender_staff_id:number;body:string;created_at:string;sender?:{staff_name:string|null}|null};

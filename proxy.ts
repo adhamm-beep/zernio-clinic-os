@@ -60,6 +60,7 @@ export async function proxy(request: NextRequest) {
     ["/reports", "reports.view"], ["/ask-zernio", "ai.view"],
     ["/accounting", "reports.finance.view"],
     ["/patient-app", "patient_app.analytics"],
+    ["/support", "support.create"],
     ["/ai-agents", "ai.view"], ["/enterprise", "enterprise.view"],
     ["/dashboard", "dashboard.view"], ["/api/ai", "ai.use"],
     ["/api/payments", "payments.manage"], ["/api/admin/users", "users.manage"],

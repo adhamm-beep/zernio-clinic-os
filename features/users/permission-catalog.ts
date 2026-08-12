@@ -66,6 +66,8 @@ export const permissionMeta: Record<string, PermissionMeta> = {
   "settings.view": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "عرض الإعدادات", labelEn: "View settings", descriptionAr: "فتح صفحات إعداد النظام" },
   "settings.manage": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "تعديل إعدادات العيادة", labelEn: "Manage settings", descriptionAr: "تغيير إعدادات العيادة والبيانات الأساسية", risk: "critical" },
   "users.manage": { moduleAr: "الإعدادات", moduleEn: "Settings", labelAr: "إدارة المستخدمين والصلاحيات", labelEn: "Manage users and permissions", descriptionAr: "دعوة وتعطيل المستخدمين ومنح الصلاحيات", risk: "critical" },
+  "support.create": { moduleAr: "الدعم الفني", moduleEn: "Support", labelAr: "إرسال طلبات الدعم", labelEn: "Create support requests", descriptionAr: "بدء محادثة مع الدعم الفني ومتابعة الطلبات الخاصة به" },
+  "support.manage": { moduleAr: "الدعم الفني", moduleEn: "Support", labelAr: "استقبال وإدارة طلبات الدعم", labelEn: "Manage support inbox", descriptionAr: "عرض محادثات جميع الموظفين والرد عليها وتغيير حالتها", risk: "sensitive" },
 };
 
-export const permissionModuleOrder = ["Dashboard", "Patients", "Patient app", "Appointments", "Follow-ups", "Treatments", "Medical record", "Finance", "Reports", "Services & prices", "Inventory", "Staff", "Marketing", "Zernio intelligence", "Enterprise", "Settings"];
+export const permissionModuleOrder = ["Dashboard", "Patients", "Patient app", "Appointments", "Follow-ups", "Treatments", "Medical record", "Finance", "Reports", "Services & prices", "Inventory", "Staff", "Marketing", "Zernio intelligence", "Support", "Enterprise", "Settings"];
