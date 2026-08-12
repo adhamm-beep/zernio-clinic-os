@@ -74,6 +74,7 @@ export default function Header() {
   const { clinic, selectedBranch } = useClinic();
   const { isArabic, toggleLocale, text } = useLocale();
   const [notificationsOpen,setNotificationsOpen]=useState(false);
+  const currentStaff=useQuery({queryKey:["current-staff-header"],queryFn:async()=>{const{data,error}=await createClient().rpc("current_staff_header");if(error)throw error;return(data?.[0]??null)as{staff_name:string|null;email:string|null}|null;},staleTime:300_000});
   const clinicId=clinic?.id??0,branchId=selectedBranch?.id;
   const notifications=useQuery({
     queryKey:["staff-notifications",clinicId,branchId??"all"],
@@ -101,6 +102,7 @@ export default function Header() {
     <div className="flex h-[76px] items-center gap-3">
       <MobileNavigation/>
       <div className="min-w-0 flex-1"><h1 className="truncate text-xl font-black text-slate-900">{isArabic ? title[1] : title[0]}</h1><p className="truncate text-xs text-slate-500">{clinic?.name ?? text("Panthera Clinics", "عيادات بانثيرا")}{selectedBranch ? ` · ${selectedBranch.name}` : ""}</p></div>
+      <div className="hidden text-end sm:block"><p className="max-w-40 truncate text-sm font-black text-slate-900">{currentStaff.data?.staff_name||text("User","مستخدم")}</p><p className="max-w-40 truncate text-[10px] text-slate-500">{currentStaff.data?.email}</p></div>
       <GlobalSearch/>
       <button type="button" onClick={toggleLocale} className="h-10 rounded-xl border bg-white px-3 text-xs font-black text-slate-700 shadow-sm"><Globe2 className="me-1 inline size-4"/>{isArabic ? "EN" : "عربي"}</button>
       <div className="relative">

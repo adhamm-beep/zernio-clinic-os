@@ -12,7 +12,7 @@ export type ManagedUser = {
   is_active: boolean | null;
   employment_status: string | null;
   roles: Array<{ role_id: number }>;
-  overrides: Array<{ permission_id: number; granted: boolean }>;
+  overrides: Array<{ permission_id: number; granted: boolean;updated_at:string;updated_by:number|null;editor?:{staff_name:string|null}|null }>;
 };
 export type ManagedPermission={id:number;code:string;name:string;module:string};
 
@@ -29,7 +29,7 @@ export async function getUserManagementData(clinicId: number, branchId: number):
   const [users, roles,permissions] = await Promise.all([
     supabase
       .from("staff")
-      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides(permission_id,granted)")
+      .select("id,staff_name,email,phone,job_title,department,is_active,employment_status,roles:hr_staff_roles(role_id),overrides:hr_staff_permission_overrides(permission_id,granted,updated_at,updated_by,editor:staff!hr_staff_permission_overrides_updated_by_fkey(staff_name))")
       .eq("clinic_id", clinicId)
       .eq("branch_id", branchId)
       .order("staff_name"),
@@ -44,7 +44,7 @@ export async function getUserManagementData(clinicId: number, branchId: number):
   const error = users.error || roles.error||permissions.error;
   if (error) throw new Error(error.message);
   return {
-    users: (users.data ?? []) as ManagedUser[],
+    users: (users.data ?? []) as unknown as ManagedUser[],
     roles: (roles.data ?? []) as unknown as ManagedRole[],
     permissions:(permissions.data??[]) as ManagedPermission[],
   };

@@ -25,6 +25,13 @@ const statusStyles: Record<AppointmentStatus, string> = {
 export default function DashboardOverview() {
   const { isArabic, text } = useLocale();
   const financeAllowed = usePermission("dashboard.finance.view").allowed;
+  const appointmentsCountAllowed = usePermission("dashboard.appointments_count.view").allowed;
+  const completedCountAllowed = usePermission("dashboard.completed_patients_count.view").allowed;
+  const invoiceCountAllowed = usePermission("dashboard.invoice_count.view").allowed;
+  const collectionsAllowed = usePermission("dashboard.collections_total.view").allowed;
+  const invoicedAllowed = usePermission("dashboard.invoiced_total.view").allowed;
+  const paidAllowed = usePermission("dashboard.paid_total.view").allowed;
+  const remainingAllowed = usePermission("dashboard.remaining_total.view").allowed;
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
@@ -52,7 +59,8 @@ export default function DashboardOverview() {
   const statusLabel = (status: AppointmentStatus) => ({ booked: text("Booked", "محجوز"), confirmed: text("Confirmed", "مؤكد"), arrived: text("Arrived", "تم الوصول"), completed: text("Completed", "مكتمل"), cancelled: text("Cancelled", "ملغي"), no_show: text("No show", "لم يحضر") })[status];
   const serviceName = (id: number | null) => { const item = services.find(service => service.id === id); return item ? serviceFamilyLabel(item, isArabic) : text("Service", "خدمة"); };
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
-  const metrics: Array<[string, string | number, LucideIcon]> = [[text("Appointments", "المواعيد"), appointments.length, CalendarDays], [text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2], [text("Invoices", "الفواتير"), payments.length, FileText], ...(financeAllowed ? [[text("Collected", "المحصل"), money(paid), Banknote] as [string, string | number, LucideIcon]] : [])];
+  const metrics: Array<[string, string | number, LucideIcon]> = [...(appointmentsCountAllowed ? [[text("Appointments", "المواعيد"), appointments.length, CalendarDays] as [string,string|number,LucideIcon]] : []), ...(completedCountAllowed ? [[text("Completed patients", "المرضى المكتملون"), completedPatients, CheckCircle2] as [string,string|number,LucideIcon]] : []), ...(invoiceCountAllowed ? [[text("Invoices", "الفواتير"), payments.length, FileText] as [string,string|number,LucideIcon]] : []), ...((collectionsAllowed||financeAllowed) ? [[text("Collected", "المحصل"), money(paid), Banknote] as [string,string|number,LucideIcon]] : [])];
+  const financialMetrics = [[text("Invoiced", "إجمالي الفواتير"), invoiced, invoicedAllowed||financeAllowed], [text("Paid", "المدفوع"), paid, paidAllowed||financeAllowed], [text("Remaining", "المتبقي"), remaining, remainingAllowed||financeAllowed]].filter(item=>item[2]) as Array<[string,number,boolean]>;
 
   return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>
     <section className="overflow-hidden rounded-[28px] bg-[#071826] text-white shadow-xl">

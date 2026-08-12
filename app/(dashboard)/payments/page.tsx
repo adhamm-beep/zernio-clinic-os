@@ -15,9 +15,14 @@ import DateRangeFilter from "@/features/date-range/DateRangeFilter";
 import { isWithinDateRange } from "@/features/date-range/date-range";
 import { useDateRange } from "@/features/date-range/useDateRange";
 import { groupServiceFamilies } from "@/features/services/service-family";
+import { usePermission } from "@/features/users/hooks/usePermission";
 
 export default function PaymentsPage() {
   const { isArabic, text } = useLocale();
+  const totalAllowed=usePermission("payments.total.view").allowed;
+  const paidAllowed=usePermission("payments.paid_total.view").allowed;
+  const remainingAllowed=usePermission("payments.remaining_total.view").allowed;
+  const amountsAllowed=usePermission("payments.amounts.view").allowed;
   const { clinic, selectedBranch } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
@@ -43,11 +48,9 @@ export default function PaymentsPage() {
   const totals = filtered.reduce((result, payment) => ({ total: result.total + Number(payment.amount ?? 0), paid: result.paid + Number(payment.paid_amount ?? (payment.payment_status === "paid" ? payment.amount : 0)), remaining: result.remaining + Number(payment.balance_due ?? 0), tax: result.tax + Number(payment.tax_amount ?? 0), discount: result.discount + Number(payment.discount_amount ?? 0) }), { total: 0, paid: 0, remaining: 0, tax: 0, discount: 0 });
   const money = (value: number) => new Intl.NumberFormat(isArabic ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(value);
   const cards: Array<{ label: string; value: number; icon: LucideIcon; tone: string; surface: string }> = [
-    { label: text("Invoice total", "إجمالي الفواتير"), value: totals.total, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" },
-    { label: text("Paid", "المدفوع"), value: totals.paid, icon: Banknote, tone: "text-emerald-700", surface: "bg-emerald-50" },
-    { label: text("Remaining", "المتبقي"), value: totals.remaining, icon: WalletCards, tone: "text-rose-700", surface: "bg-rose-50" },
-    { label: text("Tax", "الضريبة"), value: totals.tax, icon: FileText, tone: "text-blue-700", surface: "bg-blue-50" },
-    { label: text("Discount", "الخصم"), value: totals.discount, icon: Percent, tone: "text-amber-700", surface: "bg-amber-50" },
+    ...(totalAllowed||amountsAllowed?[{ label: text("Invoice total", "إجمالي الفواتير"), value: totals.total, icon: ReceiptText, tone: "text-slate-950", surface: "bg-white" }]:[]),
+    ...(paidAllowed||amountsAllowed?[{ label: text("Paid", "المدفوع"), value: totals.paid, icon: Banknote, tone: "text-emerald-700", surface: "bg-emerald-50" }]:[]),
+    ...(remainingAllowed||amountsAllowed?[{ label: text("Remaining", "المتبقي"), value: totals.remaining, icon: WalletCards, tone: "text-rose-700", surface: "bg-rose-50" }]:[]),
   ];
 
   return <div className="space-y-5" dir={isArabic ? "rtl" : "ltr"}>

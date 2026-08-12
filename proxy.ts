@@ -69,7 +69,7 @@ export async function proxy(request: NextRequest) {
     ["/settings/users", ["users.manage"]], ["/settings", ["settings.view","settings.manage","users.manage"]],
     ["/customers", ["customers.view","customers.details.view","customers.create","customers.edit","customers.deactivate","customers.export","customers.manage"]], ["/appointments", ["appointments.view","appointments.create","appointments.edit","appointments.cancel","appointments.patient_requests.manage","appointments.manage","calendar.view"]],
     ["/calendar", "calendar.view"], ["/follow-ups", "followups.view"],
-    ["/treatments", "treatments.view"], ["/payments", "payments.view"],
+    ["/treatments", "treatments.view"], ["/payments", ["payments.view","payments.amounts.view","payments.invoice_count.view","payments.total.view","payments.paid_total.view","payments.remaining_total.view","payments.create","payments.refund","payments.invoice.print","payments.manage"]],
     ["/price-list", "services.view"], ["/inventory", "inventory.view"],
     ["/staff", ["staff.view","staff.salary.view","staff.manage","staff.attendance.manage","staff.schedule.manage"]], ["/marketing", ["marketing.view","marketing.spend.view","marketing.manage"]],
     ["/reports", ["reports.view","reports.finance.view","reports.doctor_revenue.view","reports.export"]], ["/ask-zernio", ["ai.view","ai.use"]],
@@ -77,7 +77,7 @@ export async function proxy(request: NextRequest) {
     ["/patient-app", "patient_app.analytics"],
     ["/support", "support.create"],
     ["/ai-agents", "ai.view"], ["/enterprise", "enterprise.view"],
-    ["/dashboard", "dashboard.view"], ["/api/ai", "ai.use"],
+    ["/dashboard", ["dashboard.view","dashboard.finance.view","dashboard.appointments_count.view","dashboard.completed_patients_count.view","dashboard.invoice_count.view","dashboard.collections_total.view","dashboard.invoiced_total.view","dashboard.paid_total.view","dashboard.remaining_total.view"]], ["/api/ai", "ai.use"],
     ["/api/payments", "payments.manage"], ["/api/admin/users", "users.manage"],
   ];
   const match = permissionRoutes.find(([prefix]) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`));
