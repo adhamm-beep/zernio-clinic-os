@@ -1,5 +1,5 @@
-import AccountingDashboard from "@/features/accounting/components/AccountingDashboard";
+import FinanceWorkspace from "@/features/accounting/components/FinanceWorkspace";
 
 export default function AccountingPage() {
-  return <AccountingDashboard />;
+  return <FinanceWorkspace />;
 }

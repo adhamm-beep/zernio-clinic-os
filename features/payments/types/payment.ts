@@ -38,6 +38,14 @@ export interface Payment {
   discount_amount: number;
   paid_amount: number;
   balance_due: number;
+  insurance_amount?: number;
+  diagnostic_fee?: number;
+  preauthorization_status?: string | null;
+  is_signed?: boolean;
+  is_released?: boolean;
+  einvoice_reported_at?: string | null;
+  assigned_to_staff_id?: number | null;
+  details?: string | null;
 
   payment_method: PaymentMethod | string;
   payment_status: PaymentStatus | string;
@@ -56,6 +64,10 @@ export interface Payment {
     last_name: string | null;
     phone: string | null;
     customer_code: string | null;
+    insurance_company?: string | null;
+    insurance_policy_number?: string | null;
+    referral_source?: string | null;
+    wallet_balance?: number;
   } | null;
 
   treatments?: {
@@ -74,9 +86,12 @@ export interface Payment {
     service_id: number | null;
     staff?: { id: number; staff_name: string } | null;
     services?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
+    rooms?: { id:number; name:string } | null;
+    branches?: { id:number; name:string } | null;
   } | null;
   services?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
   service_variants?: { id: number; name: string; name_en?: string | null; name_ar?: string | null } | null;
   payment_invoice_items?: Array<{ id:number; service_id:number; service_variant_id:number|null; description:string; quantity:number; unit:string; unit_price:number; line_total:number; services?:{name:string;name_en?:string|null;name_ar?:string|null}|null; service_variants?:{name:string;name_en?:string|null;name_ar?:string|null}|null }>;
   payment_tenders?:Array<{id:number;method:string;amount:number;reference_number:string|null}>;
+  assigned_staff?:{id:number;staff_name:string}|null;
 }

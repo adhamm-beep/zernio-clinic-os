@@ -42,4 +42,6 @@ export interface FollowUp {
     phone: string | null;
     customer_code: string | null;
   } | null;
+  branches?: { name: string | null } | null;
+  appointments?: { appointment_at: string | null; rooms?: { name: string | null } | null; staff?: { staff_name: string | null } | null } | null;
 }

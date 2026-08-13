@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -47,7 +47,6 @@ function readOutputText(response: OpenAIResponse) {
     ?.flatMap((item) => item.content ?? [])
     .find((content) => content.type === "output_text")?.text;
 }
-
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -95,7 +94,7 @@ export async function POST(request: Request) {
           {
             role: "system",
             content:
-              "You are Zernio Clinic AI. Analyze only the anonymous aggregate metrics supplied. Write in clear professional Arabic. Do not diagnose, prescribe, invent patient facts, or claim certainty. Return valid JSON matching the requested schema.",
+              "You are Panthera Clinic AI. Analyze only the anonymous aggregate metrics supplied. Write in clear professional Arabic. Do not diagnose, prescribe, invent patient facts, or claim certainty. Return valid JSON matching the requested schema.",
           },
           {
             role: "user",

@@ -108,15 +108,21 @@ export async function createAppointment(
   appointment: CreateAppointmentInput
 ): Promise<Appointment> {
 
+  const { data: operationalSettings } = await supabase
+    .from("clinic_operational_settings")
+    .select("auto_confirm_appointments")
+    .eq("clinic_id", appointment.clinic_id)
+    .maybeSingle();
+
   const appointmentTime = new Date(
     appointment.appointment_at
   );
 
-  if (appointmentTime <= new Date()) throw new Error("A past appointment time cannot be booked.");
+  if (appointmentTime <= new Date()) throw new Error("لا يمكن حجز موعد في وقت مضى.");
 
   const hour = appointmentTime.getHours();
 
-  if (appointmentTime.getDay() === 5) throw new Error("The clinic is closed on Friday.");
+  if (appointmentTime.getDay() === 5) throw new Error("العيادة مغلقة يوم الجمعة.");
 
   if (hour < (appointment.doctor_id ? 14 : 10) || hour >= 22) {
     throw new Error(
@@ -142,9 +148,9 @@ export async function createAppointment(
     duration_minutes: Number(service?.duration_minutes) || 30,
   });
 
-  if (conflict.deviceConflict) throw new Error("The selected device is already booked at this time.");
-  if (conflict.doctorConflict) throw new Error("The doctor is already booked at this time.");
-  if (conflict.roomConflict) throw new Error("The room is already booked at this time.");
+  if (conflict.deviceConflict) throw new Error("الجهاز المحدد محجوز بالفعل في هذا الوقت.");
+  if (conflict.doctorConflict) throw new Error("الطبيب محجوز بالفعل في هذا الوقت.");
+  if (conflict.roomConflict) throw new Error("الغرفة محجوزة بالفعل في هذا الوقت.");
 
   const { data, error } =
     await supabase
@@ -182,7 +188,7 @@ export async function createAppointment(
           null,
 
         status:
-          appointment.status,
+          operationalSettings?.auto_confirm_appointments ? "confirmed" : appointment.status,
 
         created_from_channel:
           appointment.created_from_channel ??
@@ -578,7 +584,7 @@ export async function updateAppointmentTime(
     input.appointment_at
   );
 
-  if (appointmentTime <= new Date()) throw new Error("A past appointment time cannot be booked.");
+  if (appointmentTime <= new Date()) throw new Error("لا يمكن حجز موعد في وقت مضى.");
 
   const { data: current, error: currentError } = await supabase.from("appointments")
     .select("clinic_id, branch_id, doctor_id, service_id, room_id, device_id")
@@ -593,7 +599,7 @@ export async function updateAppointmentTime(
   const closing = new Date(appointmentTime);
   closing.setHours(22, 0, 0, 0);
 
-  if (appointmentTime.getDay() === 5) throw new Error("The clinic is closed on Friday.");
+  if (appointmentTime.getDay() === 5) throw new Error("العيادة مغلقة يوم الجمعة.");
   if (hour < (current.doctor_id ? 14 : 10) || appointmentEnd > closing) {
     throw new Error(
       current.doctor_id
@@ -612,9 +618,9 @@ export async function updateAppointmentTime(
     duration_minutes: durationMinutes,
     ignore_appointment_id: input.id,
   });
-  if (conflict.deviceConflict) throw new Error("The device is already booked at this time.");
-  if (conflict.doctorConflict) throw new Error("The doctor is already booked at this time.");
-  if (conflict.roomConflict) throw new Error("The room is already booked at this time.");
+  if (conflict.deviceConflict) throw new Error("الجهاز محجوز بالفعل في هذا الوقت.");
+  if (conflict.doctorConflict) throw new Error("الطبيب محجوز بالفعل في هذا الوقت.");
+  if (conflict.roomConflict) throw new Error("الغرفة محجوزة بالفعل في هذا الوقت.");
 
   const { data, error } = await supabase
     .from("appointments")
@@ -778,7 +784,7 @@ export async function updateAppointment(
   }
 
   if (conflictResult.deviceConflict) {
-    throw new Error("The selected device is already booked at this time.");
+    throw new Error("الجهاز المحدد محجوز بالفعل في هذا الوقت.");
   }
 
   const { data, error } =

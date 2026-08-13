@@ -244,7 +244,7 @@ function AppointmentDetails({
       metadata,
       "doctorName",
       event.description ??
-        "Doctor not assigned"
+        "لم يُحدد طبيب"
     );
 
   const branchName =

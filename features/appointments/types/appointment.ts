@@ -2,9 +2,13 @@ export type AppointmentStatus =
   | "booked"
   | "confirmed"
   | "arrived"
+  | "in_progress"
   | "completed"
+  | "late"
   | "cancelled"
-  | "no_show";
+  | "no_show"
+  | "waitlist"
+  | "note";
 
 export interface AppointmentCustomer {
   id: number;
@@ -151,7 +155,11 @@ export interface AppointmentStatistics {
   booked: number;
   confirmed: number;
   arrived: number;
+  in_progress: number;
   completed: number;
+  late: number;
   cancelled: number;
   no_show: number;
+  waitlist: number;
+  note: number;
 }

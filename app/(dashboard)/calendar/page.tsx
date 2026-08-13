@@ -11,9 +11,12 @@ import { useCalendarEvents } from "@/features/calendar/hooks/useCalendarEvents";
 
 import { formatCalendarTitle } from "@/features/calendar/lib/calendar.utils";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 export default function CalendarPage() {
   const { clinic, selectedBranch } = useClinic();
+  const access = usePermissionAccess();
+  const canCreate = access.can("appointments.create", "appointments.manage");
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const {
@@ -23,10 +26,7 @@ export default function CalendarPage() {
     error,
     refetch,
     isFetching,
-  } = useCalendarEvents(
-    clinicId,
-    branchId
-  );
+  } = useCalendarEvents(clinicId, branchId);
 
   const {
     view,
@@ -40,13 +40,10 @@ export default function CalendarPage() {
     goToNext,
   } = useCalendar(events);
 
-  const title = formatCalendarTitle(
-    currentDate,
-    view
-  );
+  const title = formatCalendarTitle(currentDate, view);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3" dir="rtl">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 flex-1">
           <CalendarHeader
@@ -60,7 +57,7 @@ export default function CalendarPage() {
         </div>
 
         <div className="shrink-0">
-          {clinicId > 0 && branchId > 0 && (
+          {canCreate && clinicId > 0 && branchId > 0 && (
             <AddAppointmentDialogV2 clinicId={clinicId} branchId={branchId} />
           )}
         </div>
@@ -74,17 +71,13 @@ export default function CalendarPage() {
 
       {isLoading && (
         <div className="rounded-2xl border bg-white p-10 text-center shadow-sm">
-          <p className="text-sm text-gray-500">
-            Loading calendar...
-          </p>
+          <p className="text-sm text-gray-500">جاري تحميل المواعيد...</p>
         </div>
       )}
 
       {!isLoading && isError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="font-medium text-red-700">
-            Failed to load calendar
-          </p>
+          <p className="font-medium text-red-700">تعذر تحميل المواعيد</p>
 
           <p className="mt-1 text-sm text-red-600">
             {error instanceof Error
@@ -100,9 +93,7 @@ export default function CalendarPage() {
             disabled={isFetching}
             className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isFetching
-              ? "Retrying..."
-              : "Try Again"}
+            {isFetching ? "جاري إعادة المحاولة..." : "إعادة المحاولة"}
           </button>
         </div>
       )}

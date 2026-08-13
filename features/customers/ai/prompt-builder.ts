@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   CustomerMemory,
 } from "./customer-memory";
 
@@ -9,7 +9,7 @@ buildSummaryPrompt(
 
   return `
 
-You are Zernio Clinic AI.
+You are Panthera Clinic AI.
 
 Patient Summary
 

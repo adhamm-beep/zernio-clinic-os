@@ -35,27 +35,27 @@ const filters: {
 }[] = [
   {
     value: "all",
-    label: "All",
+    label: "الكل",
   },
   {
     value: "appointment",
-    label: "Appointments",
+    label: "المواعيد",
   },
   {
     value: "treatment",
-    label: "Treatments",
+    label: "العلاجات",
   },
   {
     value: "payment",
-    label: "Payments",
+    label: "المدفوعات",
   },
   {
     value: "follow_up",
-    label: "Follow-ups",
+    label: "المتابعات",
   },
   {
     value: "medical_record",
-    label: "Medical",
+    label: "السجل الطبي",
   },
 ];
 
@@ -82,15 +82,15 @@ function formatDayHeading(
       second.getDate();
 
   if (sameDay(date, today)) {
-    return "Today";
+    return "اليوم";
   }
 
   if (sameDay(date, yesterday)) {
-    return "Yesterday";
+    return "أمس";
   }
 
   return new Intl.DateTimeFormat(
-    "en-US",
+    "ar-SA-u-nu-latn",
     {
       weekday: "long",
       day: "numeric",
@@ -106,7 +106,7 @@ function formatTime(
   const date = new Date(value);
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    "ar-SA-u-nu-latn",
     {
       hour: "2-digit",
       minute: "2-digit",
@@ -137,7 +137,7 @@ function getEventAppearance(
         icon: CalendarDays,
         iconClass:
           "bg-blue-50 text-blue-600",
-        label: "Appointment",
+        label: "موعد",
       };
 
     case "treatment":
@@ -145,7 +145,7 @@ function getEventAppearance(
         icon: Stethoscope,
         iconClass:
           "bg-purple-50 text-purple-600",
-        label: "Treatment",
+        label: "علاج",
       };
 
     case "payment":
@@ -153,7 +153,7 @@ function getEventAppearance(
         icon: CircleDollarSign,
         iconClass:
           "bg-emerald-50 text-emerald-600",
-        label: "Payment",
+        label: "دفعة",
       };
 
     case "invoice":
@@ -161,7 +161,7 @@ function getEventAppearance(
         icon: ReceiptText,
         iconClass:
           "bg-cyan-50 text-cyan-600",
-        label: "Invoice",
+        label: "فاتورة",
       };
 
     case "follow_up":
@@ -169,7 +169,7 @@ function getEventAppearance(
         icon: UserCheck,
         iconClass:
           "bg-orange-50 text-orange-600",
-        label: "Follow-up",
+        label: "متابعة",
       };
 
     case "medical_record":
@@ -177,7 +177,7 @@ function getEventAppearance(
         icon: ClipboardList,
         iconClass:
           "bg-red-50 text-red-600",
-        label: "Medical Record",
+        label: "سجل طبي",
       };
 
     default:
@@ -185,7 +185,7 @@ function getEventAppearance(
         icon: ClipboardList,
         iconClass:
           "bg-slate-100 text-slate-600",
-        label: "Activity",
+        label: "نشاط",
       };
   }
 }
@@ -335,13 +335,13 @@ export default function CustomerTimeline({
     return (
       <section className="rounded-3xl border border-red-200 bg-red-50 p-7 text-red-700">
         <h2 className="text-lg font-bold">
-          Timeline could not be loaded
+          تعذر تحميل التسلسل الزمني
         </h2>
 
         <p className="mt-2 text-sm">
           {error instanceof Error
             ? error.message
-            : "An unexpected error occurred."}
+            : "حدث خطأ غير متوقع."}
         </p>
         <TimelineEventDialog
   event={selectedEvent}
@@ -362,18 +362,18 @@ export default function CustomerTimeline({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-950">
-            Customer Timeline
+            الخط الزمني للمريض
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Complete customer activity in one place.
+            جميع أنشطة المريض في مكان واحد.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="mr-1 flex items-center gap-2 text-sm text-slate-500">
             <Filter className="h-4 w-4" />
-            Filter
+            تصفية
           </div>
 
           {filters.map((filter) => {
@@ -410,11 +410,11 @@ export default function CustomerTimeline({
           <ClipboardList className="mx-auto h-10 w-10 text-slate-300" />
 
           <h3 className="mt-4 font-semibold text-slate-900">
-            No activity found
+            لا يوجد نشاط
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            No events match the selected filter.
+            لا توجد أحداث تطابق التصفية المحددة.
           </p>
         </div>
       ) : (
@@ -438,8 +438,8 @@ export default function CustomerTimeline({
                     }{" "}
                     {group.events
                       .length === 1
-                      ? "event"
-                      : "events"}
+                      ? "حدث"
+                      : "أحداث"}
                   </span>
                 </div>
 
@@ -507,10 +507,7 @@ export default function CustomerTimeline({
                                     event.status
                                   )}`}
                                 >
-                                  {event.status.replaceAll(
-                                    "_",
-                                    " "
-                                  )}
+                                  {({booked:"محجوز",confirmed:"مؤكد",arrived:"تم تسجيل الوصول",in_progress:"جاري العمل",completed:"مكتمل",late:"متأخر",cancelled:"ملغي",no_show:"لم يحضر",waitlist:"قائمة الانتظار",note:"ملاحظة",paid:"مدفوع",partial:"مدفوع جزئيًا",refunded:"مسترد",pending:"معلق",no_answer:"لا يجيب"} as Record<string,string>)[event.status]??event.status.replaceAll("_"," ")}
                                 </span>
                               )}
 
@@ -525,10 +522,7 @@ export default function CustomerTimeline({
 
                               {event.createdBy && (
                                 <span className="text-xs text-slate-500">
-                                  By{" "}
-                                  {
-                                    event.createdBy
-                                  }
+                                  عبر {({mobile:"تطبيق المريض",web:"النظام",patient_app:"تطبيق المريض"} as Record<string,string>)[event.createdBy]??event.createdBy}
                                 </span>
                               )}
                             </div>

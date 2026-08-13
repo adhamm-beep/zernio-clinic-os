@@ -52,6 +52,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local audit and generated report working files
+.codex-work/
+tmp/
+output/report-assets/
 # Local Codex diagnostics
 .codex-git-diagnostic.*
 

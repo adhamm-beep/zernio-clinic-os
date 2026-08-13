@@ -493,9 +493,9 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
                   Select doctor or department
                 </option>
 
-                <option value={-1}>Laser Department (Nurses)</option>
-                <option value={-2}>Hair Bleaching Department (PicoWay)</option>
-                <option value={-3}>ProFacial Department (Nurse)</option>
+                <option value={-1}>قسم الليزر (التمريض)</option>
+                <option value={-2}>قسم تشقير الشعر (PicoWay)</option>
+                <option value={-3}>قسم بروفاشيال (التمريض)</option>
 
                 {availableStaff.map(
                   (member) => (
@@ -542,12 +542,12 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
           </div>
 
           <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Device</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">الجهاز</label>
               <select {...register("device_id", { valueAsNumber: true })} disabled={!serviceId || availableDevices.length === 0} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
                 <option value={0}>{!serviceId ? "Select a service first" : availableDevices.length === 0 ? "No device allowed for this service" : "Select device"}</option>
                 {availableDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
               </select>
-              {availableDevices.length === 1 && <p className="mt-1 text-xs text-gray-500">Selected automatically for this service.</p>}
+              {availableDevices.length === 1 && <p className="mt-1 text-xs text-gray-500">تم تحديده تلقائيًا وفق الخدمة.</p>}
             </div>
 
           <div>

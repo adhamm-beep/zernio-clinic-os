@@ -21,15 +21,15 @@ import type { Service } from "../types/service";
 import { useUpdateService } from "../hooks/useUpdateService";
 
 const serviceSchema = z.object({
-  name: z.string().min(2, "Service name is required"),
-  category: z.string().min(1, "Category is required"),
+  name: z.string().min(2, "اسم الخدمة مطلوب"),
+  category: z.string().min(1, "تصنيف الخدمة مطلوب"),
   default_price: z
     .number()
-    .min(0, "Price cannot be negative"),
+    .min(0, "لا يمكن أن يكون السعر سالبًا"),
   duration_minutes: z
     .number()
-    .int("Duration must be a whole number")
-    .min(5, "Minimum duration is 5 minutes"),
+    .int("يجب أن تكون المدة رقمًا صحيحًا")
+    .min(5, "أقل مدة هي 5 دقائق"),
   is_active: z.boolean(),
 });
 
@@ -49,6 +49,7 @@ const categories = [
   "Follow Up",
   "Other",
 ];
+const categoryLabels: Record<string, string> = { Consultation: "استشارة", Injectables: "حقن", Laser: "ليزر", Skin: "بشرة", Hair: "شعر", Body: "جسم", "Follow Up": "متابعة", Other: "أخرى" };
 
 export default function EditServiceDialog({
   service,
@@ -95,13 +96,13 @@ export default function EditServiceDialog({
         is_active: values.is_active,
       });
 
-      toast.success("Service updated successfully");
+      toast.success("تم تحديث الخدمة بنجاح");
       setOpen(false);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to update service"
+          : "تعذر تحديث الخدمة"
       );
     }
   }
@@ -111,14 +112,14 @@ export default function EditServiceDialog({
       <DialogTrigger
         render={
           <Button type="button" variant="outline">
-            Edit
+            تعديل
           </Button>
         }
       />
 
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Service</DialogTitle>
+          <DialogTitle>تعديل الخدمة</DialogTitle>
         </DialogHeader>
 
         <form
@@ -127,7 +128,7 @@ export default function EditServiceDialog({
         >
           <div>
             <Input
-              placeholder="Service name"
+              placeholder="اسم الخدمة"
               {...register("name")}
             />
 
@@ -143,14 +144,14 @@ export default function EditServiceDialog({
               {...register("category")}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select category</option>
+              <option value="">حدد التصنيف</option>
 
               {categories.map((category) => (
                 <option
                   key={category}
                   value={category}
                 >
-                  {category}
+                  {categoryLabels[category] ?? category}
                 </option>
               ))}
             </select>
@@ -167,7 +168,7 @@ export default function EditServiceDialog({
               type="number"
               min="0"
               step="0.01"
-              placeholder="Default price"
+              placeholder="السعر الافتراضي"
               {...register("default_price", {
                 valueAsNumber: true,
               })}
@@ -185,7 +186,7 @@ export default function EditServiceDialog({
               type="number"
               min="5"
               step="5"
-              placeholder="Duration in minutes"
+              placeholder="المدة بالدقائق"
               {...register("duration_minutes", {
                 valueAsNumber: true,
               })}
@@ -205,7 +206,7 @@ export default function EditServiceDialog({
               className="h-4 w-4 rounded border-gray-300"
             />
 
-            Active service
+            خدمة نشطة
           </label>
 
           <Button
@@ -214,8 +215,8 @@ export default function EditServiceDialog({
             disabled={updateService.isPending}
           >
             {updateService.isPending
-              ? "Saving..."
-              : "Save Changes"}
+              ? "جارٍ الحفظ..."
+              : "حفظ التعديلات"}
           </Button>
         </form>
       </DialogContent>

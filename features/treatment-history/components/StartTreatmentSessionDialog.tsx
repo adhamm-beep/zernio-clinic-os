@@ -521,7 +521,7 @@ export default function StartTreatmentSessionDialog({
           <DialogTitle className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
 
-            Start Treatment Session
+            بدء جلسة العلاج
           </DialogTitle>
         </DialogHeader>
 
@@ -567,9 +567,9 @@ export default function StartTreatmentSessionDialog({
                     Select doctor or department
                   </option>
 
-                  <option value="-1" className="text-black">Laser Department (Nurses)</option>
-                  <option value="-2" className="text-black">Hair Bleaching Department (PicoWay)</option>
-                  <option value="-3" className="text-black">ProFacial Department (Nurse)</option>
+                  <option value="-1" className="text-black">قسم الليزر (التمريض)</option>
+                  <option value="-2" className="text-black">قسم تشقير الشعر (بيكواي)</option>
+                  <option value="-3" className="text-black">قسم البروفاشيال (التمريض)</option>
 
                   {masterData?.staff.filter(isApprovedDoctor).map(
                     (doctor) => (
@@ -817,7 +817,7 @@ export default function StartTreatmentSessionDialog({
                       </div>
 
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Unit Price</label>
+                        <label className="mb-1 block text-sm font-medium">سعر الوحدة</label>
                         <Input value={product.unitPrice} readOnly placeholder="Selected automatically" />
                       </div>
 

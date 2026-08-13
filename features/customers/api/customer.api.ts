@@ -20,6 +20,23 @@ export type CreateCustomerInput = {
   referral_source?: string;
   referral_source_id?: number;
   referral_detail?: string;
+  address?: string;
+  title?: string;
+  secondary_phone?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  family_members_count?: number;
+  expected_delivery_date?: string;
+  marital_status?: string;
+  occupation?: string;
+  insurance_company?: string;
+  insurance_policy_number?: string;
+  insurance_policy_class?: string;
+  insurance_expiry?: string;
+  price_group?: string;
+  phone_verified?: boolean;
+  birth_date_verified?: boolean;
+  address_verified?: boolean;
 };
 
 export type UpdateCustomerInput = Omit<CreateCustomerInput, "clinic_id" | "branch_id"> & {
@@ -58,9 +75,7 @@ export async function getCustomerById(
 export async function createCustomer(
   customer: CreateCustomerInput
 ): Promise<Customer> {
-  const { data, error } = await supabase
-    .from("customers")
-    .insert({
+  const payload = {
       clinic_id: customer.clinic_id,
       branch_id: customer.branch_id,
       customer_code: customer.customer_code?.trim() || null,
@@ -78,10 +93,10 @@ export async function createCustomer(
       referral_source: customer.referral_source?.trim() || null,
       referral_source_id:customer.referral_source_id||null,
       referral_detail: customer.referral_detail?.trim() || null,
+      title:customer.title?.trim()||null,secondary_phone:customer.secondary_phone?.trim()||null,emergency_contact_name:customer.emergency_contact_name?.trim()||null,emergency_contact_phone:customer.emergency_contact_phone?.trim()||null,family_members_count:customer.family_members_count??0,expected_delivery_date:customer.expected_delivery_date||null,address:customer.address?.trim()||null,marital_status:customer.marital_status?.trim()||null,occupation:customer.occupation?.trim()||null,insurance_company:customer.insurance_company?.trim()||null,insurance_policy_number:customer.insurance_policy_number?.trim()||null,insurance_policy_class:customer.insurance_policy_class?.trim()||null,insurance_expiry:customer.insurance_expiry||null,price_group:customer.price_group?.trim()||null,phone_verified:customer.phone_verified??false,birth_date_verified:customer.birth_date_verified??false,address_verified:customer.address_verified??false,
       selected_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  };
+  const { data, error } = await writeCustomerWithSchemaFallback("insert", payload);
 
   if (error) {
     throw customerWriteError(error.message);
@@ -93,9 +108,7 @@ export async function createCustomer(
 export async function updateCustomer(
   customer: UpdateCustomerInput
 ): Promise<Customer> {
-  const { data, error } = await supabase
-    .from("customers")
-    .update({
+  const payload = {
       customer_code: customer.customer_code?.trim() || null,
       first_name: customer.first_name.trim(),
       last_name: customer.last_name?.trim() || null,
@@ -111,16 +124,34 @@ export async function updateCustomer(
       referral_source: customer.referral_source?.trim() || null,
       referral_source_id:customer.referral_source_id||null,
       referral_detail: customer.referral_detail?.trim() || null,
-    })
-    .eq("id", customer.id)
-    .select()
-    .single();
+      title:customer.title?.trim()||null,secondary_phone:customer.secondary_phone?.trim()||null,emergency_contact_name:customer.emergency_contact_name?.trim()||null,emergency_contact_phone:customer.emergency_contact_phone?.trim()||null,family_members_count:customer.family_members_count??0,expected_delivery_date:customer.expected_delivery_date||null,address:customer.address?.trim()||null,marital_status:customer.marital_status?.trim()||null,occupation:customer.occupation?.trim()||null,insurance_company:customer.insurance_company?.trim()||null,insurance_policy_number:customer.insurance_policy_number?.trim()||null,insurance_policy_class:customer.insurance_policy_class?.trim()||null,insurance_expiry:customer.insurance_expiry||null,price_group:customer.price_group?.trim()||null,phone_verified:customer.phone_verified??false,birth_date_verified:customer.birth_date_verified??false,address_verified:customer.address_verified??false,
+  };
+  const { data, error } = await writeCustomerWithSchemaFallback("update", payload, customer.id);
 
   if (error) {
     throw customerWriteError(error.message);
   }
 
   return data as Customer;
+}
+
+async function writeCustomerWithSchemaFallback(mode:"insert"|"update",initial:Record<string,unknown>,id?:number){
+  const payload={...initial};
+  for(let attempt=0;attempt<20;attempt+=1){
+    const query=mode==="insert"?supabase.from("customers").insert(payload):supabase.from("customers").update(payload).eq("id",id!);
+    const result=await query.select().single();
+    if(!result.error)return result;
+    const missing=parseMissingCustomerColumn(result.error.message);
+    if(!missing||!(missing in payload))return result;
+    delete payload[missing];
+  }
+  return{data:null,error:{message:"تعذر مطابقة حقول العميل مع قاعدة البيانات الحالية"}};
+}
+
+function parseMissingCustomerColumn(message:string){
+  return message.match(/Could not find the ['\"]([^'\"]+)['\"] column/i)?.[1]
+    ??message.match(/column (?:customers\.)?['\"]?([a-z0-9_]+)['\"]? does not exist/i)?.[1]
+    ??null;
 }
 
 export type PatientTag={id:number;clinic_id:number;name:string;color:string;is_active:boolean};
@@ -188,6 +219,7 @@ export async function getCustomer360(
     followUpsResult,
     treatmentSessionsResult,
     membershipResult,
+    extendedProfileResult,
   ] = await Promise.all([
     supabase
       .from("customer_directory")
@@ -256,6 +288,7 @@ export async function getCustomer360(
       .order("session_date", { ascending: false }),
 
     supabase.rpc("staff_customer_membership_summary", { p_customer_id: customerId }),
+    supabase.from("customers").select("title,secondary_phone,emergency_contact_name,emergency_contact_phone,family_members_count,expected_delivery_date").eq("id", customerId).maybeSingle(),
   ]);
 
   const firstError =
@@ -266,9 +299,11 @@ export async function getCustomer360(
     followUpsResult.error ||
     treatmentSessionsResult.error ||
     membershipResult.error;
+  const missingExtendedColumns = extendedProfileResult.error?.message.includes("column") || extendedProfileResult.error?.message.includes("schema cache");
+  const resolvedError = firstError || (missingExtendedColumns ? null : extendedProfileResult.error);
 
-  if (firstError) {
-    throw new Error(firstError.message);
+  if (resolvedError) {
+    throw new Error(resolvedError.message);
   }
 
   if (!customerResult.data) {
@@ -318,6 +353,7 @@ export async function getCustomer360(
 
   return {
     ...customerResult.data,
+    ...(extendedProfileResult.data ?? {}),
     appointments,
     treatments,
     treatmentSessions,

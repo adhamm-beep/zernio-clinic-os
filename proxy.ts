@@ -69,8 +69,13 @@ export async function proxy(request: NextRequest) {
   const required = permissionsForPath(request.nextUrl.pathname);
   if (isAuthenticated && required) {
     const { data: allowed, error } = await supabase.rpc("has_any_hr_permission", { permission_codes: required });
-    // Until the access-control migration is installed, preserve the existing behavior.
-    if (!error && !allowed) {
+    if (error) {
+      if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.json({ error: "تعذر التحقق من صلاحيات المستخدم" }, { status: 503 });
+      const unavailableUrl = new URL("/unauthorized", request.url);
+      unavailableUrl.searchParams.set("reason", "permission-check-failed");
+      return NextResponse.redirect(unavailableUrl);
+    }
+    if (!allowed) {
       if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }

@@ -61,32 +61,35 @@ export function buildCustomerProfileBrain({
 
   const recommendations: string[] = [];
   if (insights.outstandingBalance > 0) {
-    recommendations.push("Contact the customer about the outstanding balance.");
+    recommendations.push("تواصل مع المريض بخصوص المبلغ المتبقي.");
   }
   if (pendingFollowUps > 0) {
-    recommendations.push(
-      `Complete ${pendingFollowUps} pending follow-up${pendingFollowUps === 1 ? "" : "s"}.`
-    );
+    recommendations.push(`أكمل المتابعات المعلقة وعددها ${pendingFollowUps}.`);
   }
   if (daysSinceLastVisit > 90) {
-    recommendations.push("Start a reactivation campaign and offer a check-up appointment.");
+    recommendations.push("ابدأ حملة لإعادة تنشيط المريض واقترح موعد فحص.");
   }
   if (insights.noShowRate >= 0.25) {
-    recommendations.push("Use appointment reminders to reduce cancellations and no-shows.");
+    recommendations.push("فعّل تذكيرات المواعيد لتقليل الإلغاء وعدم الحضور.");
   }
   if (recommendations.length === 0) {
-    recommendations.push(
-      "Maintain the current care cadence and propose the next relevant treatment."
-    );
+    recommendations.push("حافظ على انتظام الرعاية الحالي واقترح العلاج المناسب التالي.");
   }
 
+  const segmentArabic: Record<CustomerProfileBrain["segment"], string> = {
+    New: "جديد",
+    "At Risk": "معرّض للفقد",
+    Growth: "نامٍ",
+    Loyal: "وفيّ",
+    "High Value": "مرتفع القيمة",
+  };
   const summary =
     totalActivity === 0
-      ? "This customer has no recorded activity yet. Build the relationship with an initial consultation."
-      : `${segment} customer with ${engagementScore}% engagement and ${loyaltyScore}% loyalty. ${
+      ? "لا يوجد نشاط مسجل لهذا المريض حتى الآن. ابدأ العلاقة باستشارة أولية."
+      : `مريض ${segmentArabic[segment]} بنسبة تفاعل ${engagementScore}% وولاء ${loyaltyScore}%. ${
           riskScore >= 60
-            ? "Immediate retention attention is recommended."
-            : "The relationship is currently stable."
+            ? "يوصى باتخاذ إجراء فوري للحفاظ عليه."
+            : "العلاقة مستقرة حاليًا."
         }`;
 
   return {

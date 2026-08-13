@@ -29,13 +29,13 @@ export default function TimelineIntelligenceCard({ events }: Props) {
   }, null);
   const direction = recent.length >= previous.length ? "up" : "down";
   const summary = events.length === 0
-    ? "No activity is recorded yet."
-    : `${events.length} unified events are recorded across the care journey. Activity in the last 30 days is ${direction === "up" ? "stable or increasing" : "lower than the previous period"}. ${completedTreatments} treatment(s) were completed and ${paidEvents} payment event(s) were closed.`;
+    ? "لا يوجد نشاط مسجل حتى الآن."
+    : `تم تسجيل ${events.length} حدثًا موحدًا خلال رحلة الرعاية. النشاط خلال آخر 30 يومًا ${direction === "up" ? "مستقر أو متزايد" : "أقل من الفترة السابقة"}. اكتمل ${completedTreatments} علاج وأُغلقت ${paidEvents} عملية دفع.`;
   const actions = [
-    pendingFollowUps > 0 ? `Complete ${pendingFollowUps} pending follow-up${pendingFollowUps === 1 ? "" : "s"}.` : null,
-    missed > 0 ? `Review ${missed} missed, cancelled, or unanswered interaction${missed === 1 ? "" : "s"}.` : null,
-    recent.length === 0 && events.length > 0 ? "Consider a reactivation follow-up." : null,
-    latestEvent ? `Latest recorded touchpoint: ${latestEvent.title}.` : null,
+    pendingFollowUps > 0 ? `أكمل ${pendingFollowUps} متابعة معلقة.` : null,
+    missed > 0 ? `راجع ${missed} تفاعلًا فائتًا أو ملغيًا أو دون إجابة.` : null,
+    recent.length === 0 && events.length > 0 ? "يُنصح بمتابعة لإعادة تنشيط المريض." : null,
+    latestEvent ? `آخر نقطة تواصل مسجلة: ${latestEvent.title}.` : null,
   ].filter((item): item is string => Boolean(item));
 
   return (
@@ -44,13 +44,13 @@ export default function TimelineIntelligenceCard({ events }: Props) {
         <div className="flex items-center gap-3">
           <span className="rounded-xl bg-violet-600 p-2 text-white"><Sparkles className="h-5 w-5" /></span>
           <div>
-            <h3 className="font-bold text-slate-950">Timeline AI</h3>
-            <p className="text-xs text-slate-500">Private on-device activity analysis</p>
+            <h3 className="font-bold text-slate-950">ذكاء الخط الزمني</h3>
+            <p className="text-xs text-slate-500">تحليل خاص للنشاط داخل النظام</p>
           </div>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
           {direction === "up" ? <TrendingUp className="h-4 w-4 text-emerald-600" /> : <TrendingDown className="h-4 w-4 text-orange-600" />}
-          {recent.length} events / 30 days
+          {recent.length} حدثًا / 30 يومًا
         </span>
       </div>
       <p className="mt-4 text-sm leading-6 text-slate-700">{summary}</p>
@@ -63,12 +63,12 @@ export default function TimelineIntelligenceCard({ events }: Props) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-sm font-medium text-emerald-700">No immediate timeline action is required.</p>
+        <p className="mt-4 text-sm font-medium text-emerald-700">لا يوجد إجراء فوري مطلوب.</p>
       )}
       {events.length > 0 && (
         <div className="mt-4 flex gap-3 rounded-xl border border-violet-100 bg-white p-4 text-sm text-slate-700">
           <CalendarCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600" />
-          <p><span className="font-semibold">AI timeline note:</span> {missed > 0 ? "Confirm the next appointment and use a reminder because missed interactions were detected." : "The journey is consistent; keep the next treatment or follow-up clearly scheduled."}</p>
+          <p><span className="font-semibold">ملاحظة ذكية للسجل:</span> {missed > 0 ? "أكد الموعد التالي واستخدم تذكيرًا لأن النظام رصد تفاعلات فائتة." : "رحلة المريض منتظمة؛ حافظ على وضوح موعد العلاج أو المتابعة التالية."}</p>
         </div>
       )}
     </div>

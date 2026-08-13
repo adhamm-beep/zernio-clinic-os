@@ -40,7 +40,7 @@ export default function StartTreatmentSessionButton({
 >
   <Stethoscope className="mr-2 h-4 w-4" />
 
-  Start Treatment
+  بدء العلاج
 </Button>
 
       <StartTreatmentSessionDialog

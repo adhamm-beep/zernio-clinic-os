@@ -41,7 +41,11 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
         first_name,
         last_name,
         phone,
-        customer_code
+        customer_code,
+        wallet_balance,
+        insurance_company,
+        insurance_policy_number,
+        referral_source
       ),
       appointments (
         id,
@@ -50,7 +54,9 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
         doctor_id,
         service_id,
         staff (id, staff_name),
-        services (id, name, name_en, name_ar)
+        services (id, name, name_en, name_ar),
+        rooms (id, name),
+        branches (id, name)
       ),
       treatments (
         id,
@@ -82,7 +88,7 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
 
 export async function getPaymentById(id:number):Promise<Payment>{
   const payment=(await getPayments()).find(item=>item.id===id);
-  if(!payment)throw new Error("Invoice could not be loaded after issuing it.");
+  if(!payment)throw new Error("تعذر تحميل الفاتورة بعد إصدارها.");
   return payment;
 }
 
@@ -127,7 +133,11 @@ export async function createPayment(
         first_name,
         last_name,
         phone,
-        customer_code
+        customer_code,
+        wallet_balance,
+        insurance_company,
+        insurance_policy_number,
+        referral_source
       ),
       appointments (
         id,
@@ -136,7 +146,9 @@ export async function createPayment(
         doctor_id,
         service_id,
         staff (id, staff_name),
-        services (id, name, name_en, name_ar)
+        services (id, name, name_en, name_ar),
+        rooms (id, name),
+        branches (id, name)
       ),
       treatments (
         id,

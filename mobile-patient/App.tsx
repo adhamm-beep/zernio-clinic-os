@@ -28,7 +28,10 @@ import drMaram from "./assets/dr-maram.jpg";
 import drFatimaAlsatouf from "./assets/dr-fatima-alsatouf.jpg";
 import { colors } from "./src/theme";
 import { supabase } from "./src/supabase";
-import { beginNewPatientPresenceSession, sendPatientPresence } from "./src/patient-presence";
+import {
+  beginNewPatientPresenceSession,
+  sendPatientPresence,
+} from "./src/patient-presence";
 import {
   acceptPatientConsent,
   createAppointment,
@@ -43,6 +46,7 @@ import {
   loadPatientConcierge,
   loadPatientExperience,
   loadPatientResults,
+  loadPatientDocuments,
   loadProviderServices,
   markPatientNotificationsRead,
   openGoogleReview,
@@ -64,6 +68,7 @@ import {
   type PatientExperience,
   type PatientMembership,
   type PatientResults,
+  type PatientPublishedDocument,
   type ProviderService,
 } from "./src/patient-api";
 import { translate, type Language } from "./src/i18n";
@@ -85,6 +90,7 @@ type Tab =
   | "wallet"
   | "membership"
   | "results"
+  | "documents"
   | "beauty"
   | "experience"
   | "support"
@@ -93,24 +99,59 @@ type Tab =
   | "privacy";
 type IconName = ComponentProps<typeof Ionicons>["name"];
 const notificationTab = (
-  notification: Pick<PatientDashboard["notifications"][number], "notification_type" | "action_tab">,
+  notification: Pick<
+    PatientDashboard["notifications"][number],
+    "notification_type" | "action_tab"
+  >,
 ): Tab => {
   const explicit = notification.action_tab as Tab | null | undefined;
-  if (explicit && ["appointments", "care", "medical", "wallet", "membership", "results", "experience", "support", "concierge"].includes(explicit)) return explicit;
+  if (
+    explicit &&
+    [
+      "appointments",
+      "care",
+      "medical",
+      "wallet",
+      "membership",
+      "results",
+      "experience",
+      "support",
+      "concierge",
+    ].includes(explicit)
+  )
+    return explicit;
   const type = notification.notification_type.toLowerCase();
   if (type.includes("review") || type.includes("feedback")) return "experience";
-  if (type.includes("payment") || type.includes("invoice") || type.includes("balance")) return "wallet";
-  if (type.includes("aftercare") || type.includes("treatment") || type.includes("medical") || type.includes("staff")) return "care";
-  if (type.includes("appointment") || type.includes("booking")) return "appointments";
-  if (type.includes("membership") || type.includes("loyalty")) return "membership";
+  if (
+    type.includes("payment") ||
+    type.includes("invoice") ||
+    type.includes("balance")
+  )
+    return "wallet";
+  if (
+    type.includes("aftercare") ||
+    type.includes("treatment") ||
+    type.includes("medical") ||
+    type.includes("staff")
+  )
+    return "care";
+  if (type.includes("appointment") || type.includes("booking"))
+    return "appointments";
+  if (type.includes("membership") || type.includes("loyalty"))
+    return "membership";
   if (type.includes("message") || type.includes("support")) return "concierge";
   return "notifications";
 };
 
 const isMedicalStaffNotification = (type: string) =>
-  ["aftercare", "treatment", "medical", "care_team", "staff_message", "doctor_message"].some((part) =>
-    type.toLowerCase().includes(part),
-  );
+  [
+    "aftercare",
+    "treatment",
+    "medical",
+    "care_team",
+    "staff_message",
+    "doctor_message",
+  ].some((part) => type.toLowerCase().includes(part));
 const Icon = ({
   name = "ellipse",
   color = colors.muted,
@@ -137,19 +178,38 @@ const appointmentStatusLabel = (status: string, ar: boolean) => {
         booked: "تم الحجز",
         confirmed: "مؤكد",
         arrived: "تم الوصول",
+        in_progress: "جاري العمل",
         completed: "مكتمل",
+        late: "متأخر",
         cancelled: "ملغي",
         no_show: "لم يحضر",
+        waitlist: "قائمة الانتظار",
+        note: "ملاحظة",
       } as Record<string, string>
     )[status] ?? status
   );
 };
 
-const appointmentService = (appointment: {service:string|null;serviceEn?:string|null;serviceAr?:string|null}, ar: boolean) =>
+const appointmentService = (
+  appointment: {
+    service: string | null;
+    serviceEn?: string | null;
+    serviceAr?: string | null;
+  },
+  ar: boolean,
+) =>
   (ar ? appointment.serviceAr : appointment.serviceEn) || appointment.service;
 
-const appointmentProvider = (appointment: {provider:string|null;providerEn?:string|null;providerAr?:string|null}, ar: boolean) =>
-  (ar ? appointment.providerAr : appointment.providerEn) || appointment.provider;
+const appointmentProvider = (
+  appointment: {
+    provider: string | null;
+    providerEn?: string | null;
+    providerAr?: string | null;
+  },
+  ar: boolean,
+) =>
+  (ar ? appointment.providerAr : appointment.providerEn) ||
+  appointment.provider;
 
 const localizedNotification = (title: string, message: string, ar: boolean) => {
   if (!ar) return { title, message };
@@ -178,17 +238,24 @@ const localizedNotification = (title: string, message: string, ar: boolean) => {
 };
 
 const localizedError = (error: unknown, ar: boolean, fallback = "") => {
-  const message = error instanceof Error ? error.message : String(error || fallback);
+  const message =
+    error instanceof Error ? error.message : String(error || fallback);
   if (!ar) return message || fallback;
   const exact: Record<string, string> = {
-    "Push notifications require the installed mobile app.": "الإشعارات الفورية تحتاج إلى تطبيق بانثيرا المثبت على الهاتف.",
-    "Push notifications require a physical device.": "الإشعارات الفورية تحتاج إلى هاتف فعلي.",
-    "Notification permission is disabled. Enable it in Android Settings, then reopen Panthera.": "إذن الإشعارات متوقف. فعّله من إعدادات الهاتف ثم افتح تطبيق بانثيرا مرة أخرى.",
-    "The Expo project ID is missing from this build.": "إعداد الإشعارات غير مكتمل في هذا الإصدار.",
-    "Calendar integration is available in the mobile app.": "إضافة الموعد للتقويم متاحة داخل تطبيق الهاتف.",
+    "Push notifications require the installed mobile app.":
+      "الإشعارات الفورية تحتاج إلى تطبيق بانثيرا المثبت على الهاتف.",
+    "Push notifications require a physical device.":
+      "الإشعارات الفورية تحتاج إلى هاتف فعلي.",
+    "Notification permission is disabled. Enable it in Android Settings, then reopen Panthera.":
+      "إذن الإشعارات متوقف. فعّله من إعدادات الهاتف ثم افتح تطبيق بانثيرا مرة أخرى.",
+    "The Expo project ID is missing from this build.":
+      "إعداد الإشعارات غير مكتمل في هذا الإصدار.",
+    "Calendar integration is available in the mobile app.":
+      "إضافة الموعد للتقويم متاحة داخل تطبيق الهاتف.",
     "Calendar permission is required.": "يلزم السماح بالوصول إلى التقويم.",
     "No writable calendar was found.": "لم يتم العثور على تقويم متاح للإضافة.",
-    "Enter the 6-digit verification code.": "أدخل رمز التحقق المكون من 6 أرقام.",
+    "Enter the 6-digit verification code.":
+      "أدخل رمز التحقق المكون من 6 أرقام.",
     "Google review link is unavailable.": "رابط تقييم Google غير متاح حاليًا.",
     "Please sign in again.": "يرجى تسجيل الدخول مرة أخرى.",
     "Unable to start online payment": "تعذر بدء الدفع الإلكتروني.",
@@ -213,7 +280,11 @@ function Header({
         </TouchableOpacity>
       )}
       <View style={s.grow}>
-        <Text style={s.eyebrow}>{/[\u0600-\u06ff]/u.test(`${title} ${subtitle ?? ""}`) ? "عيادات بانثيرا" : "PANTHERA CLINICS"}</Text>
+        <Text style={s.eyebrow}>
+          {/[\u0600-\u06ff]/u.test(`${title} ${subtitle ?? ""}`)
+            ? "عيادات بانثيرا"
+            : "PANTHERA CLINICS"}
+        </Text>
         <Text style={s.title}>{title}</Text>
         {subtitle && <Text style={s.subtitle}>{subtitle}</Text>}
       </View>
@@ -343,7 +414,9 @@ function Login({
             : undefined,
         );
     } catch (e) {
-      setError(localizedError(e, ar, ar ? "تعذر المتابعة" : "Unable to continue"));
+      setError(
+        localizedError(e, ar, ar ? "تعذر المتابعة" : "Unable to continue"),
+      );
     } finally {
       setBusy(false);
     }
@@ -637,42 +710,57 @@ function Booking({
     }
   };
   const goals = [
-      {
-        id: "consult",
-        icon: "chatbubble-ellipses",
-        ar: "استشارة طبيبة",
-        en: "Doctor consultation",
-      },
-      {
-        id: "skin",
-        icon: "sparkles",
-        ar: "البشرة والعناية",
-        en: "Skin & facial care",
-      },
-      {
-        id: "laser",
-        icon: "flash",
-        ar: "إزالة الشعر بالليزر",
-        en: "Laser hair removal",
-      },
-      {
-        id: "aesthetic",
-        icon: "diamond",
-        ar: "التجميل والحقن",
-        en: "Aesthetic treatments",
-      },
-      {
-        id: "unsure",
-        icon: "help-circle",
-        ar: "لست متأكدة",
-        en: "I'm not sure",
-      },
-    ];
+    {
+      id: "consult",
+      icon: "chatbubble-ellipses",
+      ar: "استشارة طبيبة",
+      en: "Doctor consultation",
+    },
+    {
+      id: "skin",
+      icon: "sparkles",
+      ar: "البشرة والعناية",
+      en: "Skin & facial care",
+    },
+    {
+      id: "laser",
+      icon: "flash",
+      ar: "إزالة الشعر بالليزر",
+      en: "Laser hair removal",
+    },
+    {
+      id: "aesthetic",
+      icon: "diamond",
+      ar: "التجميل والحقن",
+      en: "Aesthetic treatments",
+    },
+    {
+      id: "unsure",
+      icon: "help-circle",
+      ar: "لست متأكدة",
+      en: "I'm not sure",
+    },
+  ];
   const providerKind = (x: BookingProvider) => {
       const identity = `${x.id} ${x.name} ${x.role}`.toLowerCase();
-      if (x.id === -101 || x.id === -1 || /laser|\u0644\u064a\u0632\u0631/.test(identity)) return "laser";
-      if (x.id === -102 || /profacial|pro facial|\u0628\u0631\u0648\u0641\u0627\u0634/.test(identity)) return "profacial";
-      if (x.id === -103 || /bleach|\u062a\u0634\u0642\u064a\u0631/.test(identity)) return "bleaching";
+      if (
+        x.id === -101 ||
+        x.id === -1 ||
+        /laser|\u0644\u064a\u0632\u0631/.test(identity)
+      )
+        return "laser";
+      if (
+        x.id === -102 ||
+        /profacial|pro facial|\u0628\u0631\u0648\u0641\u0627\u0634/.test(
+          identity,
+        )
+      )
+        return "profacial";
+      if (
+        x.id === -103 ||
+        /bleach|\u062a\u0634\u0642\u064a\u0631/.test(identity)
+      )
+        return "bleaching";
       return x.role === "doctor" ? "doctor" : "other";
     },
     visibleProvider = (x: BookingProvider) => {
@@ -746,7 +834,11 @@ function Booking({
     } catch (e) {
       Alert.alert(
         rtl ? "تعذر إتمام الحجز" : "Unable to reserve",
-        localizedError(e, rtl, rtl ? "اختر وقتًا آخر." : "Please select another time."),
+        localizedError(
+          e,
+          rtl,
+          rtl ? "اختر وقتًا آخر." : "Please select another time.",
+        ),
       );
     } finally {
       setBusy(false);
@@ -1182,11 +1274,14 @@ function Booking({
               {"\n"}
               {service?.name}
               {"\n"}
-              {appointmentAt()?.toLocaleDateString(rtl ? "ar-SA-u-nu-latn" : "en", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}{" "}
+              {appointmentAt()?.toLocaleDateString(
+                rtl ? "ar-SA-u-nu-latn" : "en",
+                {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                },
+              )}{" "}
               · {time}
               {"\n"}
               {service?.duration_minutes} {t.duration}
@@ -2077,6 +2172,8 @@ function Membership({
   );
 }
 
+function PatientDocumentsView({data,language,back}:{data:PatientPublishedDocument[];language:Language;back:()=>void}){const ar=language==="ar";return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.page}><Header title={ar?"مستنداتي":"My documents"} subtitle={ar?"الوصفات وعروض الأسعار والنماذج المنشورة من العيادة":"Prescriptions, quotations and forms shared by the clinic"} back={back}/>{data.map(doc=><View key={doc.id} style={[s.card,{marginBottom:12}]}><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{doc.title}</Text><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{doc.type.replaceAll("_"," ")} · {new Date(doc.createdAt).toLocaleDateString(ar?"ar-SA-u-nu-latn":"en-GB")}</Text>{doc.content&&<Text style={[s.cardMuted,{marginTop:10,lineHeight:22},ar&&{textAlign:"right"}]}>{doc.content}</Text>}{doc.amount!=null&&<Text style={[s.cardTitle,{marginTop:10,color:colors.success}]}>{Number(doc.amount).toLocaleString("en-US")} SAR</Text>}{doc.externalUrl&&<TouchableOpacity onPress={()=>void Linking.openURL(doc.externalUrl!)} style={[s.actionButton,{marginTop:12}]}><Text style={s.actionButtonText}>{ar?"فتح المستند":"Open document"}</Text></TouchableOpacity>}</View>)}{!data.length&&<EmptyState icon="document-text-outline" text={ar?"لا توجد مستندات منشورة لك حاليًا":"No documents have been shared with you yet"}/>}</ScrollView></SafeAreaView>}
+
 function Results({
   back,
   go,
@@ -2571,7 +2668,11 @@ function Support({
       ) : null}
       {data?.address || data?.mapsUrl ? (
         <TouchableOpacity
-          style={[s.listCard, { marginTop: 10 }, ar && { flexDirection: "row-reverse" }]}
+          style={[
+            s.listCard,
+            { marginTop: 10 },
+            ar && { flexDirection: "row-reverse" },
+          ]}
           disabled={!data?.mapsUrl}
           onPress={() => data?.mapsUrl && open(data.mapsUrl)}
         >
@@ -2579,18 +2680,30 @@ function Support({
             <Icon name="location" color={colors.navy} />
           </View>
           <View style={s.grow}>
-          <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
-            {ar ? "موقعنا" : "Our location"}
-          </Text>
-          <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-            {data?.address ?? (ar ? "افتحي الموقع على الخريطة" : "Open the clinic on the map")}
-          </Text>
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? "موقعنا" : "Our location"}
+            </Text>
+            <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+              {data?.address ??
+                (ar
+                  ? "افتحي الموقع على الخريطة"
+                  : "Open the clinic on the map")}
+            </Text>
           </View>
-          {data?.mapsUrl ? <Icon name={ar ? "chevron-back" : "chevron-forward"} /> : null}
+          {data?.mapsUrl ? (
+            <Icon name={ar ? "chevron-back" : "chevron-forward"} />
+          ) : null}
         </TouchableOpacity>
       ) : null}
       {data?.workingHours ? (
-        <View style={{ backgroundColor: colors.card, borderRadius: 24, padding: 18, marginTop: 10 }}>
+        <View
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: 24,
+            padding: 18,
+            marginTop: 10,
+          }}
+        >
           <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
             {ar ? "ساعات العمل" : "Working hours"}
           </Text>
@@ -2659,7 +2772,9 @@ function Wallet({
             }}
           >
             {data.currency}{" "}
-            {Number(data.totalPaid).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US")}
+            {Number(data.totalPaid).toLocaleString(
+              ar ? "ar-SA-u-nu-latn" : "en-US",
+            )}
           </Text>
         </LinearGradient>
         <View
@@ -2688,11 +2803,49 @@ function Wallet({
             }}
           >
             {data.currency}{" "}
-            {Number(data.outstanding).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-US")}
+            {Number(data.outstanding).toLocaleString(
+              ar ? "ar-SA-u-nu-latn" : "en-US",
+            )}
           </Text>
         </View>
       </View>
-      <View style={{backgroundColor:"#E8F5FF",borderRadius:22,padding:18,marginTop:14,flexDirection:ar?"row-reverse":"row",justifyContent:"space-between",alignItems:"center"}}><View><Text style={{fontSize:11,color:colors.muted,textAlign:ar?"right":"left"}}>{ar?"الرصيد المتاح":"AVAILABLE CREDIT"}</Text><Text style={{fontSize:24,fontWeight:"900",color:"#0876A8",marginTop:6}}>{data.currency} {Number(data.creditBalance??0).toLocaleString(ar?"ar-SA-u-nu-latn":"en-US")}</Text></View><Icon name="wallet" color="#0876A8"/></View>
+      <View
+        style={{
+          backgroundColor: "#E8F5FF",
+          borderRadius: 22,
+          padding: 18,
+          marginTop: 14,
+          flexDirection: ar ? "row-reverse" : "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <View>
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              textAlign: ar ? "right" : "left",
+            }}
+          >
+            {ar ? "الرصيد المتاح" : "AVAILABLE CREDIT"}
+          </Text>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "900",
+              color: "#0876A8",
+              marginTop: 6,
+            }}
+          >
+            {data.currency}{" "}
+            {Number(data.creditBalance ?? 0).toLocaleString(
+              ar ? "ar-SA-u-nu-latn" : "en-US",
+            )}
+          </Text>
+        </View>
+        <Icon name="wallet" color="#0876A8" />
+      </View>
       <View
         style={{
           backgroundColor: "#F3EEE6",
@@ -2715,62 +2868,118 @@ function Wallet({
       </Text>
       {data.transactions.length ? (
         data.transactions.map((item) => (
-          <View key={item.id} style={[s.invoice, { flexDirection: "column", gap: 12 }]}>
-            <View style={{ flexDirection: ar ? "row-reverse" : "row", gap: 12, alignItems: "center" }}>
+          <View
+            key={item.id}
+            style={[s.invoice, { flexDirection: "column", gap: 12 }]}
+          >
             <View
-              style={[
-                s.invoiceIcon,
-                {
-                  backgroundColor:
-                    item.status === "paid" ? "#E7EFEA" : "#FFF2ED",
-                },
-              ]}
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                gap: 12,
+                alignItems: "center",
+              }}
             >
-              <Icon
-                name="receipt-outline"
-                color={item.status === "paid" ? "#4F9A72" : colors.danger}
-              />
-            </View>
-            <View style={s.grow}>
-              <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
-                {item.invoiceNumber ??
-                  `${ar ? "فاتورة" : "Invoice"} #${item.id}`}
-              </Text>
-              <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                {new Date(item.date).toLocaleDateString(ar ? "ar-SA-u-nu-latn" : "en-US")}{" "}
-                ·{" "}
-                {item.method ??
-                  (ar ? "طريقة غير محددة" : "Method not specified")}
-              </Text>
-              {item.reference ? (
-                <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                  #{item.reference}
-                </Text>
-              ) : null}
-            </View>
-            <View>
-              <Text style={s.amount}>
-                {data.currency} {Number(item.amount).toLocaleString()}
-              </Text>
-              <Text
+              <View
                 style={[
-                  s.invoiceStatus,
-                  item.status !== "paid" && { color: colors.danger },
+                  s.invoiceIcon,
+                  {
+                    backgroundColor:
+                      item.status === "paid" ? "#E7EFEA" : "#FFF2ED",
+                  },
                 ]}
               >
-                {status(item.status)}
-              </Text>
+                <Icon
+                  name="receipt-outline"
+                  color={item.status === "paid" ? "#4F9A72" : colors.danger}
+                />
+              </View>
+              <View style={s.grow}>
+                <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                  {item.invoiceNumber ??
+                    `${ar ? "فاتورة" : "Invoice"} #${item.id}`}
+                </Text>
+                <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                  {new Date(item.date).toLocaleDateString(
+                    ar ? "ar-SA-u-nu-latn" : "en-US",
+                  )}{" "}
+                  ·{" "}
+                  {item.method ??
+                    (ar ? "طريقة غير محددة" : "Method not specified")}
+                </Text>
+                {item.reference ? (
+                  <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                    #{item.reference}
+                  </Text>
+                ) : null}
+              </View>
+              <View>
+                <Text style={s.amount}>
+                  {data.currency} {Number(item.amount).toLocaleString()}
+                </Text>
+                <Text
+                  style={[
+                    s.invoiceStatus,
+                    item.status !== "paid" && { color: colors.danger },
+                  ]}
+                >
+                  {status(item.status)}
+                </Text>
+              </View>
             </View>
-            </View>
-            {item.items?.length ? <View style={{ gap: 5, borderTopWidth: 1, borderTopColor: "#E8E1D8", paddingTop: 10 }}>{item.items.map((line,index)=><Text key={`${item.id}-${index}`} style={[s.cardMuted, ar&&{textAlign:"right"}]}>{(ar ? line.descriptionAr : line.descriptionEn) || line.description} · {Number(line.quantity)} {line.unit==="service"?"":line.unit}</Text>)}</View>:null}
-            <View style={{ flexDirection: ar ? "row-reverse" : "row", flexWrap: "wrap", gap: 8 }}>
+            {item.items?.length ? (
+              <View
+                style={{
+                  gap: 5,
+                  borderTopWidth: 1,
+                  borderTopColor: "#E8E1D8",
+                  paddingTop: 10,
+                }}
+              >
+                {item.items.map((line, index) => (
+                  <Text
+                    key={`${item.id}-${index}`}
+                    style={[s.cardMuted, ar && { textAlign: "right" }]}
+                  >
+                    {(ar ? line.descriptionAr : line.descriptionEn) ||
+                      line.description}{" "}
+                    · {Number(line.quantity)}{" "}
+                    {line.unit === "service" ? "" : line.unit}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            <View
+              style={{
+                flexDirection: ar ? "row-reverse" : "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {[
-                [ar?"قبل الضريبة":"Subtotal",item.subtotal],
-                [ar?"الضريبة":"Tax",item.taxAmount??0],
-                [ar?"الخصم":"Discount",item.discountAmount],
-                [ar?"المدفوع":"Paid",item.paidAmount],
-                [ar?"المتبقي":"Remaining",item.outstanding],
-              ].map(([label,value])=><View key={String(label)} style={{ minWidth: "30%", flexGrow: 1, borderRadius: 12, backgroundColor: "#F6F2EC", padding: 9 }}><Text style={[s.cardMuted,ar&&{textAlign:"right"}]}>{label}</Text><Text style={[s.cardTitle,ar&&{textAlign:"right"}]}>{data.currency} {Number(value).toLocaleString()}</Text></View>)}
+                [ar ? "قبل الضريبة" : "Subtotal", item.subtotal],
+                [ar ? "الضريبة" : "Tax", item.taxAmount ?? 0],
+                [ar ? "الخصم" : "Discount", item.discountAmount],
+                [ar ? "المدفوع" : "Paid", item.paidAmount],
+                [ar ? "المتبقي" : "Remaining", item.outstanding],
+              ].map(([label, value]) => (
+                <View
+                  key={String(label)}
+                  style={{
+                    minWidth: "30%",
+                    flexGrow: 1,
+                    borderRadius: 12,
+                    backgroundColor: "#F6F2EC",
+                    padding: 9,
+                  }}
+                >
+                  <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
+                    {label}
+                  </Text>
+                  <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+                    {data.currency} {Number(value).toLocaleString()}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         ))
@@ -3200,12 +3409,22 @@ function Experience({
               : `How was your ${visit.service} visit?`}
           </Text>
           <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-            {new Date(visit.date).toLocaleDateString(ar ? "ar-SA-u-nu-latn" : "en-US")}{" "}
+            {new Date(visit.date).toLocaleDateString(
+              ar ? "ar-SA-u-nu-latn" : "en-US",
+            )}{" "}
             {visit.provider ? `· ${visit.provider}` : ""}
           </Text>
-          <View style={{alignItems:"center",paddingVertical:22}}>
-            <View style={{flexDirection:"row",gap:7}}>{[1,2,3,4,5].map(value=><Icon key={value} name="star" color="#D7A647" size={30}/>)}</View>
-            <Text style={[s.cardMuted,{textAlign:"center",marginTop:14}]}>{ar?`سيتم تحويلك إلى صفحة ${contact?.clinicName??"عيادات بانثيرا"} الرسمية على Google. لا يتم حفظ أي تقييم داخل التطبيق.`:`You will be taken to ${contact?.clinicName??"Panthera Clinics"}' official Google page. No rating is stored inside the app.`}</Text>
+          <View style={{ alignItems: "center", paddingVertical: 22 }}>
+            <View style={{ flexDirection: "row", gap: 7 }}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Icon key={value} name="star" color="#D7A647" size={30} />
+              ))}
+            </View>
+            <Text style={[s.cardMuted, { textAlign: "center", marginTop: 14 }]}>
+              {ar
+                ? `سيتم تحويلك إلى صفحة ${contact?.clinicName ?? "عيادات بانثيرا"} الرسمية على Google. لا يتم حفظ أي تقييم داخل التطبيق.`
+                : `You will be taken to ${contact?.clinicName ?? "Panthera Clinics"}' official Google page. No rating is stored inside the app.`}
+            </Text>
           </View>
           <TouchableOpacity
             disabled={busy}
@@ -3213,7 +3432,13 @@ function Experience({
             onPress={reviewOnGoogle}
           >
             <Text style={s.primaryText}>
-              {busy ? (ar?"جارٍ فتح Google…":"Opening Google…") : (ar?"التقييم على Google":"Review on Google")}
+              {busy
+                ? ar
+                  ? "جارٍ فتح Google…"
+                  : "Opening Google…"
+                : ar
+                  ? "التقييم على Google"
+                  : "Review on Google"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -3221,7 +3446,9 @@ function Experience({
         <View style={s.empty}>
           <Icon name="checkmark-circle" size={34} color="#4F9A72" />
           <Text style={s.cardTitle}>
-            {ar ? "لا توجد زيارة مكتملة للتقييم" : "No completed visit to review"}
+            {ar
+              ? "لا توجد زيارة مكتملة للتقييم"
+              : "No completed visit to review"}
           </Text>
           <Text style={[s.cardMuted, { textAlign: "center" }]}>
             {ar
@@ -3258,16 +3485,20 @@ function Today({
   const ar = language === "ar",
     name = data.profile.firstName ?? (ar ? "بكِ" : "there"),
     next = data.appointments
-      .filter((item) =>
-        new Date(item.appointmentAt) > new Date() &&
-        !["cancelled", "canceled", "completed", "no_show"].includes(item.status.toLowerCase()),
+      .filter(
+        (item) =>
+          new Date(item.appointmentAt) > new Date() &&
+          !["cancelled", "canceled", "completed", "no_show"].includes(
+            item.status.toLowerCase(),
+          ),
       )
       .sort(
         (a, b) => +new Date(a.appointmentAt) - +new Date(b.appointmentAt),
       )[0],
     unread = data.notifications.filter((item) => !item.is_read).length,
     medicalStaffNotice = data.notifications.find(
-      (item) => !item.is_read && isMedicalStaffNotification(item.notification_type),
+      (item) =>
+        !item.is_read && isMedicalStaffNotification(item.notification_type),
     ),
     recommendation = results.recommendations[0],
     action = medicalStaffNotice
@@ -3275,9 +3506,12 @@ function Today({
           icon: "medkit",
           title: ar
             ? medicalStaffNotice.title_ar || "رسالة جديدة من فريقك الطبي"
-            : medicalStaffNotice.title_en || medicalStaffNotice.title || "New message from your care team",
+            : medicalStaffNotice.title_en ||
+              medicalStaffNotice.title ||
+              "New message from your care team",
           copy: ar
-            ? medicalStaffNotice.message_ar || "افتحي الرسالة لمتابعة تعليمات فريقك الطبي"
+            ? medicalStaffNotice.message_ar ||
+              "افتحي الرسالة لمتابعة تعليمات فريقك الطبي"
             : medicalStaffNotice.message_en || medicalStaffNotice.message,
           tab: notificationTab(medicalStaffNotice),
           color: "#356B62",
@@ -3288,34 +3522,40 @@ function Today({
             title: ar ? "موعدك القادم جاهز" : "Your next visit is ready",
             copy: new Date(next.appointmentAt).toLocaleString(
               ar ? "ar-SA-u-nu-latn" : "en-US",
-              { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" },
+              {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                hour: "numeric",
+                minute: "2-digit",
+              },
             ),
             tab: "appointments" as Tab,
             color: "#4F7B70",
           }
-      : finance.wallet.outstanding > 0
-        ? {
-            icon: "wallet",
-            title: ar
-              ? "يوجد مبلغ يحتاج مراجعتك"
-              : "A payment needs your attention",
-            copy: ar
-              ? `${finance.wallet.currency} ${finance.wallet.outstanding} مستحق`
-              : `${finance.wallet.currency} ${finance.wallet.outstanding} outstanding`,
-            tab: "wallet" as Tab,
-            color: "#A85D55",
-          }
-        : experience.eligibleVisits.length
+        : finance.wallet.outstanding > 0
           ? {
-              icon: "star",
-              title: ar ? "كيف كانت زيارتك؟" : "How was your visit?",
+              icon: "wallet",
+              title: ar
+                ? "يوجد مبلغ يحتاج مراجعتك"
+                : "A payment needs your attention",
               copy: ar
-                ? "شاركينا تجربتك على صفحة بانثيرا في Google"
-                : "Share your experience on Panthera's Google page",
-              tab: "experience" as Tab,
-              color: "#B28B4B",
+                ? `${finance.wallet.currency} ${finance.wallet.outstanding} مستحق`
+                : `${finance.wallet.currency} ${finance.wallet.outstanding} outstanding`,
+              tab: "wallet" as Tab,
+              color: "#A85D55",
             }
-          : {
+          : experience.eligibleVisits.length
+            ? {
+                icon: "star",
+                title: ar ? "كيف كانت زيارتك؟" : "How was your visit?",
+                copy: ar
+                  ? "شاركينا تجربتك على صفحة بانثيرا في Google"
+                  : "Share your experience on Panthera's Google page",
+                tab: "experience" as Tab,
+                color: "#B28B4B",
+              }
+            : {
                 icon: "sparkles",
                 title: ar
                   ? "ابدئي خطتك مع بانثيرا"
@@ -3500,7 +3740,8 @@ function Today({
                 {appointmentService(next, ar)}
               </Text>
               <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                {appointmentProvider(next, ar)} · {appointmentStatusLabel(next.status, ar)}
+                {appointmentProvider(next, ar)} ·{" "}
+                {appointmentStatusLabel(next.status, ar)}
               </Text>
             </View>
             <View
@@ -3763,6 +4004,7 @@ function MeHub({
             "images-outline",
             "results",
           ],
+          [ar?"مستنداتي":"My documents","document-text-outline","documents"],
         ],
       },
       {
@@ -4059,11 +4301,14 @@ function Concierge({
             </View>
             <View style={s.grow}>
               <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
-                {appointmentService(a, ar) ?? (ar ? "موعد بانثيرا" : "Panthera visit")}
+                {appointmentService(a, ar) ??
+                  (ar ? "موعد بانثيرا" : "Panthera visit")}
               </Text>
               <Text style={[s.cardMuted, ar && { textAlign: "right" }]}>
-                {new Date(a.date).toLocaleString(ar ? "ar-SA-u-nu-latn" : "en-SA")} ·{" "}
-                {appointmentProvider(a, ar) ?? "Panthera"}
+                {new Date(a.date).toLocaleString(
+                  ar ? "ar-SA-u-nu-latn" : "en-SA",
+                )}{" "}
+                · {appointmentProvider(a, ar) ?? "Panthera"}
               </Text>
               <View
                 style={{
@@ -4110,11 +4355,14 @@ function Concierge({
                   onPress={() =>
                     void run(
                       () =>
-                        addPatientAppointmentToCalendar({
-                          title: `Panthera · ${appointmentService(a, ar) ?? (ar ? "موعد" : "Appointment")}`,
-                          start: a.date,
-                          notes: appointmentProvider(a, ar) ?? undefined,
-                        }, language),
+                        addPatientAppointmentToCalendar(
+                          {
+                            title: `Panthera · ${appointmentService(a, ar) ?? (ar ? "موعد" : "Appointment")}`,
+                            start: a.date,
+                            notes: appointmentProvider(a, ar) ?? undefined,
+                          },
+                          language,
+                        ),
                       ar
                         ? "تمت إضافة الموعد للتقويم"
                         : "Appointment added to calendar",
@@ -4329,6 +4577,7 @@ function Concierge({
   );
 }
 
+function EmptyState({text}:{icon?:string;text:string}){return <View style={s.empty}><Text style={{color:colors.muted,textAlign:"center"}}>{text}</Text></View>}
 function Empty({ text }: { text: string }) {
   return (
     <View style={s.empty}>
@@ -4525,6 +4774,7 @@ export default function App() {
       media: [],
       recommendations: [],
     }),
+    [documents,setDocuments]=useState<PatientPublishedDocument[]>([]),
     [beauty, setBeauty] = useState<BeautyCalendarData>({
       events: [],
       contact: null,
@@ -4533,7 +4783,7 @@ export default function App() {
       wallet: {
         totalPaid: 0,
         outstanding: 0,
-        creditBalance:0,
+        creditBalance: 0,
         currency: "SAR",
         transactions: [],
       },
@@ -4565,6 +4815,7 @@ export default function App() {
         financeHealth,
         patientExperience,
         conciergeHub,
+        publishedDocuments,
       ] = await Promise.all([
         loadDashboard(),
         loadCareHub(),
@@ -4574,6 +4825,7 @@ export default function App() {
         loadFinanceHealth(),
         loadPatientExperience(),
         loadPatientConcierge(),
+        loadPatientDocuments(),
       ]);
       setData(dashboard);
       setCare(careHub);
@@ -4583,8 +4835,17 @@ export default function App() {
       setFinance(financeHealth);
       setExperience(patientExperience);
       setConcierge(conciergeHub);
+      setDocuments(publishedDocuments);
     } catch (e) {
-      setError(localizedError(e, language === "ar", language === "ar" ? "تعذر تحميل حسابك" : "Unable to load your account"));
+      setError(
+        localizedError(
+          e,
+          language === "ar",
+          language === "ar"
+            ? "تعذر تحميل حسابك"
+            : "Unable to load your account",
+        ),
+      );
     }
   }, [language]);
   useEffect(() => {
@@ -4660,11 +4921,14 @@ export default function App() {
       });
   }, [unlocked, language, data?.profile.id]);
   useEffect(
-    () => subscribeToPatientNotifications((payload) => {
-      const tab = payload.actionTab as Tab | undefined;
-      setTab(tab && tab !== "home" ? tab : "notifications");
-      void markPatientNotificationsRead().then(refresh).catch(() => undefined);
-    }),
+    () =>
+      subscribeToPatientNotifications((payload) => {
+        const tab = payload.actionTab as Tab | undefined;
+        setTab(tab && tab !== "home" ? tab : "notifications");
+        void markPatientNotificationsRead()
+          .then(refresh)
+          .catch(() => undefined);
+      }),
     [refresh],
   );
   useEffect(() => {
@@ -4696,8 +4960,11 @@ export default function App() {
   }, [authenticated, language]);
   useEffect(() => {
     if (!authenticated) return;
+    const refreshPatientData = () => {
+      void refresh();
+    };
     const channel = supabase
-      .channel("patient-notification-updates")
+      .channel("patient-live-updates")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "patient_notifications" },
@@ -4707,6 +4974,32 @@ export default function App() {
           else void refresh();
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointments" },
+        refreshPatientData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payments" },
+        refreshPatientData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "patient_wallet_transactions" },
+        refreshPatientData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "patient_loyalty_accounts" },
+        refreshPatientData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "patient_messages" },
+        refreshPatientData,
+      )
+      .on("postgres_changes",{event:"*",schema:"public",table:"patient_documents"},refreshPatientData)
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -4728,10 +5021,17 @@ export default function App() {
     beginNewPatientPresenceSession();
     void sendPatientPresence("active").catch(() => undefined);
     const heartbeat = setInterval(() => {
-      if (AppState.currentState === "active") void sendPatientPresence("active").catch(() => undefined);
+      if (AppState.currentState === "active")
+        void sendPatientPresence("active").catch(() => undefined);
     }, 30000);
     const listener = AppState.addEventListener("change", (state) => {
-      void sendPatientPresence(state === "active" ? "active" : state === "background" ? "background" : "inactive").catch(() => undefined);
+      void sendPatientPresence(
+        state === "active"
+          ? "active"
+          : state === "background"
+            ? "background"
+            : "inactive",
+      ).catch(() => undefined);
     });
     return () => {
       clearInterval(heartbeat);
@@ -4783,7 +5083,9 @@ export default function App() {
           </Text>
           <TouchableOpacity
             style={s.primary}
-            onPress={() => void unlockWithBiometrics(language).then(setUnlocked)}
+            onPress={() =>
+              void unlockWithBiometrics(language).then(setUnlocked)
+            }
           >
             <Text style={s.primaryText}>
               {language === "ar" ? "فتح التطبيق" : "Unlock app"}
@@ -4876,6 +5178,8 @@ export default function App() {
         go={setTab}
         back={() => setTab("profile")}
       />
+    ) : tab === "documents" ? (
+      <PatientDocumentsView data={documents} language={language} back={() => setTab("profile")} />
     ) : tab === "beauty" ? (
       <BeautyCalendar
         data={beauty}
@@ -4984,6 +5288,9 @@ export default function App() {
 }
 
 const s = StyleSheet.create({
+  card:{backgroundColor:colors.card,borderRadius:20,padding:18,borderWidth:1,borderColor:colors.border},
+  actionButton:{borderRadius:12,backgroundColor:colors.navy,padding:12},
+  actionButtonText:{color:"white",fontWeight:"700",textAlign:"center"},
   safe: { flex: 1, backgroundColor: colors.canvas },
   content: { flex: 1 },
   page: { padding: 22, paddingTop: 24, paddingBottom: 42 },

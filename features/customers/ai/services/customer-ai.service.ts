@@ -1,4 +1,4 @@
-import { OpenAIProvider } from "../providers/openai.provider";
+﻿import { OpenAIProvider } from "../providers/openai.provider";
 
 import { buildCustomerContext } from "../customer-context";
 
@@ -46,7 +46,7 @@ export class CustomerAIService {
             "system",
 
           content:
-            "You are Zernio Clinic AI Assistant. Always answer as a senior clinic consultant.",
+            "You are Panthera Clinic AI Assistant. Always answer as a senior clinic consultant.",
 
         },
 

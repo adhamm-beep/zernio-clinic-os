@@ -210,12 +210,12 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button type="button" />}>
-        Add Treatment
+        إضافة علاج
       </DialogTrigger>
 
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Treatment</DialogTitle>
+          <DialogTitle>إضافة علاج</DialogTitle>
         </DialogHeader>
 
         <form
@@ -235,7 +235,7 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
               {...register("customer_id")}
               className="mt-2 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select customer</option>
+              <option value="">حدد المريض</option>
 
               {filteredCustomers.map((customer) => {
                 const fullName =
@@ -287,23 +287,23 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <select {...register("provider_id", { onChange: () => { setValue("service_id", ""); setValue("variant_id", ""); setValue("price", ""); } })} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-                <option value="">Select doctor / department</option>
-                <option value="-1">Laser Department</option><option value="-2">Hair Bleaching Department</option><option value="-3">ProFacial Department</option>
+                <option value="">حدد الطبيب أو القسم</option>
+                <option value="-1">قسم الليزر</option><option value="-2">قسم تشقير الشعر</option><option value="-3">قسم بروفاشيال</option>
                 {masterData?.staff.filter(isApprovedDoctor).map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.staff_name}</option>)}
               </select>
               {errors.provider_id && <p className="mt-1 text-sm text-red-600">{errors.provider_id.message}</p>}
             </div>
             <div>
               <select {...register("service_id", { onChange: (event) => { setValue("variant_id", ""); const serviceId = Number(event.target.value); const departmentPrice = masterData?.servicePrices.find((item) => item.service_id === serviceId && item.staff_id === null); setValue("price", selectedProviderId < 0 && departmentPrice ? String(departmentPrice.price) : ""); } })} disabled={!selectedProviderId} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
-                <option value="">Select service</option>{availableServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
+                <option value="">حدد الخدمة</option>{availableServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
               </select>
               {errors.service_id && <p className="mt-1 text-sm text-red-600">{errors.service_id.message}</p>}
             </div>
             <div>
               <select {...register("variant_id", { onChange: (event) => { const variantId = Number(event.target.value); const selectedVariant = masterData?.serviceVariants.find((item) => item.id === variantId); const doctorPrice = masterData?.serviceVariantPrices.find((item) => item.service_variant_id === variantId && item.staff_id === selectedProviderId); setValue("price", selectedVariant ? String(doctorPrice?.price ?? selectedVariant.price) : ""); } })} disabled={!selectedServiceId} className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50">
-                <option value="">Select material / option</option>{availableVariants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name}</option>)}
+                <option value="">حدد المادة أو الخيار</option>{availableVariants.map((variant) => <option key={variant.id} value={variant.id}>{variant.name}</option>)}
               </select>
-              {selectedProviderId > 0 && !availableVariants.length && <p className="mt-1 text-xs text-amber-600">Add a material and price in Price / Service List first.</p>}
+              {selectedProviderId > 0 && !availableVariants.length && <p className="mt-1 text-xs text-amber-600">أضف المادة وسعرها أولًا من قائمة الخدمات والأسعار.</p>}
             </div>
           </div>
 
@@ -320,10 +320,10 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="ml">ml</option>
-              <option value="unit">Unit</option>
-              <option value="session">Session</option>
-              <option value="box">Box</option>
-              <option value="syringe">Syringe</option>
+              <option value="unit">وحدة</option>
+              <option value="session">جلسة</option>
+              <option value="box">علبة</option>
+              <option value="syringe">حقنة</option>
             </select>
           </div>
 
@@ -377,10 +377,10 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
             {...register("status")}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           >
-            <option value="planned">Planned</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="planned">مخطط</option>
+            <option value="in_progress">قيد التنفيذ</option>
+            <option value="completed">مكتمل</option>
+            <option value="cancelled">ملغي</option>
           </select>
 
           <textarea

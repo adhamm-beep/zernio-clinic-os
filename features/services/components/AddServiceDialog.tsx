@@ -20,21 +20,21 @@ import { Input } from "@/components/ui/input";
 import { useCreateService } from "../hooks/useCreateService";
 
 const serviceSchema = z.object({
-  name: z.string().min(2, "Service name is required"),
-  category: z.string().min(1, "Category is required"),
+  name: z.string().min(2, "اسم الخدمة مطلوب"),
+  category: z.string().min(1, "تصنيف الخدمة مطلوب"),
 
   default_price: z
     .number({
-      error: "Enter a valid price",
+      error: "أدخل سعرًا صحيحًا",
     })
-    .min(0, "Price cannot be negative"),
+    .min(0, "لا يمكن أن يكون السعر سالبًا"),
 
   duration_minutes: z
     .number({
-      error: "Enter a valid duration",
+      error: "أدخل مدة صحيحة",
     })
-    .int("Duration must be a whole number")
-    .min(5, "Minimum duration is 5 minutes"),
+    .int("يجب أن تكون المدة رقمًا صحيحًا")
+    .min(5, "أقل مدة هي 5 دقائق"),
 
   is_active: z.boolean(),
   code: z.string().optional(),
@@ -54,6 +54,7 @@ const categories = [
   "Follow Up",
   "Other",
 ];
+const categoryLabels: Record<string, string> = { Consultation: "استشارة", Injectables: "حقن", Laser: "ليزر", Skin: "بشرة", Hair: "شعر", Body: "جسم", "Follow Up": "متابعة", Other: "أخرى" };
 
 export default function AddServiceDialog() {
   const [open, setOpen] = useState(false);
@@ -91,7 +92,7 @@ export default function AddServiceDialog() {
         price_starting_from: values.price_starting_from,
       });
 
-      toast.success("Service added successfully");
+      toast.success("تمت إضافة الخدمة بنجاح");
 
       reset({
         name: "",
@@ -109,7 +110,7 @@ export default function AddServiceDialog() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to add service"
+          : "تعذر إضافة الخدمة"
       );
     }
   }
@@ -136,14 +137,14 @@ export default function AddServiceDialog() {
       <DialogTrigger
         render={
           <Button type="button">
-            Add Service
+            إضافة خدمة
           </Button>
         }
       />
 
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Service</DialogTitle>
+          <DialogTitle>إضافة خدمة</DialogTitle>
         </DialogHeader>
 
         <form
@@ -151,19 +152,19 @@ export default function AddServiceDialog() {
           className="space-y-4"
         >
           <div>
-            <Input placeholder="Service code (optional)" {...register("code")} />
+            <Input placeholder="رمز الخدمة (اختياري)" {...register("code")} />
           </div>
 
           <div>
             <select {...register("provider_type")} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-              <option value="doctor">Doctor service</option>
-              <option value="department">Department service</option>
+              <option value="doctor">خدمة يقدمها طبيب</option>
+              <option value="department">خدمة يقدمها قسم</option>
             </select>
           </div>
 
           <div>
             <Input
-              placeholder="Service name"
+              placeholder="اسم الخدمة"
               {...register("name")}
             />
 
@@ -179,14 +180,14 @@ export default function AddServiceDialog() {
               {...register("category")}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select category</option>
+              <option value="">حدد التصنيف</option>
 
               {categories.map((category) => (
                 <option
                   key={category}
                   value={category}
                 >
-                  {category}
+                  {categoryLabels[category] ?? category}
                 </option>
               ))}
             </select>
@@ -203,7 +204,7 @@ export default function AddServiceDialog() {
               type="number"
               min="0"
               step="0.01"
-              placeholder="Default price"
+              placeholder="السعر الافتراضي"
               {...register("default_price", {
                 valueAsNumber: true,
               })}
@@ -221,7 +222,7 @@ export default function AddServiceDialog() {
               type="number"
               min="5"
               step="5"
-              placeholder="Duration in minutes"
+              placeholder="المدة بالدقائق"
               {...register("duration_minutes", {
                 valueAsNumber: true,
               })}
@@ -236,7 +237,7 @@ export default function AddServiceDialog() {
 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" {...register("price_starting_from")} className="h-4 w-4 rounded border-gray-300" />
-            Price starts from this amount
+            السعر يبدأ من هذا المبلغ
           </label>
 
           <label className="flex items-center gap-2 text-sm">
@@ -246,7 +247,7 @@ export default function AddServiceDialog() {
               className="h-4 w-4 rounded border-gray-300"
             />
 
-            Active service
+            خدمة نشطة
           </label>
 
           <Button
@@ -255,8 +256,8 @@ export default function AddServiceDialog() {
             disabled={createService.isPending}
           >
             {createService.isPending
-              ? "Saving..."
-              : "Save Service"}
+              ? "جارٍ الحفظ..."
+              : "حفظ الخدمة"}
           </Button>
         </form>
       </DialogContent>

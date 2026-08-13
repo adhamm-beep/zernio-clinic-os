@@ -112,13 +112,13 @@ export default function MedicalRecordCard({
       });
 
       window.alert(
-        "Medical Record Saved"
+        "تم حفظ السجل الطبي"
       );
     } catch (saveError) {
       window.alert(
         saveError instanceof Error
           ? saveError.message
-          : "Failed to save medical record."
+          : "تعذر حفظ السجل الطبي."
       );
     }
   }
@@ -126,7 +126,7 @@ export default function MedicalRecordCard({
   if (isLoading) {
     return (
       <div className="rounded-2xl border bg-white p-6">
-        Loading medical record...
+        جارٍ تحميل السجل الطبي...
       </div>
     );
   }
@@ -136,7 +136,7 @@ export default function MedicalRecordCard({
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
         {error instanceof Error
           ? error.message
-          : "Failed to load medical record."}
+          : "تعذر تحميل السجل الطبي."}
       </div>
     );
   }
@@ -148,21 +148,21 @@ export default function MedicalRecordCard({
     (recordFields.filter((value) => value.trim().length > 0).length / recordFields.length) * 100
   );
   const attentionLabels = [
-    allergies.trim() ? "Allergies documented" : null,
-    chronicDiseases.trim() ? "Chronic conditions documented" : null,
-    medications.trim() ? "Current medications documented" : null,
-    contraindications.trim() ? "Contraindications documented" : null,
+    allergies.trim() ? "الحساسية موثقة" : null,
+    chronicDiseases.trim() ? "الأمراض المزمنة موثقة" : null,
+    medications.trim() ? "الأدوية الحالية موثقة" : null,
+    contraindications.trim() ? "موانع العلاج موثقة" : null,
   ].filter((item): item is string => Boolean(item));
 
   return (
     <div className="space-y-5 rounded-2xl border bg-white p-6">
       <div>
         <h2 className="text-2xl font-bold">
-          Medical Record
+          السجل الطبي
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          Medical history and treatment safety information.
+          التاريخ الطبي ومعلومات سلامة العلاج.
         </p>
       </div>
 
@@ -171,19 +171,19 @@ export default function MedicalRecordCard({
           <div className="flex items-center gap-3">
             <span className="rounded-xl bg-emerald-600 p-2 text-white"><Sparkles className="h-5 w-5" /></span>
             <div>
-              <h3 className="font-bold text-slate-950">AI Medical Summary</h3>
-              <p className="text-xs text-slate-500">Processed privately without sending medical text to AI services</p>
+              <h3 className="font-bold text-slate-950">الملخص الطبي الذكي</h3>
+              <p className="text-xs text-slate-500">تتم المعالجة بخصوصية دون إرسال النص الطبي إلى خدمات الذكاء الاصطناعي</p>
             </div>
           </div>
           <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
-            Record completeness: {completeness}%
+            اكتمال السجل: {completeness}%
           </span>
         </div>
 
         {attentionLabels.length > 0 ? (
           <div className="mt-4">
             <p className="flex items-center gap-2 text-sm font-semibold text-amber-800">
-              <AlertTriangle className="h-4 w-4" /> Review before treatment
+              <AlertTriangle className="h-4 w-4" /> راجع قبل العلاج
             </p>
             <ul className="mt-3 grid gap-2 sm:grid-cols-2">
               {attentionLabels.map((label) => (
@@ -194,28 +194,28 @@ export default function MedicalRecordCard({
         ) : (
           <p className="mt-4 flex items-center gap-2 text-sm text-slate-700">
             <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            No safety details are documented yet; confirm the medical history before treatment.
+            لم تُوثق تفاصيل السلامة بعد؛ أكد التاريخ الطبي قبل العلاج.
           </p>
         )}
 
         <p className="mt-4 text-xs text-slate-500">
-          {documentedSafetyFields}/4 core safety categories documented. This is a review aid, not a diagnosis.
+          تم توثيق {documentedSafetyFields}/4 من فئات السلامة الأساسية. هذه أداة مراجعة وليست تشخيصًا.
         </p>
         <div className="mt-4 rounded-xl bg-white/90 p-4 text-sm leading-6 text-slate-700">
-          <span className="font-semibold">Clinical handover:</span>{" "}
+          <span className="font-semibold">التسليم الطبي:</span>{" "}
           {attentionLabels.length > 0
-            ? `${attentionLabels.join(", ")}. Verify these entries with the customer before selecting a treatment or material.`
-            : "The core safety history is incomplete. Ask about allergies, chronic conditions, current medications, and contraindications before treatment."}
+            ? `${attentionLabels.join("، ")}. تحقق من هذه البيانات مع المريض قبل اختيار العلاج أو المادة.`
+            : "بيانات السلامة الأساسية غير مكتملة. اسأل عن الحساسية والأمراض المزمنة والأدوية الحالية وموانع العلاج قبل بدء العلاج."}
         </div>
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Blood Type
+          فصيلة الدم
         </label>
 
         <Input
-          placeholder="Example: O+"
+          placeholder="مثال: O+"
           value={bloodType}
           onChange={(
             event: ChangeEvent<HTMLInputElement>
@@ -229,7 +229,7 @@ export default function MedicalRecordCard({
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Allergies
+          الحساسية
         </label>
 
         <textarea
@@ -242,14 +242,14 @@ export default function MedicalRecordCard({
             )
           }
           rows={3}
-          placeholder="Known allergies..."
+          placeholder="الحساسية المعروفة..."
           className="w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Chronic Diseases
+          الأمراض المزمنة
         </label>
 
         <textarea
@@ -262,14 +262,14 @@ export default function MedicalRecordCard({
             )
           }
           rows={3}
-          placeholder="Diabetes, hypertension..."
+          placeholder="السكري، ضغط الدم..."
           className="w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Current Medications
+          الأدوية الحالية
         </label>
 
         <textarea
@@ -282,14 +282,14 @@ export default function MedicalRecordCard({
             )
           }
           rows={3}
-          placeholder="Current medications..."
+          placeholder="الأدوية المستخدمة حاليًا..."
           className="w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Contraindications
+          موانع العلاج
         </label>
 
         <textarea
@@ -302,14 +302,14 @@ export default function MedicalRecordCard({
             )
           }
           rows={3}
-          placeholder="Treatment contraindications..."
+          placeholder="موانع العلاج..."
           className="w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-medium">
-          Medical Notes
+          الملاحظات الطبية
         </label>
 
         <textarea
@@ -322,7 +322,7 @@ export default function MedicalRecordCard({
             )
           }
           rows={5}
-          placeholder="Doctor notes..."
+          placeholder="ملاحظات الطبيب..."
           className="w-full rounded-md border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>
@@ -338,8 +338,8 @@ export default function MedicalRecordCard({
         className="w-full"
       >
         {updateMedicalRecord.isPending
-          ? "Saving..."
-          : "Save Medical Record"}
+          ? "جارٍ الحفظ..."
+          : "حفظ السجل الطبي"}
       </Button>
     </div>
   );

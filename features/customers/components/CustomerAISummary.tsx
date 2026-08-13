@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -36,7 +36,6 @@ function scoreColor(score: number) {
   if (score >= 60) return "text-yellow-600";
   return "text-red-600";
 }
-
 export default function CustomerAISummary({ insights, profile }: Props) {
   const [generated, setGenerated] = useState<GeneratedSummary | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -80,8 +79,8 @@ export default function CustomerAISummary({ insights, profile }: Props) {
         <div className="flex items-center gap-3">
           <Brain className="h-8 w-8 text-cyan-400" />
           <div>
-            <h2 className="text-2xl font-bold">Zernio AI Summary</h2>
-            <p className="text-sm text-slate-400">Unified customer intelligence</p>
+            <h2 className="text-2xl font-bold">ملخص بانثيرا الذكي</h2>
+            <p className="text-sm text-slate-400">ذكاء موحد لبيانات المريض</p>
           </div>
         </div>
 
@@ -167,32 +166,32 @@ export default function CustomerAISummary({ insights, profile }: Props) {
       <div className="mt-8 grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl bg-white/5 p-5">
           <TrendingUp className="mb-3 h-6 w-6 text-green-400" />
-          <p className="text-sm text-slate-400">Health Score</p>
+          <p className="text-sm text-slate-400">مؤشر الصحة</p>
           <h2 className={`text-3xl font-bold ${scoreColor(risk.score)}`}>{risk.score}</h2>
         </div>
         <div className="rounded-2xl bg-white/5 p-5">
           <ShieldAlert className="mb-3 h-6 w-6 text-red-400" />
-          <p className="text-sm text-slate-400">Risk</p>
+          <p className="text-sm text-slate-400">المخاطر</p>
           <h2 className="text-2xl font-bold">{risk.noShowRisk}</h2>
         </div>
         <div className="rounded-2xl bg-white/5 p-5">
           <DollarSign className="mb-3 h-6 w-6 text-yellow-400" />
-          <p className="text-sm text-slate-400">Lifetime Value</p>
+          <p className="text-sm text-slate-400">القيمة مدى الحياة</p>
           <h2 className="text-2xl font-bold">
             SAR {insights.lifetimeValue.toLocaleString()}
           </h2>
         </div>
         <div className="rounded-2xl bg-white/5 p-5">
           <Crown className="mb-3 h-6 w-6 text-amber-400" />
-          <p className="text-sm text-slate-400">VIP</p>
-          <h2 className="text-2xl font-bold">{insights.vip ? "YES" : "NO"}</h2>
+          <p className="text-sm text-slate-400">كبار العملاء</p>
+          <h2 className="text-2xl font-bold">{insights.vip ? "نعم" : "لا"}</h2>
         </div>
       </div>
 
       <div className="mt-8 rounded-2xl bg-white/5 p-6">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-cyan-400" />
-          <h3 className="font-bold">Rule-based recommendations</h3>
+          <h3 className="font-bold">توصيات مبنية على البيانات</h3>
         </div>
         <ul className="mt-4 space-y-3">
           {recommendations.map((recommendation) => (
@@ -204,15 +203,15 @@ export default function CustomerAISummary({ insights, profile }: Props) {
         </ul>
         <div className="mt-5 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-3">
           <div>
-            <p className="text-xs text-slate-400">Segment</p>
+            <p className="text-xs text-slate-400">الشريحة</p>
             <p className="mt-1 font-semibold">{brain.segment}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Campaign</p>
+            <p className="text-xs text-slate-400">الحملة</p>
             <p className="mt-1 font-semibold">{brain.campaign}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400">Predicted value</p>
+            <p className="text-xs text-slate-400">القيمة المتوقعة</p>
             <p className="mt-1 font-semibold">
               SAR {Math.round(brain.lifetime.predicted).toLocaleString()}
             </p>

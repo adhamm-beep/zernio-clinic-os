@@ -29,9 +29,7 @@ export interface ClinicBrainResult {
     typeof predictCustomer
   >;
 
-  campaign: ReturnType<
-    typeof recommendCampaign
-  >;
+  campaign: string;
 
 }
 
@@ -56,14 +54,14 @@ export function buildClinicBrain(
 
   const campaign = profile
     ? segment === "VIP"
-      ? "VIP Loyalty Campaign"
+      ? "حملة ولاء كبار العملاء"
       : segment === "RISK"
-        ? "Win Back Campaign"
+        ? "حملة استعادة المريض"
         : segment === "NEW"
-          ? "Welcome Campaign"
+          ? "حملة ترحيبية"
           : segment === "LOYAL"
-            ? "Premium Upgrade"
-            : "Monthly Offer"
+            ? "ترقية مميزة"
+            : "العرض الشهري"
     : recommendCampaign(insights);
 
   return {

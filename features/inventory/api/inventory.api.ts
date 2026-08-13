@@ -3,16 +3,16 @@ import type { InventoryData } from "../types/inventory";
 
 const supabase = createClient();
 
-export async function getInventory(clinicId: number, branchId: number): Promise<InventoryData> {
+export async function getInventory(clinicId: number, branchId: number, showCosts = false): Promise<InventoryData> {
   const [products, suppliers, orders, movements] = await Promise.all([
-    supabase.from("inventory_products").select("*, supplier:inventory_suppliers(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("name"),
+    showCosts ? supabase.from("inventory_products").select("*, supplier:inventory_suppliers(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("name") : supabase.from("inventory_products").select("id,clinic_id,branch_id,name,sku,barcode,category,unit,current_stock,minimum_stock,batch_number,expiry_date,supplier_id,service_variant_id,is_active,created_at,updated_at,supplier:inventory_suppliers(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("name"),
     supabase.from("inventory_suppliers").select("*").eq("clinic_id", clinicId).order("name"),
-    supabase.from("inventory_purchase_orders").select("*, supplier:inventory_suppliers(name), items:inventory_purchase_order_items(id,product_id,quantity,received_quantity,unit_cost)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("created_at", { ascending: false }),
-    supabase.from("inventory_movements").select("*, product:inventory_products(name,unit), doctor:staff(staff_name), service:services(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("occurred_at", { ascending: false }).limit(200),
+    showCosts ? supabase.from("inventory_purchase_orders").select("*, supplier:inventory_suppliers(name), items:inventory_purchase_order_items(id,product_id,quantity,received_quantity,unit_cost)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("created_at", { ascending: false }) : supabase.from("inventory_purchase_orders").select("id,clinic_id,branch_id,supplier_id,order_number,status,ordered_at,expected_at,received_at,created_at,supplier:inventory_suppliers(name),items:inventory_purchase_order_items(id,product_id,quantity,received_quantity)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("created_at", { ascending: false }),
+    showCosts ? supabase.from("inventory_movements").select("*, product:inventory_products(name,unit), doctor:staff(staff_name), service:services(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("occurred_at", { ascending: false }).limit(200) : supabase.from("inventory_movements").select("id,clinic_id,branch_id,product_id,movement_type,quantity,doctor_id,service_id,treatment_session_id,purchase_order_id,notes,occurred_at,product:inventory_products(name,unit),doctor:staff(staff_name),service:services(name)").eq("clinic_id", clinicId).eq("branch_id", branchId).order("occurred_at", { ascending: false }).limit(200),
   ]);
   const error = products.error || suppliers.error || orders.error || movements.error;
   if (error) throw new Error(error.message);
-  return { products: (products.data ?? []) as InventoryData["products"], suppliers: (suppliers.data ?? []) as InventoryData["suppliers"], orders: (orders.data ?? []) as InventoryData["orders"], movements: (movements.data ?? []) as InventoryData["movements"] };
+  return { products: (products.data ?? []) as unknown as InventoryData["products"], suppliers: (suppliers.data ?? []) as InventoryData["suppliers"], orders: (orders.data ?? []) as unknown as InventoryData["orders"], movements: (movements.data ?? []) as unknown as InventoryData["movements"] };
 }
 
 export async function addSupplier(input: { clinic_id: number; name: string; phone?: string; email?: string }) {

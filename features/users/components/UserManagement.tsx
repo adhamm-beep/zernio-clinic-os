@@ -12,6 +12,15 @@ import { changeManagedUserRole, createManagedUser, saveUserPermissions, sendUser
 import { useUserManagement } from "../hooks/useUserManagement";
 import { permissionMeta, permissionModuleOrder } from "../permission-catalog";
 
+const roleDescriptionAr:Record<string,string>={
+  "Full clinic operating access":"صلاحيات تشغيل العيادة بالكامل",
+  "Customer care and booking coordination":"خدمة المرضى وتنسيق الحجوزات",
+  "Clinical and treatment access":"الوصول السريري والعلاجات",
+  "Payments, invoices and reports":"المدفوعات والفواتير والتقارير",
+  "Clinical support and inventory consumption":"الدعم السريري واستهلاك المخزون",
+  "Customers, appointments and follow-ups":"المرضى والمواعيد والمتابعات",
+};
+
 export default function UserManagement() {
   const { text,isArabic } = useLocale();
   const { clinic, selectedBranch, isLoading: clinicLoading } = useClinic();
@@ -207,7 +216,7 @@ export default function UserManagement() {
     <section className="rounded-3xl border bg-white p-6 shadow-sm">
       <h2 className="text-lg font-black text-slate-900">{text("Roles and permissions", "الأدوار والصلاحيات")}</h2>
       <p className="mt-1 text-sm text-slate-500">{text("A quick overview of the access levels available in this clinic.", "نظرة سريعة على مستويات الوصول المتاحة في هذه العيادة.")}</p>
-      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{query.data.roles.map((role) => <article key={role.id} className="rounded-2xl border p-4"><div className="flex items-center gap-2"><ShieldCheck className="size-5 text-[#557080]" /><h3 className="font-bold">{role.name}</h3></div><p className="mt-2 min-h-10 text-xs leading-5 text-slate-500">{role.description || text("Clinic access role", "دور وصول للعيادة")}</p><p className="mt-3 text-xs font-bold text-slate-700">{role.permissions.length} {text("permissions", "صلاحيات")}</p></article>)}</div>
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{query.data.roles.map((role) => <article key={role.id} className="rounded-2xl border p-4"><div className="flex items-center gap-2"><ShieldCheck className="size-5 text-[#557080]" /><h3 className="font-bold">{role.name}</h3></div><p className="mt-2 min-h-10 text-xs leading-5 text-slate-500">{isArabic?(roleDescriptionAr[role.description??""]||role.description||"دور وصول للعيادة"):(role.description||"Clinic access role")}</p><p className="mt-3 text-xs font-bold text-slate-700">{role.permissions.length} {text("permissions", "صلاحيات")}</p></article>)}</div>
     </section>
   </div>;
 }

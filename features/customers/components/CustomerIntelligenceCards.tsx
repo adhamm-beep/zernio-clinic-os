@@ -15,30 +15,30 @@ export default function CustomerIntelligenceCards({
 
   const cards = [
     {
-      title: "Visits",
+      title: "الزيارات",
       value: info.totalVisits,
     },
     {
-      title: "Treatments",
+      title: "العلاجات",
       value: info.completedTreatments,
     },
     {
-      title: "Revenue",
-      value: `SAR ${info.totalRevenue.toLocaleString()}`,
+      title: "الإيرادات",
+      value: `${info.totalRevenue.toLocaleString("en-SA")} ر.س`,
     },
     {
-      title: "Average Spend",
-      value: `SAR ${Math.round(
+      title: "متوسط الإنفاق",
+      value: `${Math.round(
         info.averageSpend
-      ).toLocaleString()}`,
+      ).toLocaleString("en-SA")} ر.س`,
     },
     {
-      title: "Outstanding",
-      value: `SAR ${info.outstandingBalance.toLocaleString()}`,
+      title: "المبالغ المستحقة",
+      value: `${info.outstandingBalance.toLocaleString("en-SA")} ر.س`,
     },
     {
-      title: "VIP",
-      value: info.vip ? "YES" : "NO",
+      title: "كبار العملاء",
+      value: info.vip ? "نعم" : "لا",
     },
   ];
 

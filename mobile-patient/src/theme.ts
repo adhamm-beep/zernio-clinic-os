@@ -1,1 +1,1 @@
-export const colors={ink:"#223946",navy:"#516E84",violet:"#516E84",violetSoft:"#E9EEF1",cyan:"#91A3AE",mint:"#E6EEE9",canvas:"#F7F4EF",card:"#FFFEFB",text:"#2B414D",muted:"#78878E",border:"#DFDDD7",danger:"#A85D55",amber:"#B28B4B"};
+export const colors={success:"#047857",ink:"#223946",navy:"#516E84",violet:"#516E84",violetSoft:"#E9EEF1",cyan:"#91A3AE",mint:"#E6EEE9",canvas:"#F7F4EF",card:"#FFFEFB",text:"#2B414D",muted:"#78878E",border:"#DFDDD7",danger:"#A85D55",amber:"#B28B4B"};

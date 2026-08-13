@@ -10,6 +10,9 @@ const queryPrefixesByTable: Record<string, readonly string[]> = {
   follow_ups: ["follow-ups", "customer-360", "customer-timeline", "dashboard-stats", "clinic-brain", "ai-agent-workspace"],
   medical_records: ["medical-record", "customer-360", "customer-timeline"],
   payments: ["payments", "billing-due", "customer-360", "customer-timeline", "dashboard-stats", "clinic-analytics", "clinic-brain", "ai-agent-workspace"],
+  clinic_expenses: ["clinic-expenses", "accounting", "clinic-analytics", "clinic-brain"],
+  clinic_expense_payments: ["clinic-expenses", "accounting", "clinic-analytics", "clinic-brain"],
+  clinic_incomes: ["clinic-incomes", "accounting", "clinic-analytics", "clinic-brain"],
   treatments: ["treatments", "treatment-history", "customer-360", "customer-timeline", "dashboard-stats", "clinic-analytics", "clinic-brain", "ai-agent-workspace"],
   treatment_sessions: ["treatments", "treatment-history", "customer-360", "customer-timeline", "dashboard-stats", "clinic-analytics", "clinic-brain", "ai-agent-workspace"],
   treatment_items: ["treatments", "treatment-history", "customer-360", "customer-timeline", "inventory", "dashboard-stats", "clinic-analytics"],
@@ -21,6 +24,7 @@ const queryPrefixesByTable: Record<string, readonly string[]> = {
   staff_rooms: ["staff-hr", "master-data", "appointments", "calendar-events"],
   staff_working_hours: ["staff-hr", "master-data", "appointments", "calendar-events"],
   rooms: ["master-data", "appointments", "calendar-events"],
+  branches: ["master-data", "clinic-context", "appointments", "calendar-events"],
   devices: ["master-data", "appointments", "calendar-events", "inventory"],
   inventory_products: ["inventory"],
   inventory_movements: ["inventory"],
@@ -29,11 +33,14 @@ const queryPrefixesByTable: Record<string, readonly string[]> = {
   marketing_messages: ["marketing"],
   marketing_source_costs: ["marketing", "clinic-analytics"],
   enterprise_tasks: ["enterprise"],
+  enterprise_audit_log: ["audit-logs"],
   enterprise_notifications: ["enterprise", "staff-notifications"],
   enterprise_workflow_runs: ["enterprise"],
   patient_appointment_requests: ["patient-appointment-requests", "appointments", "calendar-events", "ai-agent-workspace"],
   patient_messages: ["patient-messages", "staff-notifications", "ai-agent-workspace"],
   patient_automation_suggestions: ["ai-agent-workspace", "patient-appointment-requests"],
+  patient_tags: ["patient-tags", "patient-tags-settings", "customers"],
+  patient_referral_sources: ["referral-sources", "referral-sources-settings", "customers"],
 };
 
 export default function RealtimeDataSync() {

@@ -8,20 +8,12 @@ import type {
 } from "../types/appointment";
 
 import { useUpdateAppointment } from "../hooks/useUpdateAppointment";
+import { appointmentStatuses, appointmentStatusLabelAr, appointmentStatusSoft } from "../appointment-status";
 
 type AppointmentTableProps = {
   appointments: Appointment[];
   canEdit?: boolean;
 };
-
-const appointmentStatuses: AppointmentStatus[] = [
-  "booked",
-  "confirmed",
-  "arrived",
-  "completed",
-  "cancelled",
-  "no_show",
-];
 
 function formatAppointmentDate(
   value: string
@@ -62,25 +54,7 @@ function getCustomerName(
 function getStatusClasses(
   status: string
 ): string {
-  switch (status) {
-    case "confirmed":
-      return "bg-blue-100 text-blue-700";
-
-    case "arrived":
-      return "bg-purple-100 text-purple-700";
-
-    case "completed":
-      return "bg-green-100 text-green-700";
-
-    case "cancelled":
-      return "bg-red-100 text-red-700";
-
-    case "no_show":
-      return "bg-orange-100 text-orange-700";
-
-    default:
-      return "bg-slate-100 text-slate-700";
-  }
+  return appointmentStatusSoft[status as AppointmentStatus] ?? "bg-slate-100 text-slate-700";
 }
 
 export default function AppointmentTable({
@@ -243,10 +217,7 @@ export default function AppointmentTable({
                             key={status}
                             value={status}
                           >
-                            {status.replaceAll(
-                              "_",
-                              " "
-                            )}
+                            {appointmentStatusLabelAr[status]}
                           </option>
                         )
                       )}

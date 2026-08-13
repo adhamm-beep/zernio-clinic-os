@@ -21,14 +21,15 @@ import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { useAppointments } from "@/features/appointments/hooks/useAppointments";
 import { useTreatments } from "@/features/treatments/hooks/useTreatments";
 import { useCreateFollowUp } from "../hooks/useCreateFollowUp";
+import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 
 const followUpSchema = z.object({
-  customer_id: z.string().min(1, "Please select a customer"),
+  customer_id: z.string().min(1, "اختر المريض"),
   appointment_id: z.string().optional(),
   treatment_id: z.string().optional(),
-  channel: z.string().min(1, "Channel is required"),
-  follow_up_type: z.string().min(1, "Follow-up type is required"),
-  scheduled_at: z.string().min(1, "Schedule date is required"),
+  channel: z.string().min(1, "قناة التواصل مطلوبة"),
+  follow_up_type: z.string().min(1, "نوع المتابعة مطلوب"),
+  scheduled_at: z.string().min(1, "تاريخ التنبيه مطلوب"),
   assigned_to: z.string().optional(),
   message_text: z.string().optional(),
   outcome: z.string().optional(),
@@ -53,6 +54,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
   const { data: customers = [] } = useCustomers();
   const { data: appointments = [] } = useAppointments();
   const { data: treatments = [] } = useTreatments();
+  const { data: master } = useMasterData();
 
   const createFollowUp = useCreateFollowUp();
 
@@ -129,14 +131,14 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
         : null;
 
       if (!Number.isInteger(customerId) || customerId <= 0) {
-        toast.error("Please select a valid customer");
+        toast.error("اختر مريضًا صحيحًا");
         return;
       }
 
       const scheduledDate = new Date(values.scheduled_at);
 
       if (Number.isNaN(scheduledDate.getTime())) {
-        toast.error("Enter a valid follow-up date");
+        toast.error("أدخل تاريخ متابعة صحيحًا");
         return;
       }
 
@@ -156,7 +158,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
         status: values.status,
       });
 
-      toast.success("Follow up added successfully");
+      toast.success("تمت إضافة التنبيه والمتابعة بنجاح");
 
       reset({
         customer_id: "",
@@ -178,7 +180,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to add follow up"
+          : "تعذرت إضافة المتابعة"
       );
     }
   }
@@ -186,12 +188,12 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button type="button" />}>
-        Add Follow Up
+        إضافة تنبيه ومتابعة
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <DialogTitle>Add Follow Up</DialogTitle>
+          <DialogTitle>إضافة تنبيه ومتابعة للمريض</DialogTitle>
         </DialogHeader>
 
         <form
@@ -200,7 +202,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
         >
           <div>
             <Input
-              placeholder="Search customer by name, phone or code"
+              placeholder="ابحث باسم المريض أو الهاتف أو رقم الملف"
               value={customerSearch}
               onChange={(event) =>
                 setCustomerSearch(event.target.value)
@@ -211,21 +213,21 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
               {...register("customer_id")}
               className="mt-2 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select customer</option>
+              <option value="">اختر المريض</option>
 
               {filteredCustomers.map((customer) => {
                 const fullName =
                   `${customer.first_name ?? ""} ${
                     customer.last_name ?? ""
-                  }`.trim() || "Unnamed customer";
+                  }`.trim() || "مريض بدون اسم";
 
                 return (
                   <option
                     key={customer.id}
                     value={String(customer.id)}
                   >
-                    {fullName} — {customer.phone || "No phone"} —{" "}
-                    {customer.customer_code || "No code"}
+                    {fullName} — {customer.phone || "بدون هاتف"} —{" "}
+                    {customer.customer_code || "بدون رقم ملف"}
                   </option>
                 );
               })}
@@ -243,7 +245,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
             disabled={!selectedCustomerId}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
           >
-            <option value="">No appointment</option>
+            <option value="">بدون موعد مرتبط</option>
 
             {customerAppointments.map((appointment) => (
               <option
@@ -252,8 +254,8 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
               >
                 {new Date(
                   appointment.appointment_at
-                ).toLocaleString("en-US", { hour12: true })}{" "}
-                — {appointment.services?.name ?? "No service"}
+                ).toLocaleString("ar-SA-u-nu-latn", { hour12: true })}{" "}
+                — {appointment.services?.name ?? "بدون خدمة"}
               </option>
             ))}
           </select>
@@ -263,7 +265,7 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
             disabled={!selectedCustomerId}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
           >
-            <option value="">No treatment</option>
+            <option value="">بدون علاج مرتبط</option>
 
             {customerTreatments.map((treatment) => (
               <option
@@ -281,15 +283,15 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               <option value="whatsapp">WhatsApp</option>
-              <option value="call">Call</option>
-              <option value="sms">SMS</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
-              <option value="other">Other</option>
+              <option value="call">مكالمة</option>
+              <option value="sms">رسالة نصية</option>
+              <option value="email">بريد إلكتروني</option>
+              <option value="instagram">إنستغرام</option>
+              <option value="other">أخرى</option>
             </select>
 
             <Input
-              placeholder="Follow-up type"
+              placeholder="نوع المتابعة"
               {...register("follow_up_type")}
             />
           </div>
@@ -299,24 +301,21 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
             {...register("scheduled_at")}
           />
 
-          <Input
-            placeholder="Assigned to"
-            {...register("assigned_to")}
-          />
+          <select {...register("assigned_to")} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="">الموظف المسؤول</option>{master?.staff.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.staff_name}>{item.staff_name}</option>)}</select>
 
           <textarea
-            placeholder="Message text"
+            placeholder="تفاصيل ورسالة التنبيه"
             {...register("message_text")}
             className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none"
           />
 
           <Input
-            placeholder="Outcome"
+            placeholder="الإجراء أو النتيجة"
             {...register("outcome")}
           />
 
           <textarea
-            placeholder="Notes"
+            placeholder="ملاحظات"
             {...register("notes")}
             className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none"
           />
@@ -325,11 +324,11 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
             {...register("status")}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           >
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="no_answer">No Answer</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="pending">معلق</option>
+            <option value="in_progress">جارٍ العمل</option>
+            <option value="completed">مكتمل</option>
+            <option value="no_answer">لا يوجد رد</option>
+            <option value="cancelled">ملغي</option>
           </select>
 
           <Button
@@ -338,8 +337,8 @@ export default function AddFollowUpDialog({ clinicId, branchId }: { clinicId: nu
             disabled={createFollowUp.isPending}
           >
             {createFollowUp.isPending
-              ? "Saving..."
-              : "Save Follow Up"}
+              ? "جارٍ الحفظ..."
+              : "حفظ التنبيه والمتابعة"}
           </Button>
         </form>
       </DialogContent>

@@ -7,7 +7,7 @@ type TreatmentTableProps = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "Not available";
+  if (!value) return "غير متاح";
 
   const date = new Date(value);
 
@@ -51,7 +51,7 @@ export default function TreatmentTable({
   if (treatments.length === 0) {
     return (
       <div className="rounded-2xl border bg-white p-10 text-center text-gray-500">
-        No treatments found.
+        لا توجد علاجات مطابقة.
       </div>
     );
   }
@@ -61,14 +61,14 @@ export default function TreatmentTable({
       <table className="w-full min-w-[1100px]">
         <thead className="bg-slate-100">
           <tr>
-            <th className="px-5 py-4 text-left">Date</th>
-            <th className="px-5 py-4 text-left">Service</th>
-            <th className="px-5 py-4 text-left">Doctor</th>
-            <th className="px-5 py-4 text-left">Quantity</th>
-            <th className="px-5 py-4 text-left">Price</th>
-            <th className="px-5 py-4 text-left">Discount</th>
-            <th className="px-5 py-4 text-left">Final Price</th>
-            <th className="px-5 py-4 text-left">Status</th>
+            <th className="px-5 py-4 text-right">التاريخ</th>
+            <th className="px-5 py-4 text-right">الخدمة</th>
+            <th className="px-5 py-4 text-right">الطبيب</th>
+            <th className="px-5 py-4 text-right">الكمية</th>
+            <th className="px-5 py-4 text-right">السعر</th>
+            <th className="px-5 py-4 text-right">الخصم</th>
+            <th className="px-5 py-4 text-right">السعر النهائي</th>
+            <th className="px-5 py-4 text-right">الحالة</th>
           </tr>
         </thead>
 
@@ -87,7 +87,7 @@ export default function TreatmentTable({
               </td>
 
               <td className="px-5 py-4">
-                {treatment.doctor_name || "Not assigned"}
+                {treatment.doctor_name || "غير محدد"}
               </td>
 
               <td className="px-5 py-4">
@@ -115,7 +115,7 @@ export default function TreatmentTable({
                     treatment.status
                   )}`}
                 >
-                  {treatment.status.replace("_", " ")}
+                  {({ planned: "مخطط", in_progress: "قيد التنفيذ", completed: "مكتمل", cancelled: "ملغي" } as Record<string, string>)[treatment.status] ?? treatment.status}
                 </span>
               </td>
             </tr>

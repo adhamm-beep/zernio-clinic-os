@@ -62,7 +62,7 @@ revenueHigh: expectedRevenue * (1 + spread),
 
 confidence,
 
-forecastBasis: `${insights.visits} completed visits, ${insights.completedTreatments} treatments, and ${Math.round(attendanceRate * 100)}% attendance`,
+forecastBasis: `${insights.visits} زيارة مكتملة، و${insights.completedTreatments} علاج، ونسبة حضور ${Math.round(attendanceRate * 100)}%`,
 
 };
 

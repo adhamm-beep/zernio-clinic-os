@@ -1,4 +1,7 @@
 const translations: Record<string, string> = {
+  "dashboard":"اللوحة الرئيسية","summary":"ملخص","payments tab":"المدفوعات","show all":"إظهار الكل","doctor in charge":"الطبيب المعالج","assigned service":"مخصصة ل","search patients":"البحث عن المرضى","payment required only":"مطلوب للدفع فقط",
+  "checked in":"تم تسجيل الوصول","working":"جاري العمل","no show":"لم يحضر","waiting list":"قائمة الانتظار","note":"ملاحظة","confirm appointment":"تأكيد الموعد","a.m.":"ص","p.m.":"م",
+  "eyebrow hair bleaching":"تشقير شعر الحواجب","facial hair bleaching":"تشقير شعر الوجه","hair treatments":"علاجات الشعر","skin boosters":"محفزات البشرة",
   "dr fatima alsatouf":"د. فاطمة الصطوف","dr maram":"د. مرام","dr fatima khaled":"د. فاطمة خالد",
   "close":"إغلاق","loading...":"جارٍ التحميل...","refresh":"تحديث","retry":"إعادة المحاولة","try again":"حاول مرة أخرى",
   "save":"حفظ","saving...":"جارٍ الحفظ...","cancel":"إلغاء","delete":"حذف","edit":"تعديل","view":"عرض","add":"إضافة","create":"إنشاء","update":"تحديث","search":"بحث","all":"الكل","none":"لا يوجد","other":"أخرى",
@@ -20,7 +23,7 @@ const translations: Record<string, string> = {
   "inventory operating system":"نظام تشغيل المخزون","product stock":"مخزون المنتجات","products":"المنتجات","suppliers":"الموردون","supplier":"المورد","orders & deliveries":"الطلبات والتوريدات","consumption & movement history":"سجل الاستهلاك والحركة","new purchase order":"طلب شراء جديد","receive delivery":"استلام توريد","record stock movement":"تسجيل حركة مخزون","save movement":"حفظ الحركة","clinical consumption":"استهلاك علاجي","adjustment in":"تسوية إضافة","adjustment out":"تسوية خصم","return":"مرتجع","expiry":"تاريخ الانتهاء","expired":"منتهي","sku / barcode":"رمز المنتج / الباركود","stock":"المخزون","doctor (optional)":"الطبيب (اختياري)","service (optional)":"الخدمة (اختياري)","treatment material link (optional)":"ربط مادة الإجراء (اختياري)",
   "staff & hr":"الموظفون والموارد البشرية","employee directory":"دليل الموظفين","attendance":"الحضور","weekly schedules":"جداول العمل الأسبوعية","roles & permissions":"الأدوار والصلاحيات","assign role":"تعيين دور","work schedule":"جدول العمل","record attendance":"تسجيل الحضور","check in now":"تسجيل الحضور الآن","check out now":"تسجيل الانصراف الآن","present":"حاضر","absent":"غائب","late":"متأخر","leave":"إجازة","sick":"مرضي","admin":"مدير","nurse":"ممرضة","reception":"استقبال","coordinator":"منسق","finance":"المالية","contact":"التواصل","hr role":"دور الموارد البشرية",
   "marketing os":"نظام التسويق","campaigns":"الحملات","campaign":"الحملة","lead":"عميل محتمل","lead pipeline":"مسار العملاء المحتملين","campaign performance":"أداء الحملات","message queue":"قائمة الرسائل","broadcast & follow-up":"البث والمتابعة","new campaign":"حملة جديدة","create campaign":"إنشاء حملة","add lead":"إضافة عميل محتمل","queue message":"إضافة الرسالة للقائمة","save cost":"حفظ التكلفة","source cost":"تكلفة المصدر","total spend":"إجمالي الإنفاق","cost / lead":"تكلفة العميل المحتمل","cost / booking":"تكلفة الحجز","interested service":"الخدمة المطلوبة","ai-assisted draft":"مسودة بمساعدة الذكاء الاصطناعي","attribution summary":"ملخص النتائج","contacted":"تم التواصل","qualified":"مؤهل","lost":"مفقود","pause":"إيقاف مؤقت",
-  "ask zernio ai":"اسأل زيرنيو","analyze":"تحليل","loading clinic brain...":"جارٍ تشغيل عقل العيادة...","zernio ai agents":"وكلاء زيرنيو للذكاء الاصطناعي","recommended actions":"الإجراءات المقترحة","risks to watch":"المخاطر التي تحتاج متابعة","live action queue":"قائمة الإجراءات الحالية","loading ai agents...":"جارٍ تحميل وكلاء الذكاء الاصطناعي...",
+  "ask zernio ai":"اسأل بانثيرا","analyze":"تحليل","loading clinic brain...":"جارٍ تشغيل عقل العيادة...","zernio ai agents":"وكلاء بانثيرا للذكاء الاصطناعي","recommended actions":"الإجراءات المقترحة","risks to watch":"المخاطر التي تحتاج متابعة","live action queue":"قائمة الإجراءات الحالية","loading ai agents...":"جارٍ تحميل وكلاء الذكاء الاصطناعي...",
   "enterprise control center":"مركز تحكم المؤسسة","phase 9":"المرحلة التاسعة","active workflows":"مسارات العمل النشطة","workflow automation":"أتمتة سير العمل","task board":"لوحة المهام","audit log":"سجل التدقيق","language & locale":"اللغة والإعدادات المحلية","create task":"إنشاء مهمة","activate workflow":"تفعيل مسار العمل","assign employee":"تعيين موظف","english":"الإنجليزية","arabic":"العربية","high":"عالية","medium":"متوسطة","low":"منخفضة","urgent":"عاجلة",
   "smart summary":"الملخص الذكي","clinic brain":"عقل العيادة","customer intelligence overview":"نظرة شاملة على ذكاء العميل","recommended next actions":"الإجراءات التالية المقترحة","retention risk":"مخاطر فقد العميل","customer timeline":"الخط الزمني للعميل","complete chronological activity for this customer.":"جميع أنشطة العميل مرتبة زمنيًا.","customer not found":"العميل غير موجود","loading customer 360...":"جارٍ تحميل ملف العميل 360...","return to customers":"العودة إلى العملاء","health score":"مؤشر الصحة","lifetime value":"القيمة مدى الحياة","predicted value":"القيمة المتوقعة","risk":"المخاطر","segment":"الشريحة","unified customer intelligence":"ذكاء العميل الموحد","rule-based recommendations":"توصيات مبنية على البيانات","ai notes":"ملاحظات ذكية","ai medical summary":"الملخص الطبي الذكي","timeline ai":"ذكاء الخط الزمني",
   "sign in to continue":"سجّل الدخول للمتابعة","password":"كلمة المرور","enter your password":"أدخل كلمة المرور","sign in":"تسجيل الدخول","signing in...":"جارٍ تسجيل الدخول...","forgot password?":"نسيت كلمة المرور؟","sending reset link...":"جارٍ إرسال رابط الاستعادة...","sign in failed.":"فشل تسجيل الدخول.","enter your email address first.":"أدخل بريدك الإلكتروني أولًا.","password reset link sent. check your email inbox and spam folder.":"تم إرسال رابط إعادة تعيين كلمة المرور. راجع صندوق الوارد والرسائل غير المرغوب فيها.","login request timed out. check your connection and try again.":"انتهت مهلة تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى.","could not connect to the login service. try again.":"تعذر الاتصال بخدمة تسجيل الدخول. حاول مرة أخرى.","choose a new password":"اختر كلمة مرور جديدة","use at least 8 characters and keep it private.":"استخدم 8 أحرف على الأقل واحتفظ بها بسرية.","new password":"كلمة المرور الجديدة","confirm new password":"تأكيد كلمة المرور الجديدة","update password":"تحديث كلمة المرور","updating password...":"جارٍ تحديث كلمة المرور...","password must contain at least 8 characters.":"يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل.","passwords do not match.":"كلمتا المرور غير متطابقتين.","the recovery link is invalid or has expired. request a new link.":"رابط الاستعادة غير صالح أو منتهي. اطلب رابطًا جديدًا.",
@@ -45,7 +48,7 @@ const sentenceTranslations: Record<string, string> = {
   "customer matching is operational decision support, not medical advice. clinical eligibility must be determined by a qualified doctor.": "تحليل العملاء دعم للقرار التشغيلي وليس نصيحة طبية، والطبيب المختص وحده يحدد الملاءمة الطبية.",
   "five specialized agents working from one anonymous clinic intelligence layer.": "خمسة وكلاء متخصصين يعملون من طبقة ذكاء موحدة ومجهولة البيانات.",
   "only anonymous operational metrics are sent to openai.": "لا تُرسل إلى OpenAI إلا مؤشرات تشغيلية مجهولة الهوية.",
-  "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل زيرنيو ولا تُرسل إلى النموذج.",
+  "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل بانثيرا ولا تُرسل إلى النموذج.",
   "ai agents provide operational decision support. they do not diagnose, prescribe, send messages, create bookings, or move money without a user action.": "وكلاء الذكاء الاصطناعي يدعمون القرار التشغيلي ولا يشخّصون أو يصفون علاجًا أو يرسلون رسائل أو ينشئون حجوزات أو ينفذون مدفوعات دون إجراء من المستخدم.",
   "clinic isolation, permissions, audit, notifications, tasks, workflows and language.": "عزل العيادات والصلاحيات والتدقيق والإشعارات والمهام ومسارات العمل واللغة.",
   "preference is stored per employee. full translated content rolls out incrementally.": "يُحفظ تفضيل اللغة لكل موظف.",
@@ -216,7 +219,7 @@ const interfaceAuditTranslations: Record<string, string> = {
   "audit log": "سجل التدقيق", "language & locale": "اللغة والإعدادات المحلية", "notifications": "الإشعارات",
   "clinic isolation, permissions, audit, notifications, tasks, workflows and language.": "إدارة العيادات والصلاحيات والتدقيق والإشعارات والمهام ومسارات العمل واللغة.",
   "preference is stored per employee. full translated content rolls out incrementally.": "يُحفظ اختيار اللغة لكل موظف وتظهر الواجهة كاملة بلغته.",
-  "zernio ai agents": "وكلاء زيرنيو الأذكياء", "live action queue": "قائمة الإجراءات المباشرة", "recommended actions": "الإجراءات المقترحة",
+  "zernio ai agents": "وكلاء بانثيرا الأذكياء", "live action queue": "قائمة الإجراءات المباشرة", "recommended actions": "الإجراءات المقترحة",
   "reception agent": "وكيل الاستقبال", "doctor agent": "وكيل الطبيب", "finance agent": "الوكيل المالي", "marketing agent": "وكيل التسويق", "ceo agent": "وكيل الإدارة التنفيذية",
   "booking, confirmations and follow-ups": "الحجوزات والتأكيدات والمتابعات", "clinical workflow and treatment readiness": "سير العمل الطبي والاستعداد للعلاج",
   "collections and revenue forecast": "التحصيل وتوقع الإيرادات", "campaigns, roi and segmentation": "الحملات والعائد على الاستثمار وتقسيم الشرائح",
@@ -227,9 +230,9 @@ const interfaceAuditTranslations: Record<string, string> = {
   "review collection and refund trends.": "راجع اتجاهات التحصيل والاسترداد.", "open revenue, doctors, marketing and booking analytics.": "افتح تحليلات الإيرادات والأطباء والتسويق والحجوزات.",
   "bookings": "حجوزات", "sar": "ر.س", "phase 8": "المرحلة 8", "retry": "إعادة المحاولة",
   "risks to watch": "مخاطر تحتاج متابعة", "only anonymous operational metrics are sent to openai.": "تُرسل مؤشرات تشغيلية مجهولة الهوية فقط إلى خدمة الذكاء الاصطناعي.",
-  "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل زيرنيو ولا تُرسل إلى النموذج.",
+  "private names stay in zernio and are never sent to the model.": "تبقى الأسماء الخاصة داخل بانثيرا ولا تُرسل إلى النموذج.",
   "five specialized agents working from one anonymous clinic intelligence layer.": "خمسة وكلاء متخصصين يعملون عبر طبقة ذكاء موحدة ومجهولة الهوية.",
-  "ask zernio ai": "اسأل زيرنيو", "analyze": "تحليل", "loading clinic brain...": "جارٍ تحميل ذكاء العيادة...",
+  "ask zernio ai": "اسأل بانثيرا", "analyze": "تحليل", "loading clinic brain...": "جارٍ تحميل ذكاء العيادة...",
   "ask the clinic brain about customers, retention, campaigns, revenue and daily operations.": "اسأل ذكاء العيادة عن المرضى والاحتفاظ والحملات والإيرادات والتشغيل اليومي.",
   "ai notes": "ملاحظات ذكية", "a ready-to-use operational handover note": "ملاحظة تسليم تشغيلية جاهزة للاستخدام",
   "generated locally from operational metrics. review before adding it to a clinical record.": "تم إنشاؤها محليًا من مؤشرات التشغيل؛ راجعها قبل إضافتها إلى السجل الطبي.",
@@ -238,7 +241,7 @@ const interfaceAuditTranslations: Record<string, string> = {
   "customer behavior": "سلوك المريض", "payment discipline": "الالتزام بالسداد", "engagement": "التفاعل", "loyalty": "الولاء", "cancellation": "الإلغاء",
   "ai medical summary": "الملخص الطبي الذكي", "clinical handover:": "التسليم الطبي:",
   "processed privately without sending medical text to ai services": "تتم المعالجة بخصوصية دون إرسال النص الطبي إلى خدمات الذكاء الاصطناعي",
-  "zernio live operations": "تشغيل زيرنيو المباشر", "zernio finance": "مالية زيرنيو", "english": "الإنجليزية", "arabic": "العربية",
+  "zernio live operations": "تشغيل بانثيرا المباشر", "zernio finance": "مالية بانثيرا", "english": "الإنجليزية", "arabic": "العربية",
   "settings": "الإعدادات", "master data": "البيانات الأساسية", "services": "الخدمات والأسعار", "user management": "إدارة المستخدمين", "clinic context": "العيادة والفرع الحالي", "open": "فتح",
   "marketing": "التسويق", "doctors": "الأطباء", "booking": "الحجوزات", "finance": "المالية", "revenue": "الإيرادات",
   "reports & performance": "التقارير والأداء", "clinic analytics": "تحليلات العيادة", "try again": "إعادة المحاولة",
@@ -250,7 +253,7 @@ const interfaceAuditTranslations: Record<string, string> = {
   "all payments and balances for this patient": "كل المدفوعات والأرصدة الخاصة بهذا المريض", "available points": "النقاط المتاحة",
   "based on appointments, treatments, payments, follow-ups, and recency.": "بناءً على المواعيد والعلاجات والمدفوعات والمتابعات وحداثة النشاط.",
   "clinic brain": "ذكاء العيادة", "no payments recorded yet.": "لم تُسجل مدفوعات بعد.", "loading customer 360...": "جارٍ تحميل ملف المريض 360...",
-  "expected customer value": "قيمة المريض المتوقعة", "suggested next visit": "الزيارة التالية المقترحة", "zernio ai summary": "ملخص زيرنيو الذكي",
+  "expected customer value": "قيمة المريض المتوقعة", "suggested next visit": "الزيارة التالية المقترحة", "zernio ai summary": "ملخص بانثيرا الذكي",
   "risk": "المخاطر", "campaign": "الحملة", "vip": "كبار العملاء", "timeline ai": "ذكاء السجل الزمني", "private on-device activity analysis": "تحليل خاص للنشاط داخل النظام",
   "no immediate timeline action is required.": "لا يوجد إجراء فوري مطلوب في السجل الزمني.", "ai timeline note:": "ملاحظة ذكية للسجل:",
   "critical": "حرجة", "sensitive": "حساسة", "low": "منخفضة", "medium": "متوسطة", "high": "عالية", "urgent": "عاجلة",
@@ -349,4 +352,54 @@ export function translateSystemText(value: string): string {
   for (const [pattern, replacement] of catalogWords) catalog = catalog.replace(pattern, replacement);
   if (catalog !== clean && /[\u0600-\u06ff]/.test(catalog)) return `${leading}${catalog}${trailing}`;
   return value;
+}
+
+const latinDigits = (value: string) => value
+  .replace(/[\u0660-\u0669]/g, digit => String(digit.charCodeAt(0) - 0x0660))
+  .replace(/[\u06f0-\u06f9]/g, digit => String(digit.charCodeAt(0) - 0x06f0));
+
+const englishOnlyOverrides: Record<string, string> = {
+  "اللوحة الرئيسية": "Dashboard", "المدفوعات": "Payments", "ملخص": "Summary",
+  "الطبيب المعالج": "Doctor in charge", "مخصصة ل": "Assigned service",
+  "البحث عن المرضى": "Search patients", "إظهار الكل": "Show all",
+  "تم تسجيل الوصول": "Checked in", "جاري العمل": "In progress", "متأخر": "Late",
+  "تم الإلغاء": "Cancelled", "لم يحضر": "No show", "قائمة الانتظار": "Waiting list",
+  "ملاحظة": "Note", "تأكيد الموعد": "Confirm appointment",
+  "مطلوب للدفع فقط": "Payment required only", "الفواتير": "Invoices",
+  "إزالة الشعر بالليزر": "Laser hair removal", "استشارة": "Consultation",
+  "تشقير شعر الحواجب": "Eyebrow hair bleaching", "تشقير شعر الوجه": "Facial hair bleaching",
+  "الفيلر": "Filler", "فراكسيس": "Fraxis", "علاجات الشعر": "Hair treatments",
+  "التقشير": "Peeling", "ليزر بيكواي": "Picoway laser", "حمض البوليلاكتيك": "Polylactic acid",
+  "محفزات البشرة": "Skin boosters", "الخيوط": "Threads", "بوتوكس": "Botox",
+  "إحالة": "Referral", "إنستغرام": "Instagram", "ص": "AM", "م": "PM",
+};
+
+let reverseTranslations: Map<string, string> | null = null;
+
+function getReverseTranslations() {
+  if (reverseTranslations) return reverseTranslations;
+  reverseTranslations = new Map<string, string>();
+  for (const dictionary of [translations, sentenceTranslations, interfaceAuditTranslations]) {
+    for (const [english, arabic] of Object.entries(dictionary)) {
+      const key = latinDigits(arabic).trim().toLowerCase();
+      if (key && !reverseTranslations.has(key)) reverseTranslations.set(key, english);
+    }
+  }
+  return reverseTranslations;
+}
+
+/** Converts legacy Arabic-only interface labels when the English locale is active. */
+export function translateSystemTextToEnglish(value: string): string {
+  const leading = value.match(/^\s*/)?.[0] ?? "";
+  const trailing = value.match(/\s*$/)?.[0] ?? "";
+  const clean = latinDigits(value.trim());
+  if (!clean) return latinDigits(value);
+  const direct = englishOnlyOverrides[clean] ?? getReverseTranslations().get(clean.toLowerCase());
+  if (direct) return `${leading}${direct}${trailing}`;
+
+  return `${leading}${clean}${trailing}`;
+}
+
+export function normalizeInterfaceDigits(value: string): string {
+  return latinDigits(value);
 }

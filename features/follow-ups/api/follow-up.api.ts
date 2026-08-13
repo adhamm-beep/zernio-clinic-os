@@ -14,7 +14,9 @@ export async function getFollowUps(clinicId?: number, branchId?: number): Promis
         last_name,
         phone,
         customer_code
-      )
+      ),
+      branches (name),
+      appointments (appointment_at, rooms(name), staff(staff_name))
     `)
     .order("scheduled_at", {
       ascending: true,
@@ -81,7 +83,9 @@ export async function createFollowUp(
         last_name,
         phone,
         customer_code
-      )
+      ),
+      branches(name),
+      appointments(appointment_at, rooms(name), staff(staff_name))
     `)
     .single();
 

@@ -29,10 +29,10 @@ buildRecommendations(
     list.push({
 
       title:
-        "VIP Care",
+        "رعاية كبار العملاء",
 
       description:
-        "Offer premium package and annual treatment plan.",
+        "اقترح باقة مميزة وخطة علاج سنوية.",
 
       priority:
         "HIGH",
@@ -46,10 +46,10 @@ buildRecommendations(
     list.push({
 
       title:
-        "Follow-up",
+        "متابعة",
 
       description:
-        "Schedule review appointment.",
+        "حدد موعد مراجعة.",
 
       priority:
         "HIGH",
@@ -63,10 +63,10 @@ buildRecommendations(
     list.push({
 
       title:
-        "Upsell",
+        "خدمة إضافية",
 
       description:
-        "Recommend Skin Booster or Full Face package.",
+        "اقترح محفز بشرة أو باقة متكاملة للوجه.",
 
       priority:
         "MEDIUM",
@@ -80,10 +80,10 @@ buildRecommendations(
     list.push({
 
       title:
-        "Collect Payment",
+        "تحصيل المبلغ",
 
       description:
-        "Outstanding balance should be settled before next treatment.",
+        "يجب تسوية المبلغ المتبقي قبل العلاج التالي.",
 
       priority:
         "HIGH",
@@ -97,10 +97,10 @@ buildRecommendations(
     list.push({
 
       title:
-        "Healthy Customer",
+        "مريض منتظم",
 
       description:
-        "Continue regular follow-up.",
+        "استمر في المتابعة الدورية.",
 
       priority:
         "LOW",

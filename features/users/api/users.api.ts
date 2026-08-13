@@ -58,7 +58,7 @@ export async function saveUserPermissions(staffId:number,values:Array<{permissio
  if(error)throw new Error(error.message);
 }
 
-export async function sendUserInvitation(email:string,name:string){const response=await fetch("/api/admin/users/invite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,name})});const result=await response.json() as{error?:string};if(!response.ok)throw new Error(result.error||"Invitation failed");}
+export async function sendUserInvitation(email:string,name:string){const response=await fetch("/api/admin/users/invite",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,name})});const result=await response.json() as{error?:string};if(!response.ok)throw new Error(result.error||"تعذر إرسال الدعوة");}
 
 export async function createManagedUser(input: {
   clinicId: number;

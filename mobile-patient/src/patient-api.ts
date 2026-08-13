@@ -121,6 +121,7 @@ export type PatientResults = {
   media: ProgressMedia[];
   recommendations: PatientRecommendation[];
 };
+export type PatientPublishedDocument={id:number;type:string;title:string;content:string|null;amount:number|null;externalUrl:string|null;createdAt:string};
 export type BeautyEvent = {
   id: string;
   type: "appointment" | "followup" | "personal" | "routine" | "product";
@@ -288,7 +289,7 @@ export type PatientConcierge = {
 };
 
 function message(error: { message?: string } | null) {
-  return error?.message ?? "Something went wrong";
+  return error?.message ?? "حدث خطأ غير متوقع";
 }
 
 export function normalizeSaudiPhone(value: string) {
@@ -302,7 +303,7 @@ export function normalizeSaudiPhone(value: string) {
         : digits;
   if (!/^5\d{8}$/.test(national))
     throw new Error(
-      "Enter a valid Saudi mobile number, for example +966 5X XXX XXXX.",
+      "أدخل رقم جوال سعودي صحيحًا، مثل +966 5X XXX XXXX.",
     );
   return `+966${national}`;
 }
@@ -327,7 +328,7 @@ export async function verifyOtp(
   },
 ) {
   if (!/^\d{6}$/.test(token))
-    throw new Error("Enter the 6-digit verification code.");
+    throw new Error("أدخل رمز التحقق المكوّن من 6 أرقام.");
   const { error } = await supabase.auth.verifyOtp({
     phone: normalizeSaudiPhone(phone),
     token,
@@ -413,6 +414,7 @@ export async function loadPatientResults(): Promise<PatientResults> {
     })),
   };
 }
+export async function loadPatientDocuments():Promise<PatientPublishedDocument[]>{const{data,error}=await supabase.rpc("patient_published_documents");if(error)return[];return(data??[])as PatientPublishedDocument[];}
 
 export async function loadBeautyCalendar(): Promise<BeautyCalendarData> {
   const [{ data, error }, { data: contact }] = await Promise.all([
@@ -479,7 +481,7 @@ export async function openGoogleReview(appointmentId?: number | null) {
   );
   if (error) throw new Error(message(error));
   const url = (data as { url?: string } | null)?.url;
-  if (!url) throw new Error("Google review link is unavailable.");
+  if (!url) throw new Error("رابط تقييم Google غير متوفر.");
   return url;
 }
 
@@ -558,11 +560,11 @@ export async function createOnlinePaymentCheckout(appointmentId: number) {
   const base = process.env.EXPO_PUBLIC_PORTAL_API_URL?.replace(/\/$/, "");
   if (!base)
     throw new Error(
-      "Online payment will be available after the secure payment domain is configured.",
+      "سيتوفر الدفع الإلكتروني بعد إعداد نطاق الدفع الآمن.",
     );
   const session = await supabase.auth.getSession(),
     token = session.data.session?.access_token;
-  if (!token) throw new Error("Please sign in again.");
+  if (!token) throw new Error("يرجى تسجيل الدخول مجددًا.");
   const response = await fetch(`${base}/api/payments/moyasar/create`, {
     method: "POST",
     headers: {
@@ -576,7 +578,7 @@ export async function createOnlinePaymentCheckout(appointmentId: number) {
     error?: string;
   } | null;
   if (!response.ok || !body?.checkoutUrl)
-    throw new Error(body?.error ?? "Unable to start online payment");
+    throw new Error(body?.error ?? "تعذر بدء الدفع الإلكتروني");
   return body.checkoutUrl;
 }
 

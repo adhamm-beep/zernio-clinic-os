@@ -7,9 +7,13 @@ export type CalendarEventStatus =
   | "booked"
   | "confirmed"
   | "arrived"
+  | "in_progress"
   | "completed"
+  | "late"
   | "cancelled"
-  | "no_show";
+  | "no_show"
+  | "waitlist"
+  | "note";
 
 export interface CalendarEvent {
   id: number;

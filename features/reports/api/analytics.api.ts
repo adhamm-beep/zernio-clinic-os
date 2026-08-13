@@ -16,7 +16,7 @@ function percent(part: number, total: number) {
   return total > 0 ? Math.min(Math.round((part / total) * 1000) / 10, 100) : 0;
 }
 
-export async function getClinicAnalytics(clinicId: number, branchId: number, from?: string, to?: string, access?:{finance:boolean;doctorRevenue:boolean;marketingSpend:boolean}): Promise<ClinicAnalytics> {
+export async function getClinicAnalytics(clinicId: number, branchId: number, from?: string, to?: string, access?:{finance:boolean;doctorRevenue:boolean;marketingSpend:boolean;feedback:boolean;loyalty:boolean}): Promise<ClinicAnalytics> {
   const now = new Date();
   const currentMonth = startOfMonth(now);
   const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -25,7 +25,7 @@ export async function getClinicAnalytics(clinicId: number, branchId: number, fro
   const rangeEnd = to ? new Date(`${to}T00:00:00+03:00`) : new Date(now.getTime() + 86_400_000);
   if (to) rangeEnd.setDate(rangeEnd.getDate() + 1);
 
-  const [appointmentsResult, paymentsResult, treatmentsResult, sessionsResult, leadsResult, costsResult, campaignsResult] = await Promise.all([
+  const [appointmentsResult, paymentsResult, treatmentsResult, sessionsResult, leadsResult, costsResult, campaignsResult, feedbackResult, loyaltyResult] = await Promise.all([
     supabase
       .from("appointments")
       .select("id, appointment_at, status, doctor_name, source, created_from_channel")
@@ -53,9 +53,11 @@ export async function getClinicAnalytics(clinicId: number, branchId: number, fro
     supabase.from("marketing_leads").select("source,status,appointment_id").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()),
     access?.marketingSpend ? supabase.from("marketing_source_costs").select("source,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("period_month",rangeStart.toISOString().slice(0,10)).lte("period_month",rangeEnd.toISOString().slice(0,10)) : Promise.resolve({data:[],error:null}),
     access?.marketingSpend ? supabase.from("marketing_campaigns").select("channel,spend").eq("clinic_id",clinicId).eq("branch_id",branchId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()) : Promise.resolve({data:[],error:null}),
+    access?.feedback ? supabase.from("patient_experience_feedback").select("id,rating,tags,comment,created_at,customer:customers(first_name,last_name,customer_code)").eq("clinic_id",clinicId).gte("created_at",rangeStart.toISOString()).lt("created_at",rangeEnd.toISOString()).order("created_at",{ascending:false}).limit(100) : Promise.resolve({data:[],error:null}),
+    access?.loyalty ? supabase.from("patient_loyalty_accounts").select("points_balance,lifetime_points,tier,customer:customers!inner(clinic_id,branch_id)").eq("customer.clinic_id",clinicId).eq("customer.branch_id",branchId) : Promise.resolve({data:[],error:null}),
   ]);
 
-  const firstError = appointmentsResult.error || paymentsResult.error || treatmentsResult.error || sessionsResult.error || leadsResult.error || costsResult.error || campaignsResult.error;
+  const firstError = appointmentsResult.error || paymentsResult.error || treatmentsResult.error || sessionsResult.error || leadsResult.error || costsResult.error || campaignsResult.error || feedbackResult.error || loyaltyResult.error;
   if (firstError) throw new Error(firstError.message);
 
   const appointments = appointmentsResult.data ?? [];
@@ -203,8 +205,14 @@ export async function getClinicAnalytics(clinicId: number, branchId: number, fro
   const convertedLeads = sources.reduce((sum, item) => sum + item.converted, 0);
   const marketingSpend=sources.reduce((sum,item)=>sum+item.spend,0);
   const attributedRevenue=sources.reduce((sum,item)=>sum+item.revenue,0);
+  const feedback = feedbackResult.data ?? [];
+  const ratings = [1,2,3,4,5].map(rating=>({rating,count:feedback.filter(item=>Number(item.rating)===rating).length}));
+  const loyalty = loyaltyResult.data ?? [];
+  const tiers = ["silver","gold","platinum"].map(tier=>({tier,count:loyalty.filter(item=>item.tier===tier).length}));
 
   return {
+    experience: { count: feedback.length, average: feedback.length ? feedback.reduce((sum,item)=>sum+Number(item.rating),0)/feedback.length : 0, distribution: ratings, recent: feedback.slice(0,8).map(item=>({ ...item, customer: Array.isArray(item.customer) ? item.customer[0] ?? null : item.customer })) },
+    loyalty: { members: loyalty.length, availablePoints: loyalty.reduce((sum,item)=>sum+Number(item.points_balance??0),0), lifetimePoints: loyalty.reduce((sum,item)=>sum+Number(item.lifetime_points??0),0), tiers },
     revenue: {
       today: validPayments.filter((item) => item.payment_date && new Date(item.payment_date) >= todayStart).reduce((sum, item) => sum + paymentAmount(item), 0),
       month: monthRevenue,

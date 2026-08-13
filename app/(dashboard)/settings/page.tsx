@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useLocale } from "@/components/LocaleProvider";
+import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 type SettingsModule = {
   title: string;
@@ -8,10 +9,12 @@ type SettingsModule = {
   description: string;
   descriptionAr: string;
   href: string;
+  permissions: string[];
 };
 
 const modules: SettingsModule[] = [
-  {title:"Patient catalogs",titleAr:"علامات المرضى والإحالات",description:"Manage patient tags, colors and referral sources.",descriptionAr:"إدارة علامات المرضى وألوانها ومصادر الإحالة من مكان مركزي.",href:"/settings/patient-catalogs"},
+  {title:"Operations & integrations",titleAr:"التشغيل والربط والطباعة",description:"Manage templates, communication channels, process rules and invoice printing.",descriptionAr:"إدارة قوالب الرسائل وقنوات التواصل وقواعد التشغيل وتنسيق طباعة الفواتير.",href:"/settings/operations",permissions:["settings.templates.manage","settings.integrations.manage","settings.processes.manage","settings.print.manage","settings.manage"]},
+  {title:"Patient catalogs",titleAr:"علامات المرضى والإحالات",description:"Manage patient tags, colors and referral sources.",descriptionAr:"إدارة علامات المرضى وألوانها ومصادر الإحالة من مكان مركزي.",href:"/settings/patient-catalogs",permissions:["patient_catalogs.manage","settings.manage"]},
   {
     title: "Master Data",
     titleAr: "البيانات الأساسية",
@@ -19,6 +22,7 @@ const modules: SettingsModule[] = [
       "Review clinics, branches, staff, rooms and services.",
     descriptionAr: "راجع العيادات والفروع والموظفين والغرف والخدمات.",
     href: "/settings/master-data",
+    permissions: ["branches.view","branches.manage","rooms.view","rooms.manage","services.view","services.manage","settings.view","settings.manage"],
   },
   {
     title: "Services",
@@ -27,6 +31,7 @@ const modules: SettingsModule[] = [
       "Manage clinic services, prices, categories and duration.",
     descriptionAr: "إدارة خدمات العيادة والأسعار والتصنيفات ومدد الخدمات.",
     href: "/price-list",
+    permissions: ["services.view","services.manage"],
   },
   {
     title: "User Management",
@@ -35,6 +40,7 @@ const modules: SettingsModule[] = [
       "Add users, assign access roles and control account status.",
     descriptionAr: "إضافة المستخدمين وتعيين الأدوار والصلاحيات والتحكم في حالة الحساب.",
     href: "/settings/users",
+    permissions: ["users.manage"],
   },
   {
     title: "Clinic Context",
@@ -43,11 +49,14 @@ const modules: SettingsModule[] = [
       "Review the active clinic and select the current branch.",
     descriptionAr: "راجع العيادة النشطة وحدد الفرع المستخدم حاليًا.",
     href: "/settings/clinic-context",
+    permissions: ["settings.view","settings.manage"],
   },
 ];
 
 export default function SettingsPage() {
   const { isArabic, text } = useLocale();
+  const access = usePermissionAccess();
+  const visibleModules = modules.filter((module) => access.can(...module.permissions));
   return (
     <div className="space-y-6">
       <header>
@@ -61,7 +70,7 @@ export default function SettingsPage() {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => (
+        {visibleModules.map((module) => (
           <article
             key={module.href}
             className="flex min-h-52 flex-col rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"

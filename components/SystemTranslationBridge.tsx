@@ -1,51 +1,34 @@
 "use client";
 
 import { useEffect } from "react";
-import { translateSystemText } from "@/lib/system-translations";
+import {
+  normalizeInterfaceDigits,
+  translateSystemText,
+  translateSystemTextToEnglish,
+} from "@/lib/system-translations";
 import { useLocale } from "@/components/LocaleProvider";
 
-type TextState = { original: string; translated: string };
-const textState = new WeakMap<Text, TextState>();
-const attributeState = new WeakMap<Element, Map<string, TextState>>();
 const attributes = ["placeholder", "title", "aria-label"] as const;
+
+function localize(value: string, arabic: boolean) {
+  const normalized = normalizeInterfaceDigits(value);
+  return arabic ? translateSystemText(normalized) : translateSystemTextToEnglish(normalized);
+}
 
 function localizeTextNode(node: Text, arabic: boolean) {
   if (node.parentElement?.closest("script,style,code,pre,[data-no-translate]")) return;
   const current = node.nodeValue ?? "";
-  const state = textState.get(node);
-  if (!arabic) {
-    if (state && current === state.translated) node.nodeValue = state.original;
-    return;
-  }
-  if (state && current === state.translated) return;
-  const translated = translateSystemText(current);
-  if (translated !== current) {
-    textState.set(node, { original: current, translated });
-    node.nodeValue = translated;
-  }
+  const translated = localize(current, arabic);
+  if (translated !== current) node.nodeValue = translated;
 }
 
 function localizeElement(element: Element, arabic: boolean) {
   if (element.matches("script,style,code,pre,[data-no-translate]")) return;
-  let states = attributeState.get(element);
-  if (!states) {
-    states = new Map();
-    attributeState.set(element, states);
-  }
   for (const attribute of attributes) {
     const current = element.getAttribute(attribute);
     if (!current) continue;
-    const state = states.get(attribute);
-    if (!arabic) {
-      if (state && current === state.translated) element.setAttribute(attribute, state.original);
-      continue;
-    }
-    if (state && current === state.translated) continue;
-    const translated = translateSystemText(current);
-    if (translated !== current) {
-      states.set(attribute, { original: current, translated });
-      element.setAttribute(attribute, translated);
-    }
+    const translated = localize(current, arabic);
+    if (translated !== current) element.setAttribute(attribute, translated);
   }
 }
 

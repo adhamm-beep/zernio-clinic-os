@@ -17,8 +17,8 @@ export default function CalendarHeader({ title, view, onViewChange, onPrevious, 
   const PreviousIcon = isArabic ? ChevronRight : ChevronLeft;
   const NextIcon = isArabic ? ChevronLeft : ChevronRight;
 
-  return <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-    <div><h2 className="text-2xl font-bold">{text("Appointment calendar", "تقويم المواعيد")}</h2><p className="text-sm text-gray-500">{title}</p></div>
+  return <div className="flex flex-col gap-3 rounded border bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <div><h2 className="text-lg font-bold">{text("Appointments", "المواعيد")}</h2><p className="text-xs text-gray-500">{title}</p></div>
     <div className="flex flex-wrap items-center gap-2">
       <Button type="button" variant="outline" onClick={onPrevious} aria-label={text("Previous", "السابق")}><PreviousIcon className="h-4 w-4" /></Button>
       <Button type="button" variant="outline" onClick={onToday}>{text("Today", "اليوم")}</Button>

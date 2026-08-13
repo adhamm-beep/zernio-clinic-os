@@ -100,7 +100,7 @@ export function buildTimeline({
   appointments.forEach((appointment) => {
     const doctorName =
       appointment.doctor?.staff_name ??
-      "Doctor not assigned";
+      "لم يُحدد طبيب";
 
     const serviceName =
       appointment.service?.name ??

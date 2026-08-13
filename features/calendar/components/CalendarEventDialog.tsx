@@ -79,9 +79,13 @@ const statusOptions: Array<{
   { value: "booked", en: "Booked", ar: "محجوز" },
   { value: "confirmed", en: "Confirmed", ar: "مؤكد" },
   { value: "arrived", en: "Arrived", ar: "وصل" },
+  { value: "in_progress", en: "In progress", ar: "جاري العمل" },
   { value: "completed", en: "Completed", ar: "مكتمل" },
+  { value: "late", en: "Late", ar: "متأخر" },
   { value: "cancelled", en: "Cancelled", ar: "ملغي" },
   { value: "no_show", en: "No show", ar: "لم يحضر" },
+  { value: "waitlist", en: "Waitlist", ar: "قائمة الانتظار" },
+  { value: "note", en: "Note", ar: "ملاحظة" },
 ];
 
 function customerGenderLabel(
@@ -598,7 +602,7 @@ export default function CalendarEventDialog({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      Doctor
+                      {text("Doctor or department", "الطبيب أو القسم")}
                     </label>
 
                     <select
@@ -615,12 +619,12 @@ export default function CalendarEventDialog({
                       required
                     >
                       <option value="">
-                        Select doctor or department
+                        {text("Select doctor or department", "اختر الطبيب أو القسم")}
                       </option>
 
-                      <option value="-1">Laser Department (Nurses)</option>
-                      <option value="-2">Hair Bleaching Department (PicoWay)</option>
-                      <option value="-3">ProFacial Department (Nurse)</option>
+                      <option value="-1">قسم الليزر (التمريض)</option>
+                      <option value="-2">قسم تشقير الشعر (بيكواي)</option>
+                      <option value="-3">قسم البروفاشيال (التمريض)</option>
 
                       {masterData?.staff.filter(isApprovedDoctor).map(
                         (doctor) => (
@@ -637,7 +641,7 @@ export default function CalendarEventDialog({
 
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      Service
+                      {text("Service", "الخدمة")}
                     </label>
 
                     <select
@@ -648,7 +652,9 @@ export default function CalendarEventDialog({
                       required
                     >
                       <option value="">
-                        {form.doctorId ? "Select service" : "Select doctor first"}
+                        {form.doctorId
+                          ? text("Select service", "اختر الخدمة")
+                          : text("Select doctor first", "اختر الطبيب أولًا")}
                       </option>
 
                       {doctorServices.map(
@@ -684,7 +690,7 @@ export default function CalendarEventDialog({
                 )}
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Device</label>
+                  <label className="mb-1 block text-sm font-medium">{text("Device", "الجهاز")}</label>
                   <select
                     value={form.deviceId}
                     disabled={masterLoading || !form.serviceId || availableDevices.length === 0}
@@ -692,14 +698,18 @@ export default function CalendarEventDialog({
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-60"
                     required={availableDevices.length > 0}
                   >
-                    <option value="">{!form.serviceId ? "Select service first" : availableDevices.length ? "Select device" : "No device required"}</option>
+                    <option value="">{!form.serviceId
+                      ? text("Select service first", "اختر الخدمة أولًا")
+                      : availableDevices.length
+                        ? text("Select device", "اختر الجهاز")
+                        : text("No device required", "لا تتطلب جهازًا")}</option>
                     {availableDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Room
+                    {text("Room", "الغرفة")}
                   </label>
 
                   <select
@@ -715,7 +725,7 @@ export default function CalendarEventDialog({
                     required
                   >
                     <option value="">
-                      Select room
+                      {text("Select room", "اختر الغرفة")}
                     </option>
 
                     {availableRooms.map(
@@ -734,7 +744,7 @@ export default function CalendarEventDialog({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      Date
+                      {text("Date", "التاريخ")}
                     </label>
 
                     <Input
@@ -754,7 +764,7 @@ export default function CalendarEventDialog({
 
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      Time
+                      {text("Time", "الوقت")}
                     </label>
 
                     <Input
@@ -781,7 +791,7 @@ export default function CalendarEventDialog({
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Status
+                    {text("Status", "الحالة")}
                   </label>
 
                   <select
@@ -795,35 +805,31 @@ export default function CalendarEventDialog({
                     }
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                   >
-                    <option value="booked">
-                      Booked
-                    </option>
+                    <option value="booked">{text("Booked", "محجوز")}</option>
 
-                    <option value="confirmed">
-                      Confirmed
-                    </option>
+                    <option value="confirmed">{text("Confirmed", "مؤكد")}</option>
 
-                    <option value="arrived">
-                      Arrived
-                    </option>
+                    <option value="arrived">{text("Arrived", "تم تسجيل الوصول")}</option>
 
-                    <option value="completed">
-                      Completed
-                    </option>
+                    <option value="in_progress">{text("In progress", "جاري العمل")}</option>
 
-                    <option value="cancelled">
-                      Cancelled
-                    </option>
+                    <option value="completed">{text("Completed", "مكتمل")}</option>
 
-                    <option value="no_show">
-                      No Show
-                    </option>
+                    <option value="late">{text("Late", "متأخر")}</option>
+
+                    <option value="cancelled">{text("Cancelled", "تم الإلغاء")}</option>
+
+                    <option value="no_show">{text("No show", "لم يتم الحضور")}</option>
+
+                    <option value="waitlist">{text("Waitlist", "قائمة الانتظار")}</option>
+
+                    <option value="note">{text("Note", "ملاحظة")}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Source
+                    {text("Source", "مصدر الحجز")}
                   </label>
 
                   <select
@@ -837,7 +843,7 @@ export default function CalendarEventDialog({
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                   >
                     <option value="">
-                      Select source
+                      {text("Select source", "اختر مصدر الحجز")}
                     </option>
 
                     {appointmentSources.map(
@@ -855,7 +861,7 @@ export default function CalendarEventDialog({
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Notes
+                    {text("Notes", "الملاحظات")}
                   </label>
 
                   <textarea
@@ -867,7 +873,7 @@ export default function CalendarEventDialog({
                       )
                     }
                     rows={4}
-                    placeholder="Appointment notes..."
+                    placeholder={text("Appointment notes...", "ملاحظات الموعد...")}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none"
                   />
                 </div>
@@ -882,7 +888,7 @@ export default function CalendarEventDialog({
                     }
                     onClick={cancelEditing}
                   >
-                    Cancel
+                    {text("Cancel", "إلغاء")}
                   </Button>
 
                   <Button
@@ -896,8 +902,8 @@ export default function CalendarEventDialog({
                     }}
                   >
                     {editAppointment.isPending
-                      ? "Saving..."
-                      : "Save Changes"}
+                      ? text("Saving...", "جارٍ الحفظ...")
+                      : text("Save Changes", "حفظ التعديلات")}
                   </Button>
                 </div>
               </>
@@ -941,7 +947,7 @@ export default function CalendarEventDialog({
 
                     <div>
                       <p className="text-xs text-gray-500">
-                        Service
+                        {text("Service", "الخدمة")}
                       </p>
 
                       <p className="mt-1 text-sm font-medium">
@@ -955,7 +961,7 @@ export default function CalendarEventDialog({
 
                     <div>
                       <p className="text-xs text-gray-500">
-                        Doctor
+                        {text("Doctor", "الطبيب")}
                       </p>
 
                       <p className="mt-1 text-sm font-medium">
@@ -969,7 +975,7 @@ export default function CalendarEventDialog({
 
                     <div>
                       <p className="text-xs text-gray-500">
-                        Room
+                        {text("Room", "الغرفة")}
                       </p>
 
                       <p className="mt-1 text-sm font-medium">
@@ -981,7 +987,7 @@ export default function CalendarEventDialog({
 
                 <div className="rounded-xl border bg-slate-50 p-4">
                   <p className="text-xs text-gray-500">
-                    Source
+                    {text("Source", "مصدر الحجز")}
                   </p>
 
                   <p className="mt-1 text-sm font-medium">
@@ -993,7 +999,7 @@ export default function CalendarEventDialog({
                 {event.notes && (
                   <div className="rounded-xl border p-4">
                     <p className="text-xs text-gray-500">
-                      Notes
+                      {text("Notes", "الملاحظات")}
                     </p>
 
                     <p className="mt-1 whitespace-pre-wrap text-sm">
