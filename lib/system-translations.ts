@@ -371,7 +371,27 @@ const englishOnlyOverrides: Record<string, string> = {
   "الفيلر": "Filler", "فراكسيس": "Fraxis", "علاجات الشعر": "Hair treatments",
   "التقشير": "Peeling", "ليزر بيكواي": "Picoway laser", "حمض البوليلاكتيك": "Polylactic acid",
   "محفزات البشرة": "Skin boosters", "الخيوط": "Threads", "بوتوكس": "Botox",
-  "إحالة": "Referral", "إنستغرام": "Instagram", "ص": "AM", "م": "PM",
+  "إحالة": "Referral", "الإحالة": "Referral", "إنستغرام": "Instagram", "ص": "AM", "م": "PM", "تحديد": "Select",
+  "سعودي": "Saudi", "غير سعودي": "Non-Saudi",
+  "المرضى": "Patients", "سجل موحد للبيانات والمواعيد والرصيد والإحالات والعلامات": "Unified patient data, appointments, balances, referrals and tags",
+  "الاسم، الهاتف، الملف، الهوية...": "Name, phone, file or national ID...", "كل الفروع": "All branches", "طبيب": "Doctor",
+  "كل العلامات": "All tags", "كل الإحالات": "All referrals", "كل شركات التأمين": "All insurers", "كل مجموعات الأسعار": "All price groups", "إزالة الفلاتر": "Clear filters",
+  "تحديد الكل": "Select all", "اسم العميل": "Patient name", "رقم الملف": "File number", "العمر": "Age", "إجمالي المدفوعات": "Total payments", "مدفوعات اليوم": "Today's payments",
+  "المتبقي": "Outstanding", "الرصيد": "Balance", "النقاط المتوفرة": "Available points", "علامات المرضى": "Patient tags", "الفرع": "Branch", "الموعد السابق": "Previous appointment", "الموعد النشط": "Active appointment",
+  "شركة التأمين": "Insurance company", "رقم الوثيقة": "Policy number", "فئة التأمين": "Insurance class", "انتهاء التأمين": "Insurance expiry", "مجموعة الأسعار": "Price group", "رقم الهوية الوطنية": "National ID",
+  "الجنسية": "Nationality", "الحالة الاجتماعية": "Marital status", "الوظيفة": "Occupation", "العنوان": "Address", "الهاتف صحيح": "Phone verified", "تاريخ الميلاد صحيح": "Birth date verified", "العنوان صحيح": "Address verified",
+  "أول دفعة": "First payment", "آخر دفعة": "Last payment", "تم الإنشاء": "Created", "آخر تحديث": "Last updated", "تم التحديد": "Selected",
+  "تنبيهات المرضى والمتابعات": "Patient reminders and follow-ups", "إضافة تنبيه ومتابعة": "Add reminder or follow-up", "ابحث باسم المريض أو الهاتف أو رقم الملف أو تفاصيل التنبيه": "Search patient, phone, file number or reminder details",
+  "كل الحالات": "All statuses", "معلق": "Pending", "جارٍ العمل": "In progress", "لا يوجد رد": "No answer", "إزالة الاختيارات": "Clear selections", "المعلقة": "Pending", "المكتملة": "Completed",
+  "المريض": "Patient", "تاريخ التنبيه": "Reminder date", "تفاصيل التنبيه": "Reminder details", "نوع المتابعة": "Follow-up type", "المسؤول": "Assignee", "الإجراء والنتيجة": "Action and outcome", "انتهاء العمل": "Completed at", "تم الإنشاء بواسطة": "Created by",
+  "إضافة علاج": "Add treatment", "لا توجد علاجات مطابقة.": "No matching treatments.",
+  "إدارة المخزون": "Inventory management", "مركز تشغيل المخزون": "Inventory operations center", "المنتجات والموردون والمشتريات والاستلام والصلاحية والاستهلاك العلاجي.": "Products, suppliers, purchasing, receiving, expiry and clinical consumption.",
+  "الاستهلاك والحركات": "Consumption and movements", "منخفض المخزون": "Low stock", "وحدة": "Unit", "ربط بمادة علاجية (اختياري)": "Link treatment material (optional)", "إضافة المنتج": "Add product", "الرمز / الباركود": "SKU / barcode",
+  "تسوية بالزيادة": "Stock adjustment in", "تسوية بالنقص": "Stock adjustment out", "سجل الاستهلاك والحركات": "Consumption and movement history", "رقم الهاتف": "Phone number", "إضافة المورد": "Add supplier", "رقم الطلب": "Order number", "إنشاء الطلب": "Create order",
+  "إدارة الموارد البشرية": "Human resources management", "الفريق والموظفون": "Team and staff", "الموظفون والحضور والجداول والأدوار والصلاحيات في مساحة واحدة.": "Staff, attendance, schedules, roles and permissions in one workspace.", "الجداول": "Schedules", "أدوار النظام": "System roles",
+  "الرقم الوظيفي": "Employee number", "تمريض": "Nursing", "مالية": "Finance", "إدارة": "Administration", "إضافة الموظف": "Add employee", "إيقاف": "Deactivate", "اختر الموظف": "Select employee", "حفظ الحضور": "Save attendance", "حضور الشهر الحالي": "Current month attendance", "الجداول الأسبوعية": "Weekly schedules", "اختر الدور": "Select role", "تعيين الدور": "Assign role",
+  "مركز التسويق": "Marketing center", "الحملات والعملاء المحتملون ومصادر الإحالة والمتابعة والرسائل في مساحة واحدة.": "Campaigns, leads, referral sources, follow-up and messages in one workspace.", "مصادر الإحالة": "Referral sources", "تم الحجز / التحويل": "Booked / converted", "الرسائل في الانتظار": "Queued messages",
+  "هدف الحملة": "Campaign goal", "الشريحة المستهدفة": "Target segment", "العرض أو الرسالة": "Offer or message", "إنشاء الحملة": "Create campaign", "إضافة العميل المحتمل": "Add lead", "الرسائل والمتابعة": "Messages and follow-up", "العميل المحتمل": "Lead", "رقم الهاتف أو الحساب": "Phone number or account", "نص الرسالة": "Message text", "إضافة إلى قائمة الإرسال": "Add to sending queue", "تكلفة مصدر الإحالة": "Referral source cost", "ملخص مصادر الإحالة": "Referral source summary",
 };
 
 let reverseTranslations: Map<string, string> | null = null;
@@ -396,8 +416,17 @@ export function translateSystemTextToEnglish(value: string): string {
   if (!clean) return latinDigits(value);
   const direct = englishOnlyOverrides[clean] ?? getReverseTranslations().get(clean.toLowerCase());
   if (direct) return `${leading}${direct}${trailing}`;
-
-  return `${leading}${clean}${trailing}`;
+  let translated = clean;
+  const embedded = Object.entries(englishOnlyOverrides)
+    .filter(([arabic]) => arabic.length > 1 && translated.includes(arabic))
+    .sort((a, b) => b[0].length - a[0].length);
+  for (const [arabic, english] of embedded) translated = translated.replaceAll(arabic, english);
+  translated = translated
+    .replace(/(\d{1,2}:\d{2})[\s\u200e\u200f]*ص/g, "$1 AM")
+    .replace(/(\d{1,2}:\d{2})[\s\u200e\u200f]*م/g, "$1 PM")
+    .replaceAll("،", ",");
+  translated = translated.replaceAll("ر.س", "SAR");
+  return `${leading}${translated}${trailing}`;
 }
 
 export function normalizeInterfaceDigits(value: string): string {
