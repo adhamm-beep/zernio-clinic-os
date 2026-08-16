@@ -359,6 +359,7 @@ const latinDigits = (value: string) => value
   .replace(/[\u06f0-\u06f9]/g, digit => String(digit.charCodeAt(0) - 0x06f0));
 
 const englishOnlyOverrides: Record<string, string> = {
+  "لا توجد بيانات": "No data",
   "جارٍ تحميل المرضى...": "Loading patients...", "جارٍ تحميل بيانات الفريق...": "Loading team data...",
   "جاهزة للربط الرسمي مع واتساب أو منصة الإرسال، ولا تُرسل دون الموصل المعتمد.": "Ready for official WhatsApp or messaging-platform integration; nothing is sent without an approved connector.",
   "المهام": "Tasks", "المهام اليدوية والمهام الناتجة من الأتمتة في لوحة واحدة.": "Manual and automated tasks in one workspace.",
@@ -447,6 +448,8 @@ export function translateSystemTextToEnglish(value: string): string {
   if (!clean) return latinDigits(value);
   const direct = englishOnlyOverrides[clean] ?? getReverseTranslations().get(clean.toLowerCase());
   if (direct) return `${leading}${direct}${trailing}`;
+  const loading = clean.match(/^جارٍ تحميل\s+(.+?)(?:\.{3}|…)?$/i);
+  if (loading) return `${leading}Loading ${loading[1]}...${trailing}`;
   let translated = clean;
   const embedded = Object.entries(englishOnlyOverrides)
     .filter(([arabic]) => arabic.length > 1 && translated.includes(arabic))

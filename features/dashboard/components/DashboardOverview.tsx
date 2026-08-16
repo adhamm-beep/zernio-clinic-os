@@ -48,6 +48,7 @@ import { PatientCatalogBadge } from "@/features/customers/components/PatientCata
 import SaudiMoney from "@/components/SaudiMoney";
 import {
   appointmentStatuses,
+  canConfirmAppointment,
   appointmentStatusLabelAr,
   appointmentStatusLabelEn,
   appointmentStatusSolid,
@@ -210,7 +211,11 @@ export default function DashboardOverview() {
       : "••••";
   const serviceName = (id: number | null) => {
     const s = services.find((x) => x.id === id);
-    return s ? serviceFamilyLabel(s, true) : "خدمة";
+    return s
+      ? serviceFamilyLabel(s, isArabic)
+      : isArabic
+        ? "خدمة"
+        : "Service";
   };
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
   return (
@@ -405,8 +410,8 @@ export default function DashboardOverview() {
                         </p>
                       )}
                       <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                        <span className="rounded-lg bg-white/20 px-3 py-1.5 text-base font-black">{appointmentStatusLabelAr[x.status]}</span>
-                        {x.status!=="confirmed"&&x.status!=="completed"&&x.status!=="cancelled"&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded-lg bg-white px-3 py-1.5 text-base font-black text-slate-900 disabled:opacity-40">تأكيد الموعد</button>}
+                        <span className="rounded-lg bg-white/20 px-3 py-1.5 text-base font-black">{isArabic?appointmentStatusLabelAr[x.status]:appointmentStatusLabelEn[x.status]}</span>
+                        {canConfirmAppointment(x.status)&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded-lg bg-white px-3 py-1.5 text-base font-black text-slate-900 disabled:opacity-40">{isArabic?"تأكيد الموعد":"Confirm appointment"}</button>}
                         {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.tags?.map(tag=><PatientCatalogBadge key={tag.id} name={tag.name} color={tag.color}/>)}
                         {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source&&(
                           <PatientCatalogBadge prefix={isArabic?"إحالة":"Referral"} name={(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source??""} color={referralCatalog.data?.find(item=>item.id===(customersQuery.data??[]).find(customer=>customer.id===x.customer_id)?.referral_source_id)?.color}/>

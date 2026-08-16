@@ -1,6 +1,9 @@
 import type { AppointmentStatus } from "./types/appointment";
 
 export const appointmentStatuses: AppointmentStatus[] = ["booked","confirmed","arrived","in_progress","completed","late","cancelled","no_show","waitlist","note"];
+export function canConfirmAppointment(status: AppointmentStatus) {
+  return status === "booked";
+}
 export function isAppointmentStatus(value: unknown): value is AppointmentStatus {
   return typeof value === "string" && appointmentStatuses.includes(value as AppointmentStatus);
 }
