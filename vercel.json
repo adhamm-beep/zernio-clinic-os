@@ -1,0 +1,1 @@
+{"crons":[{"path":"/api/admin/daily-reports/summary","schedule":"0 20 * * *"},{"path":"/api/admin/daily-reports/exceptions","schedule":"1 20 * * *"}]}

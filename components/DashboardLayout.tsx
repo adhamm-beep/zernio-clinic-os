@@ -10,13 +10,14 @@ export default function DashboardLayout({
   children,
 }: Props) {
   return (
-    <div className="flex min-h-screen bg-[#f7f8f7]">
+    <div className="panthera-app-shell flex min-h-screen">
       <Sidebar />
+      <div className="hidden w-[72px] shrink-0 lg:block" aria-hidden="true" />
 
-      <div className="min-w-0 flex-1 overflow-x-hidden">
+      <div className="panthera-content-stage min-w-0 flex-1 overflow-x-hidden">
         <Header />
 
-        <main className="mx-auto min-w-0 max-w-[1800px] p-3 md:p-4">
+        <main className="panthera-page mx-auto min-w-0 max-w-[1800px] p-3 md:p-4">
           {children}
         </main>
       </div>

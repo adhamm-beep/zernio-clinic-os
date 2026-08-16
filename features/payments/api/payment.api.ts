@@ -53,7 +53,7 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
         status,
         doctor_id,
         service_id,
-        staff (id, staff_name),
+        staff:staff!appointments_doctor_id_fkey (id, staff_name),
         services (id, name, name_en, name_ar),
         rooms (id, name),
         branches (id, name)
@@ -90,6 +90,12 @@ export async function getPaymentById(id:number):Promise<Payment>{
   const payment=(await getPayments()).find(item=>item.id===id);
   if(!payment)throw new Error("تعذر تحميل الفاتورة بعد إصدارها.");
   return payment;
+}
+
+export async function recordInvoiceBalancePayment(input:{paymentId:number;tenders:Array<{method:string;amount:number}>;referenceNumber?:string;notes?:string}):Promise<Payment>{
+  const{data,error}=await supabase.rpc("record_invoice_balance_payment",{p_payment_id:input.paymentId,p_tenders:input.tenders,p_reference_number:input.referenceNumber?.trim()||null,p_notes:input.notes?.trim()||null});
+  if(error)throw new Error(error.message);
+  return data as Payment;
 }
 
 export type MultiInvoiceItemInput={service_id:number;service_variant_id:number|null;quantity:number};
@@ -145,7 +151,7 @@ export async function createPayment(
         status,
         doctor_id,
         service_id,
-        staff (id, staff_name),
+        staff:staff!appointments_doctor_id_fkey (id, staff_name),
         services (id, name, name_en, name_ar),
         rooms (id, name),
         branches (id, name)

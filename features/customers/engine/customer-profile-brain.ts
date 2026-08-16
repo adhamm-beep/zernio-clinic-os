@@ -7,7 +7,9 @@ export type CustomerProfileBrain = {
   riskScore: number;
   expectedRevenue: number;
   summary: string;
+  summaryAr: string;
   recommendations: string[];
+  recommendationsAr: string[];
 };
 
 type CustomerProfileBrainInput = {
@@ -60,20 +62,26 @@ export function buildCustomerProfileBrain({
   else if (totalActivity >= 4) segment = "Growth";
 
   const recommendations: string[] = [];
+  const recommendationsAr: string[] = [];
   if (insights.outstandingBalance > 0) {
-    recommendations.push("تواصل مع المريض بخصوص المبلغ المتبقي.");
+    recommendations.push("Contact the patient regarding the outstanding balance.");
+    recommendationsAr.push("تواصل مع المريض بخصوص المبلغ المتبقي.");
   }
   if (pendingFollowUps > 0) {
-    recommendations.push(`أكمل المتابعات المعلقة وعددها ${pendingFollowUps}.`);
+    recommendations.push(`Complete the ${pendingFollowUps} pending follow-up(s).`);
+    recommendationsAr.push(`أكمل المتابعات المعلقة وعددها ${pendingFollowUps}.`);
   }
   if (daysSinceLastVisit > 90) {
-    recommendations.push("ابدأ حملة لإعادة تنشيط المريض واقترح موعد فحص.");
+    recommendations.push("Start a patient reactivation campaign and suggest a check-up.");
+    recommendationsAr.push("ابدأ حملة لإعادة تنشيط المريض واقترح موعد فحص.");
   }
   if (insights.noShowRate >= 0.25) {
-    recommendations.push("فعّل تذكيرات المواعيد لتقليل الإلغاء وعدم الحضور.");
+    recommendations.push("Enable appointment reminders to reduce cancellations and no-shows.");
+    recommendationsAr.push("فعّل تذكيرات المواعيد لتقليل الإلغاء وعدم الحضور.");
   }
   if (recommendations.length === 0) {
-    recommendations.push("حافظ على انتظام الرعاية الحالي واقترح العلاج المناسب التالي.");
+    recommendations.push("Maintain the current care cadence and suggest the next appropriate treatment.");
+    recommendationsAr.push("حافظ على انتظام الرعاية الحالي واقترح العلاج المناسب التالي.");
   }
 
   const segmentArabic: Record<CustomerProfileBrain["segment"], string> = {
@@ -83,7 +91,10 @@ export function buildCustomerProfileBrain({
     Loyal: "وفيّ",
     "High Value": "مرتفع القيمة",
   };
-  const summary =
+  const summary = totalActivity === 0
+    ? "No activity has been recorded for this patient yet. Start with an initial consultation."
+    : `${segment} patient with ${engagementScore}% engagement and ${loyaltyScore}% loyalty. ${riskScore >= 60 ? "Immediate retention action is recommended." : "The relationship is currently stable."}`;
+  const summaryAr =
     totalActivity === 0
       ? "لا يوجد نشاط مسجل لهذا المريض حتى الآن. ابدأ العلاقة باستشارة أولية."
       : `مريض ${segmentArabic[segment]} بنسبة تفاعل ${engagementScore}% وولاء ${loyaltyScore}%. ${
@@ -100,6 +111,8 @@ export function buildCustomerProfileBrain({
     expectedRevenue:
       insights.outstandingBalance + insights.averageSpend,
     summary,
+    summaryAr,
     recommendations,
+    recommendationsAr,
   };
 }

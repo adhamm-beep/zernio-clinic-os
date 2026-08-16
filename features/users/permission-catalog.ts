@@ -533,6 +533,28 @@ export const permissionMeta: Record<string, PermissionMeta> = {
     labelEn: "Manage patient documents",
     descriptionAr: "التحكم الكامل في مستندات وسجلات المرضى المرفقة.",
   },
+  "patient_receipts.view": {
+    moduleAr: "المرضى",
+    moduleEn: "Patients",
+    labelAr: "عرض معرض إيصالات المريض",
+    labelEn: "View patient receipt gallery",
+    descriptionAr: "عرض صور وملفات إيصالات الدفع المرتبطة بالمريض والمدفوعات.",
+  },
+  "patient_receipts.create": {
+    moduleAr: "المرضى",
+    moduleEn: "Patients",
+    labelAr: "رفع إيصالات المريض",
+    labelEn: "Upload patient receipts",
+    descriptionAr: "التقاط صورة أو رفع ملف إيصال وربطه بالمريض وبدفعة محددة.",
+  },
+  "patient_receipts.manage": {
+    moduleAr: "المرضى",
+    moduleEn: "Patients",
+    labelAr: "إدارة معرض إيصالات المرضى",
+    labelEn: "Manage patient receipt galleries",
+    descriptionAr: "التحكم الكامل في إيصالات الدفع المرفوعة بملفات المرضى.",
+    risk: "sensitive",
+  },
   "settings.templates.manage": {
     moduleAr: "الإعدادات",
     moduleEn: "Settings",

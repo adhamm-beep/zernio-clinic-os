@@ -3,6 +3,7 @@
 import type {
   CustomerInsights,
 } from "../engine/buildCustomerInsights";
+import SaudiMoney from "@/components/SaudiMoney";
 
 type Props = {
   insights: CustomerInsights;
@@ -21,19 +22,17 @@ export default function CustomerInsightsCards({
 
     {
       title: "Revenue",
-      value: `SAR ${insights.totalRevenue.toLocaleString()}`,
+      value: <SaudiMoney value={insights.totalRevenue} />,
     },
 
     {
       title: "Average Spend",
-      value: `SAR ${Math.round(
-        insights.averageSpend
-      )}`,
+      value: <SaudiMoney value={Math.round(insights.averageSpend)} />,
     },
 
     {
       title: "Outstanding",
-      value: `SAR ${insights.outstandingBalance}`,
+      value: <SaudiMoney value={insights.outstandingBalance} />,
     },
 
     {

@@ -1,5 +1,6 @@
 "use client";
 import TimelineBusinessEventDetails from "./TimelineBusinessEventDetails";
+import SaudiMoney from "@/components/SaudiMoney";
 import {
   CalendarDays,
   CheckCircle2,
@@ -314,8 +315,7 @@ export default function TimelineEventDialog({
                 </p>
 
                 <p className="mt-1 text-xl font-bold text-emerald-700">
-                  SAR{" "}
-                  {event.amount.toLocaleString()}
+                  <SaudiMoney value={event.amount} />
                 </p>
               </div>
             )}

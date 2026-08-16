@@ -30,6 +30,7 @@ export interface ClinicBrainResult {
   >;
 
   campaign: string;
+  campaignAr: string;
 
 }
 
@@ -53,6 +54,9 @@ export function buildClinicBrain(
     : fallbackSegment;
 
   const campaign = profile
+    ? segment === "VIP" ? "VIP loyalty campaign" : segment === "RISK" ? "Patient win-back campaign" : segment === "NEW" ? "Welcome campaign" : segment === "LOYAL" ? "Premium upgrade" : "Monthly offer"
+    : recommendCampaign(insights);
+  const campaignAr = profile
     ? segment === "VIP"
       ? "حملة ولاء كبار العملاء"
       : segment === "RISK"
@@ -87,6 +91,7 @@ export function buildClinicBrain(
       ),
 
     campaign,
+    campaignAr,
 
   };
 

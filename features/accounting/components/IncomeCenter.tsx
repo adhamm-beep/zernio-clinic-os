@@ -3,6 +3,7 @@ import { useMemo,useState } from "react";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { Plus,Search } from "lucide-react";
 import { toast } from "sonner";
+import SaudiMoney from "@/components/SaudiMoney";
 import { createClient } from "@/lib/supabase/client";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
@@ -10,7 +11,7 @@ import { usePayments } from "@/features/payments/hooks/usePayments";
 import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 
 type ManualIncome={id:number;income_number:string;income_date:string;name:string;income_type:string;payment_method:string;treasury_key:string;amount:number;reference_number:string|null;details:string|null;created_at:string;updated_at:string;assignee?:{staff_name:string|null}|null};
-const client=createClient();const field="h-11 rounded-xl border px-3 text-sm outline-none focus:border-cyan-500";const money=(v:number)=>new Intl.NumberFormat("ar-SA-u-nu-latn",{style:"currency",currency:"SAR",maximumFractionDigits:2}).format(Number(v??0));const date=(v:string|null)=>v?new Intl.DateTimeFormat("ar-SA-u-nu-latn",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Riyadh"}).format(new Date(v)):"—";
+const client=createClient();const field="h-11 rounded-xl border px-3 text-sm outline-none focus:border-cyan-500";const money=(v:number)=><SaudiMoney value={v}/>;const date=(v:string|null)=>v?new Intl.DateTimeFormat("ar-SA-u-nu-latn",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Riyadh"}).format(new Date(v)):"—";
 async function getManualIncomes(clinicId:number,branchId:number){const{data,error}=await client.from("clinic_incomes").select("*,assignee:staff!clinic_incomes_assigned_to_staff_id_fkey(staff_name)").eq("clinic_id",clinicId).eq("branch_id",branchId).order("income_date",{ascending:false});if(error)throw new Error(error.message);return(data??[])as unknown as ManualIncome[];}
 async function addManualIncome(input:Record<string,unknown>){const{error}=await client.from("clinic_incomes").insert(input);if(error)throw new Error(error.message);}
 

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocale } from "@/components/LocaleProvider";
+import SaudiMoney from "@/components/SaudiMoney";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,24 +41,9 @@ import {
 import { usePermission } from "@/features/users/hooks/usePermission";
 
 const departments = [
-  {
-    id: -1,
-    name: "Laser Department",
-    subtitle: "Clarity II · Nurses",
-    category: "Laser Hair Removal",
-  },
-  {
-    id: -2,
-    name: "Hair Bleaching",
-    subtitle: "PicoWay · Nurses",
-    category: "Bleaching",
-  },
-  {
-    id: -3,
-    name: "ProFacial",
-    subtitle: "Dedicated nurse",
-    category: "ProFacial",
-  },
+  { id: -1, name: "Laser Department", subtitle: "Clarity II · Nurses", category: "Laser Hair Removal" },
+  { id: -2, name: "Hair Bleaching", subtitle: "PicoWay · Nurses", category: "Bleaching" },
+  { id: -3, name: "ProFacial", subtitle: "Dedicated nurse", category: "ProFacial" },
 ] as const;
 
 type ServiceForm = {
@@ -93,14 +79,6 @@ const emptyService: ServiceForm = {
   deviceIds: [],
 };
 
-function money(value: number) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 export default function PriceListPage() {
   const { isArabic, text } = useLocale();
   const { clinic, selectedBranch } = useClinic();
@@ -120,21 +98,8 @@ export default function PriceListPage() {
   const selectedDoctor = doctors.find(
     (doctor) => doctor.id === selectedProviderId,
   );
-  const selectedDepartment = departments.find(
-    (department) => department.id === selectedProviderId,
-  );
-  const providerName =
-    selectedDoctor?.staff_name ??
-    (selectedDepartment
-      ? text(
-          selectedDepartment.name,
-          selectedDepartment.id === -1
-            ? "قسم الليزر"
-            : selectedDepartment.id === -2
-              ? "قسم التشقير"
-              : "قسم البروفاشيال",
-        )
-      : text("Provider", "مقدم الخدمة"));
+  const selectedDepartment = departments.find((department) => department.id === selectedProviderId);
+  const providerName = selectedDoctor?.staff_name ?? (selectedDepartment ? text(selectedDepartment.name, selectedDepartment.id === -1 ? "قسم الليزر" : selectedDepartment.id === -2 ? "قسم التشقير" : "قسم البروفاشيال") : text("Provider", "مقدم الخدمة"));
   const serviceLabel = (service: MasterService) =>
     isArabic
       ? (service.name_ar ?? service.name)
@@ -146,16 +111,7 @@ export default function PriceListPage() {
 
   const services = useMemo(() => {
     if (!data) return [];
-    const allowed = data.services.filter((service) =>
-      selectedProviderId > 0
-        ? data.staffServices.some(
-            (link) =>
-              link.staff_id === selectedProviderId &&
-              link.service_id === service.id,
-          )
-        : service.provider_type === "department" &&
-          service.category === selectedDepartment?.category,
-    );
+    const allowed = data.services.filter((service) => selectedProviderId > 0 ? data.staffServices.some((link) => link.staff_id === selectedProviderId && link.service_id === service.id) : service.provider_type === "department" && service.category === selectedDepartment?.category);
     const query = search.trim().toLowerCase();
     return allowed.filter(
       (service) =>
@@ -175,8 +131,7 @@ export default function PriceListPage() {
       .filter(
         (variant) =>
           variant.service_id === serviceId &&
-          (selectedProviderId < 0 ||
-            data.serviceVariantPrices.some(
+          (selectedProviderId < 0 || data.serviceVariantPrices.some(
               (price) =>
                 price.service_variant_id === variant.id &&
                 price.staff_id === selectedProviderId,
@@ -271,8 +226,7 @@ export default function PriceListPage() {
       nameAr: serviceForm.nameAr,
       code: serviceForm.code,
       category:
-        serviceForm.category ||
-        selectedDepartment?.category ||
+        serviceForm.category || selectedDepartment?.category ||
         serviceForm.nameEn,
       durationMinutes: Number(serviceForm.duration),
       price: Number(serviceForm.price),
@@ -387,7 +341,7 @@ export default function PriceListPage() {
           </div>
           <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
             <CircleDollarSign className="h-5 w-5 text-amber-300" />
-            <p className="mt-3 text-2xl font-bold">{text("SAR", "ر.س")}</p>
+            <span role="img" aria-label={text("Saudi riyal", "ريال سعودي")} className="mt-3 inline-block h-8 w-8 bg-current" style={{ WebkitMask: "url(/saudi-riyal-symbol.svg) center / contain no-repeat", mask: "url(/saudi-riyal-symbol.svg) center / contain no-repeat" }} />
             <p className="text-sm text-slate-300">
               {text("Live invoice prices", "أسعار الفواتير المعتمدة")}
             </p>
@@ -400,14 +354,11 @@ export default function PriceListPage() {
           {text("Choose doctor or department", "اختر الطبيب أو القسم")}
         </p>
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {[
-            ...doctors.map((doctor) => ({
+          {[...doctors.map((doctor) => ({
               id: doctor.id,
               name: doctor.staff_name,
               subtitle: doctor.contract_type ?? "Doctor",
-            })),
-            ...departments,
-          ].map((provider) => (
+            })), ...departments].map((provider) => (
             <button
               key={provider.id}
               type="button"
@@ -451,10 +402,6 @@ export default function PriceListPage() {
       <div className="grid gap-5 xl:grid-cols-2">
         {services.map((service) => {
           const variants = variantsFor(service.id);
-          const basePrice = data.servicePrices.find(
-            (price) =>
-              price.service_id === service.id && price.staff_id === null,
-          );
           return (
             <article
               key={service.id}
@@ -476,14 +423,6 @@ export default function PriceListPage() {
                       : (service.category_en ?? service.category)}{" "}
                     · {service.duration_minutes} {text("min", "دقيقة")}
                   </p>
-                  {selectedProviderId < 0 && (
-                    <p className="mt-2 font-bold text-emerald-700">
-                      {basePrice?.is_starting_from
-                        ? text("From ", "يبدأ من ")
-                        : ""}
-                      {money(basePrice?.price ?? service.default_price)}
-                    </p>
-                  )}
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
@@ -564,7 +503,7 @@ export default function PriceListPage() {
                               {pricing.startingFrom
                                 ? text("From ", "يبدأ من ")
                                 : ""}
-                              {money(pricing.price)}
+                              <SaudiMoney value={pricing.price} />
                             </p>
                           </div>
                           <div className="flex shrink-0 gap-1">
@@ -708,7 +647,6 @@ export default function PriceListPage() {
                   <Input
                     required
                     value={serviceForm.category}
-                    disabled={selectedProviderId < 0}
                     onChange={(event) =>
                       setServiceForm({
                         ...serviceForm,
@@ -737,44 +675,12 @@ export default function PriceListPage() {
                     className="mt-1"
                   />
                 </label>
-                {selectedProviderId < 0 && (
-                  <label className="text-sm font-medium">
-                    {text("Service price", "سعر الخدمة")}
-                    <Input
-                      required
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={serviceForm.price}
-                      onChange={(event) =>
-                        setServiceForm({
-                          ...serviceForm,
-                          price: event.target.value,
-                        })
-                      }
-                      className="mt-1"
-                    />
-                  </label>
-                )}
-              </div>
-              {selectedProviderId < 0 && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={serviceForm.startingFrom}
-                    onChange={(event) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        startingFrom: event.target.checked,
-                      })
-                    }
-                  />
-                  {text(
-                    "Price starts from this amount",
-                    "السعر يبدأ من هذا المبلغ",
-                  )}
+                <label className="text-sm font-medium">
+                  {text("Base service price", "السعر الأساسي للخدمة")}
+                  <Input required type="number" min="0" step="0.01" value={serviceForm.price} onChange={(event) => setServiceForm({ ...serviceForm, price: event.target.value })} className="mt-1" />
                 </label>
-              )}
+              </div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={serviceForm.startingFrom} onChange={(event) => setServiceForm({ ...serviceForm, startingFrom: event.target.checked })}/>{text("Price starts from this amount", "السعر يبدأ من هذا المبلغ")}</label>
               <fieldset className="rounded-xl border p-3">
                 <legend className="px-1 text-sm font-semibold">
                   {text(

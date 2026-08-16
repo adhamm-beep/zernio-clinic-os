@@ -2,6 +2,8 @@
 
 import { buildCustomerIntelligence } from "../engine/customer-intelligence";
 import type { Customer360 } from "../types/customer";
+import { useLocale } from "@/components/LocaleProvider";
+import SaudiMoney from "@/components/SaudiMoney";
 
 type Props = {
   customer: Customer360;
@@ -10,35 +12,34 @@ type Props = {
 export default function CustomerIntelligenceCards({
   customer,
 }: Props) {
+  const { text } = useLocale();
   const info =
     buildCustomerIntelligence(customer);
 
   const cards = [
     {
-      title: "الزيارات",
+      title: text("Visits", "الزيارات"),
       value: info.totalVisits,
     },
     {
-      title: "العلاجات",
+      title: text("Treatments", "العلاجات"),
       value: info.completedTreatments,
     },
     {
-      title: "الإيرادات",
-      value: `${info.totalRevenue.toLocaleString("en-SA")} ر.س`,
+      title: text("Revenue", "الإيرادات"),
+      value: <SaudiMoney value={info.totalRevenue} />,
     },
     {
-      title: "متوسط الإنفاق",
-      value: `${Math.round(
-        info.averageSpend
-      ).toLocaleString("en-SA")} ر.س`,
+      title: text("Average spend", "متوسط الإنفاق"),
+      value: <SaudiMoney value={Math.round(info.averageSpend)} />,
     },
     {
-      title: "المبالغ المستحقة",
-      value: `${info.outstandingBalance.toLocaleString("en-SA")} ر.س`,
+      title: text("Outstanding", "المبالغ المستحقة"),
+      value: <SaudiMoney value={info.outstandingBalance} />,
     },
     {
-      title: "كبار العملاء",
-      value: info.vip ? "نعم" : "لا",
+      title: text("VIP", "كبار العملاء"),
+      value: info.vip ? text("Yes", "نعم") : text("No", "لا"),
     },
   ];
 

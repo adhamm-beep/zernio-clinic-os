@@ -135,6 +135,24 @@ export async function updateCustomer(
   return data as Customer;
 }
 
+export async function getCustomerIdsByServiceIds(serviceIds: number[]): Promise<number[]> {
+  if (!serviceIds.length) return [];
+  const { data, error } = await supabase.from("appointments").select("customer_id").in("service_id", serviceIds).not("customer_id", "is", null);
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).map((item) => Number(item.customer_id)).filter((id) => Number.isInteger(id) && id > 0))];
+}
+
+export async function getCustomerIdsByDoctorId(doctorId: number): Promise<number[]> {
+  if (!Number.isInteger(doctorId) || doctorId <= 0) return [];
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("customer_id")
+    .eq("doctor_id", doctorId)
+    .not("customer_id", "is", null);
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).map((item) => Number(item.customer_id)).filter((id) => Number.isInteger(id) && id > 0))];
+}
+
 async function writeCustomerWithSchemaFallback(mode:"insert"|"update",initial:Record<string,unknown>,id?:number){
   const payload={...initial};
   for(let attempt=0;attempt<20;attempt+=1){
@@ -350,6 +368,15 @@ export async function getCustomer360(
       .map((treatment) => treatment.treatment_date as string),
   ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   const lastVisit = visitDates[0] ?? null;
+  let referralSourceColor: string | null = null;
+  if (customerResult.data.referral_source_id) {
+    const { data: referral } = await supabase
+      .from("patient_referral_sources")
+      .select("color")
+      .eq("id", customerResult.data.referral_source_id)
+      .maybeSingle();
+    referralSourceColor = referral?.color ?? null;
+  }
 
   return {
     ...customerResult.data,
@@ -366,6 +393,7 @@ export async function getCustomer360(
       0
     ),
     lastVisit,
+    referral_source_color: referralSourceColor,
     membership: membershipResult.data ?? null,
   } as Customer360;
 }

@@ -27,6 +27,11 @@ export interface AppointmentDoctor {
   staff_name: string;
 }
 
+export interface AppointmentCreator {
+  id: number;
+  staff_name: string;
+}
+
 export interface AppointmentService {
   id: number;
   name: string;
@@ -64,12 +69,14 @@ export interface Appointment {
   source: string | null;
   notes: string | null;
   created_from_channel: string | null;
+  created_by_staff_id: number | null;
 
   customers: AppointmentCustomer | null;
   staff: AppointmentDoctor | null;
   services: AppointmentService | null;
   rooms: AppointmentRoom | null;
   branches: AppointmentBranch | null;
+  creator: AppointmentCreator | null;
 }
 
 export interface CreateAppointmentInput {

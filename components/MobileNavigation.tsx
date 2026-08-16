@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
@@ -14,6 +15,7 @@ import {
   type NavItem,
 } from "@/components/nav-items";
 import { useCurrentPermissions } from "@/features/users/hooks/useCurrentPermissions";
+import pantheraLogo from "@/mobile-patient/assets/panthera-brand-transparent.png";
 
 export default function MobileNavigation() {
   const [open, setOpen] = useState(false);
@@ -65,7 +67,7 @@ export default function MobileNavigation() {
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-[#f7f8f7] pb-4">
           <div>
-            <p className="font-black text-slate-950">PANTHERA</p>
+            <Image src={pantheraLogo} alt="Panthera Clinics" className="panthera-brand-logo h-10 w-44" priority />
             <p className="text-xs text-slate-500">
               {text("Your available sections", "الأقسام المتاحة لك")}
             </p>

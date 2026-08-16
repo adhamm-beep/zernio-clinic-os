@@ -9,6 +9,7 @@ import { useLocale } from "@/components/LocaleProvider";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useCurrentPermissions } from "@/features/users/hooks/useCurrentPermissions";
 import { allNavItems, canSeeNavItem } from "@/components/nav-items";
+import { customerDisplayName, customerFileNumber } from "@/features/customers/utils/customerIdentity";
 
 type Result = {
   id: string;
@@ -54,7 +55,7 @@ export default function GlobalSearch() {
       });
   }, [query, isArabic, permissions, text]);
   useEffect(() => {
-    if (!open || norm(query).length < 2 || !clinic?.id) {
+    if (!open || norm(query).length < 1 || !clinic?.id) {
       const clearTimer = setTimeout(() => setResults([]), 0);
       return () => clearTimeout(clearTimer);
     }
@@ -63,6 +64,7 @@ export default function GlobalSearch() {
     async function search() {
       setLoading(true);
       const q = norm(query);
+      const customerQuery = q.replace(/^#+/, "").replace(/[,%()]/g, "");
       const supabase = createClient();
       const clinicId = clinic?.id ?? 0;
       const jobs: Array<Promise<void>> = [];
@@ -88,15 +90,12 @@ export default function GlobalSearch() {
             .from("customers")
             .select("id,first_name,last_name,phone,customer_code,email")
             .eq("clinic_id", clinicId)
+            .or(`first_name.ilike.%${customerQuery}%,last_name.ilike.%${customerQuery}%,customer_code.ilike.%${customerQuery}%,phone.ilike.%${customerQuery}%`)
             .limit(12),
         (row) => ({
           id: `customer-${row.id}`,
-          title:
-            `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() ||
-            text("Patient", "مريض"),
-          subtitle: [row.phone, row.customer_code, row.email]
-            .filter(Boolean)
-            .join(" · "),
+          title: customerDisplayName(row, text("Patient", "مريض")),
+          subtitle: customerFileNumber(row),
           href: `/customers/${row.id}`,
           permission: "customers.view",
         }),
@@ -474,7 +473,7 @@ export default function GlobalSearch() {
     }
   }, [open, query, clinic?.id, permissions, isArabic, text]);
   const denied =
-    norm(query).length >= 2 &&
+    norm(query).length >= 1 &&
     allNavItems.some(
       (item) => !canSeeNavItem(item, permissions),
     );
@@ -484,10 +483,12 @@ export default function GlobalSearch() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={text("Search anything", "ابحث عن أي شيء")}
-        className="hidden h-10 min-w-48 items-center gap-2 rounded-xl border bg-white px-3 text-sm text-slate-400 shadow-sm md:flex"
+        className="group/search hidden h-10 w-10 items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition-[width,background-color,border-color,box-shadow] duration-300 ease-out hover:w-56 hover:border-cyan-300 hover:bg-gradient-to-r hover:from-white hover:to-cyan-50 hover:shadow-lg hover:shadow-cyan-500/10 focus-visible:w-56 focus-visible:border-cyan-400 md:flex"
       >
-        <Search className="size-4" />
-        {text("Search anything", "ابحث عن أي شيء")}
+        <span className="grid size-10 shrink-0 place-items-center"><Search className="size-4 transition group-hover/search:text-cyan-600 group-focus-visible/search:text-cyan-600" /></span>
+        <span className="whitespace-nowrap pe-3 opacity-0 transition duration-200 group-hover/search:opacity-100 group-focus-visible/search:opacity-100">
+          {text("Search anything", "ابحث عن أي شيء")}
+        </span>
       </button>
       <button
         type="button"
@@ -500,12 +501,14 @@ export default function GlobalSearch() {
       {open && (
         <div
           className="fixed inset-0 z-[110] bg-slate-950/50 p-3 backdrop-blur-sm md:p-10"
-          onClick={() => setOpen(false)}
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
         >
           <section
             dir={isArabic ? "rtl" : "ltr"}
             className="mx-auto max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center gap-3 border-b p-4">
               <Search className="size-5 text-slate-400" />
@@ -527,11 +530,11 @@ export default function GlobalSearch() {
               </button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto p-3">
-              {query.trim().length < 2 ? (
+              {query.trim().length < 1 ? (
                 <p className="p-8 text-center text-sm text-slate-500">
                   {text(
-                    "Type at least two characters to search the whole system.",
-                    "اكتب حرفين على الأقل للبحث في النظام بالكامل.",
+                    "Type the first character to see matching results.",
+                    "اكتب أول حرف لعرض النتائج المطابقة.",
                   )}
                 </p>
               ) : (

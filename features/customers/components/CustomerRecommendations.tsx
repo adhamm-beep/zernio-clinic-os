@@ -7,6 +7,7 @@ import {
 import type {
   CustomerInsights,
 } from "../engine/buildCustomerInsights";
+import { useLocale } from "@/components/LocaleProvider";
 
 type Props = {
   insights: CustomerInsights;
@@ -15,6 +16,7 @@ type Props = {
 export default function CustomerRecommendations({
   insights,
 }: Props) {
+  const { isArabic, text } = useLocale();
 
   const list =
     buildRecommendations(
@@ -26,7 +28,7 @@ export default function CustomerRecommendations({
     <div className="rounded-3xl border bg-white p-6">
 
       <h2 className="text-xl font-bold">
-        Recommendations
+        {text("Recommendations", "التوصيات")}
       </h2>
 
       <div className="mt-6 space-y-4">
@@ -41,11 +43,11 @@ export default function CustomerRecommendations({
               className="rounded-xl bg-slate-50 p-4"
             >
               <h3 className="font-semibold">
-                {item.title}
+                {isArabic ? item.titleAr : item.title}
               </h3>
 
               <p className="mt-1 text-sm text-slate-500">
-                {item.description}
+                {isArabic ? item.descriptionAr : item.description}
               </p>
 
             </div>

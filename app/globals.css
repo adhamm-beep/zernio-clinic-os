@@ -2,7 +2,51 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@font-face {
+  font-family: "Ara Hamah Sahet AlAssi";
+  src: url("/fonts/ara-hamah-sahet-alassi.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
+
+/* Panthera identity: replace the old near-black interface surfaces globally. */
+:root {
+  --panthera-brand-steel: #516e84;
+  --panthera-brand-steel-light: #68869c;
+  --panthera-brand-steel-dark: #425d71;
+}
+
+body :is(.bg-slate-950, .bg-slate-900, .bg-indigo-950):not([class*="/40"]):not([class*="/45"]):not([class*="/50"]):not([class*="/60"]) {
+  background-color: var(--panthera-brand-steel) !important;
+}
+body [class~="from-slate-950"] {
+  --tw-gradient-from: var(--panthera-brand-steel) var(--tw-gradient-from-position) !important;
+}
+body [class~="via-slate-900"],
+body [class~="via-indigo-950"] {
+  --tw-gradient-via: var(--panthera-brand-steel-light) var(--tw-gradient-via-position) !important;
+}
+body [class~="to-slate-950"],
+body [class~="to-indigo-950"],
+body [class~="to-violet-950"] {
+  --tw-gradient-to: var(--panthera-brand-steel-dark) var(--tw-gradient-to-position) !important;
+}
+body :is([class*="bg-[#071826]"], [class*="bg-[#061827]"], [class*="bg-[#101c25]"]) {
+  background-color: var(--panthera-brand-steel) !important;
+  background-image: linear-gradient(135deg, var(--panthera-brand-steel), var(--panthera-brand-steel-light)) !important;
+}
+body :is([class*="from-[#061827]"], [class*="from-[#071826]"]) {
+  --tw-gradient-from: var(--panthera-brand-steel) var(--tw-gradient-from-position) !important;
+}
+body :is([class*="via-[#0b2940]"], [class*="via-[#082f49]"]) {
+  --tw-gradient-via: var(--panthera-brand-steel-light) var(--tw-gradient-via-position) !important;
+}
+body :is([class*="to-[#124b60]"], [class*="to-[#071a2c]"]) {
+  --tw-gradient-to: var(--panthera-brand-steel-dark) var(--tw-gradient-to-position) !important;
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -49,7 +93,9 @@
 }
 
 :root {
-  --font-zernio-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-zernio-ar: "Ara Hamah Sahet AlAssi", "Arabic Typesetting", Tahoma, Arial, sans-serif;
+  --font-zernio-en: "Century Gothic", CenturyGothic, "Tw Cen MT", Avenir, Arial, sans-serif;
+  --font-zernio-sans: var(--font-zernio-ar);
   --background: #f7f8f7;
   --foreground: #14212a;
   --card: oklch(1 0 0);
@@ -125,14 +171,440 @@
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
-    background-image: radial-gradient(circle at 90% 0%, rgb(85 112 128 / 8%), transparent 28rem);
+    background-image: radial-gradient(circle at 90% 0%, rgb(6 182 212 / 10%), transparent 28rem), radial-gradient(circle at 10% 90%, rgb(99 102 241 / 8%), transparent 30rem);
   }
   html {
     @apply font-sans;
   }
+  html[dir="ltr"] body,
+  [dir="ltr"] { font-family: var(--font-zernio-en); }
+  html[dir="rtl"] body {
+    font-family: var(--font-zernio-ar);
+    font-size: 18px;
+    line-height: 1.55;
+  }
+  [dir="rtl"] { font-family: var(--font-zernio-ar); }
+}
+.panthera-brand-name {
+  font-family: var(--font-zernio-en) !important;
+  font-weight: 400;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.panthera-brand-logo { display: block; width: auto; object-fit: contain; }
+html[dir="rtl"] .panthera-sidebar .panthera-brand-logo { margin-left: -8px; }
+html[dir="ltr"] .panthera-sidebar .panthera-brand-logo { margin-left: 8px; }
+.panthera-sidebar .panthera-sidebar-logo { margin-inline: 0; margin-left: 0; }
+.panthera-app-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 4%, rgb(34 211 238 / 12%), transparent 27rem),
+    radial-gradient(circle at 8% 92%, rgb(99 102 241 / 10%), transparent 30rem),
+    linear-gradient(145deg, #f8fbff 0%, #f4f7fb 50%, #f8fafc 100%);
+}
+.panthera-app-shell::before,
+.panthera-app-shell::after {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  width: min(46vw, 46rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(76px);
+  will-change: transform;
+}
+.panthera-app-shell > * {
+  position: relative;
+  z-index: 1;
+}
+.panthera-app-shell > .panthera-sidebar {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 40;
+  isolation: isolate;
+  opacity: 1;
+  background-color: #425d71 !important;
+  background-image: linear-gradient(180deg, #425d71 0%, #516e84 48%, #354f63 100%) !important;
+  box-shadow: 14px 0 36px -24px rgb(15 23 42 / 75%);
+  backdrop-filter: none !important;
+}
+.panthera-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgb(255 255 255 / 6%), transparent 38%, rgb(3 105 161 / 10%));
+}
+.panthera-sidebar :is(a, p, span, svg) {
+  text-shadow: 0 1px 3px rgb(15 23 42 / 38%);
+}
+
+/* Finance workspace: readable dark hero, roomy KPIs and stable responsive tabs. */
+[data-can-manage] > div:first-child h1 {
+  color: white;
+  text-shadow: 0 2px 18px rgb(34 211 238 / 22%);
+}
+[data-can-manage] > div:first-child p {
+  color: rgb(207 250 254);
+}
+[data-can-manage] [data-slot="tabs-list"] {
+  display: grid !important;
+  height: auto !important;
+  min-height: max-content !important;
+  align-items: stretch !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .5rem;
+  overflow: visible;
+  border: 1px solid rgb(226 232 240 / 85%);
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 78%);
+  padding: .6rem;
+  box-shadow: 0 18px 45px -34px rgb(15 23 42 / 55%);
+}
+[data-can-manage] [data-slot="tabs-trigger"] {
+  height: auto !important;
+  min-height: 3rem;
+  justify-content: flex-start;
+  border-radius: .9rem;
+  white-space: normal;
+  line-height: 1.25;
+}
+@media (min-width: 1280px) {
+  [data-can-manage] [data-slot="tabs-list"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  [data-can-manage] [data-slot="tabs-list"] {
+    grid-template-columns: 1fr;
+  }
+}
+[data-can-manage] [data-slot="tabs-trigger"][data-active] {
+  color: white;
+  background: linear-gradient(135deg, #082f49, #0e7490);
+}
+[data-can-manage] > .grid > div.rounded-2xl {
+  min-height: 9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-color: rgb(186 230 253 / 80%);
+  background: linear-gradient(145deg, rgb(255 255 255 / 96%), rgb(240 249 255 / 92%));
+}
+[data-can-manage] > .grid > div.rounded-2xl > div:last-child {
+  font-size: clamp(1.55rem, 2vw, 2.2rem);
+  line-height: 1.15;
+}
+.panthera-animated-page {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background-color: rgb(248 250 252);
+  background-image:
+    radial-gradient(circle at 92% 6%, rgb(34 211 238 / 19%) 0%, transparent 25%),
+    radial-gradient(circle at 8% 88%, rgb(99 102 241 / 13%) 0%, transparent 27%),
+    linear-gradient(135deg, rgb(240 249 255 / 88%), rgb(248 250 252 / 94%) 48%, rgb(238 242 255 / 86%));
+  background-size: 145% 145%, 150% 150%, 100% 100%;
+  animation: panthera-page-flow 18s ease-in-out infinite alternate;
+}
+
+/* Keep interactive menus above tables/cards without tinting the whole option row. */
+.panthera-page :is(section, form):has([aria-expanded="true"]) {
+  position: relative;
+  z-index: 80;
+  overflow: visible !important;
+}
+.panthera-page [aria-expanded="true"] {
+  position: relative;
+  z-index: 120;
+}
+.panthera-animated-page::before {
+  content: "";
+  position: absolute;
+  inset-inline: -10%;
+  top: -32rem;
+  z-index: 0;
+  height: 38rem;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgb(34 211 238 / 34%) 0%, rgb(14 165 233 / 22%) 32%, rgb(99 102 241 / 10%) 55%, transparent 74%);
+  filter: blur(42px);
+  will-change: transform;
+  animation: panthera-light-sweep 14s ease-in-out infinite;
+}
+.panthera-animated-page > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes panthera-page-flow {
+  0% { background-position: 100% 0%, 0% 100%, 0 0; }
+  45% { background-position: 54% 38%, 38% 62%, 0 0; }
+  100% { background-position: 4% 82%, 92% 10%, 0 0; }
+}
+@keyframes panthera-light-sweep {
+  0% { transform: translate3d(0, -8rem, 0) scaleX(.9); opacity: .35; }
+  12% { opacity: 1; }
+  50% { transform: translate3d(0, 62vh, 0) scaleX(1.08); opacity: .9; }
+  88% { opacity: .85; }
+  100% { transform: translate3d(0, calc(100vh + 42rem), 0) scaleX(.94); opacity: .2; }
+}
+.panthera-app-shell::before {
+  inset-block-start: -18%;
+  inset-inline-end: -12%;
+  background: radial-gradient(circle, rgb(34 211 238 / 20%) 0%, rgb(14 165 233 / 11%) 38%, transparent 70%);
+  animation: panthera-ambient-cyan 24s ease-in-out infinite alternate;
+}
+.panthera-app-shell::after {
+  inset-block-end: -24%;
+  inset-inline-start: -14%;
+  background: radial-gradient(circle, rgb(99 102 241 / 14%) 0%, rgb(56 189 248 / 8%) 42%, transparent 72%);
+  animation: panthera-ambient-indigo 31s ease-in-out infinite alternate;
+}
+@keyframes panthera-ambient-cyan {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  45% { transform: translate3d(-18vw, 19vh, 0) scale(1.12); }
+  100% { transform: translate3d(-42vw, 51vh, 0) scale(.92); }
+}
+@keyframes panthera-ambient-indigo {
+  0% { transform: translate3d(0, 0, 0) scale(.92); }
+  50% { transform: translate3d(24vw, -21vh, 0) scale(1.08); }
+  100% { transform: translate3d(51vw, -55vh, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panthera-app-shell::before,
+  .panthera-app-shell::after,
+  .panthera-animated-page,
+  .panthera-animated-page::before { animation: none; }
+}
+.panthera-page :is(section, article, form, [data-slot="card"]) {
+  --panthera-surface-shadow: 0 18px 45px -34px rgb(15 23 42 / 55%);
+}
+.panthera-content-stage {
+  position: relative;
+  isolation: isolate;
+}
+.panthera-content-stage::after {
+  content: "";
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: auto;
+  inset-inline-end: -30rem;
+  z-index: 25;
+  width: 30rem;
+  height: 100vh;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, rgb(125 211 252 / 5%) 22%, rgb(34 211 238 / 18%) 48%, rgb(255 255 255 / 22%) 58%, rgb(99 102 241 / 8%) 74%, transparent 100%);
+  filter: blur(22px);
+  mix-blend-mode: screen;
+  will-change: transform;
+  animation: panthera-content-light-sweep 13s ease-in-out infinite;
+}
+@keyframes panthera-content-light-sweep {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  10% { opacity: .85; }
+  50% { opacity: 1; }
+  90% { opacity: .8; }
+  100% { transform: translate3d(calc(-100vw - 42rem), 0, 0); opacity: 0; }
+}
+html[dir="rtl"] .panthera-content-stage::after {
+  background:
+    linear-gradient(270deg, transparent 0%, rgb(125 211 252 / 5%) 22%, rgb(34 211 238 / 18%) 48%, rgb(255 255 255 / 22%) 58%, rgb(99 102 241 / 8%) 74%, transparent 100%);
+  animation-name: panthera-content-light-sweep-rtl;
+}
+@keyframes panthera-content-light-sweep-rtl {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  10% { opacity: .85; }
+  50% { opacity: 1; }
+  90% { opacity: .8; }
+  100% { transform: translate3d(calc(100vw + 42rem), 0, 0); opacity: 0; }
+}
+@media (max-width: 1023px) {
+  .panthera-content-stage::after { inset-inline-start: auto; inset-inline-end: -30rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panthera-content-stage::after { animation: none; display: none; }
+}
+.panthera-page :is(.shadow-sm, .shadow-md) {
+  box-shadow: var(--panthera-surface-shadow, 0 12px 30px -24px rgb(15 23 42 / 45%));
+}
+.panthera-page > :not(.panthera-animated-page) {
+  animation: panthera-page-enter .42s ease-out both;
+}
+@keyframes panthera-page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.panthera-page :is(section, article, form, nav, div)[class*="bg-white"][class*="border"]:not([class*="text-white"]):not([class*="rounded-full"]) {
+  border-color: rgb(255 255 255 / 82%);
+  background-color: rgb(255 255 255 / 78%);
+  box-shadow: 0 20px 48px -38px rgb(15 23 42 / 55%);
+  backdrop-filter: blur(16px);
+}
+.panthera-page :is(section, article, form, nav, div)[class*="rounded-2xl"][class*="bg-white"],
+.panthera-page :is(section, article, form, nav, div)[class*="rounded-xl"][class*="bg-white"] {
+  border-radius: 1.25rem;
+}
+.panthera-page :is(h1, h2)[class*="font-bold"],
+.panthera-page :is(h1, h2)[class*="font-black"] {
+  letter-spacing: -.025em;
+  color: rgb(15 23 42);
+}
+.panthera-page .finance-hero h1 {
+  color: white !important;
+  text-shadow: 0 2px 20px rgb(34 211 238 / 22%);
+}
+.panthera-page .finance-hero > div > div > p:last-child {
+  color: rgb(226 232 240) !important;
+}
+.panthera-page h1::after {
+  content: "";
+  display: block;
+  width: 2.75rem;
+  height: .22rem;
+  margin-top: .45rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #2563eb, #6366f1);
+}
+.panthera-page :is(select, textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"])):not([class*="bg-transparent"]) {
+  border-color: rgb(226 232 240);
+  border-radius: .8rem;
+  background-color: rgb(255 255 255 / 78%);
+  box-shadow: 0 8px 20px -18px rgb(15 23 42 / 60%);
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.panthera-page :is(select, textarea, input):focus {
+  border-color: rgb(34 211 238);
+  box-shadow: 0 0 0 4px rgb(34 211 238 / 12%);
+  outline: none;
+}
+.panthera-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.panthera-page table thead {
+  background: linear-gradient(90deg, rgb(241 245 249), rgb(236 254 255), rgb(238 242 255));
+}
+.panthera-page table th {
+  color: rgb(51 65 85);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.panthera-page table tbody tr {
+  transition: background-color .18s ease, transform .18s ease;
+}
+.panthera-page table tbody tr:hover {
+  background-color: rgb(236 254 255 / 72%);
+}
+.panthera-page [role="tablist"] {
+  border-color: rgb(226 232 240);
+  border-radius: 1rem;
+  background: rgb(248 250 252 / 78%);
+  padding: .3rem;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 5%);
+}
+@media (max-width: 767px) {
+  .panthera-page h1::after { width: 2rem; }
+  .panthera-page :is(section, article, form)[class*="p-6"],
+  .panthera-page :is(section, article, form)[class*="p-7"] { padding: 1rem; }
 }
 input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"], [type="week"]),
 label:has(input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"], [type="week"])),
 [data-native-picker-field] {
   cursor: pointer;
+}
+
+/* Unified interaction language: anything actionable must look and feel clickable. */
+.panthera-page :is(a[href], button:not(:disabled), summary, label[for], [role="button"]:not([aria-disabled="true"]), [data-slot="tabs-trigger"]:not(:disabled)) {
+  cursor: pointer;
+  transition-property: color, background-color, border-color, box-shadow, transform, filter;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+.panthera-page :is(a[href], button:not(:disabled), summary, label[for], [role="button"]:not([aria-disabled="true"]), [data-slot="tabs-trigger"]:not(:disabled)):hover {
+  border-color: rgb(34 211 238 / 82%);
+  box-shadow: 0 10px 26px -16px rgb(8 145 178 / 72%), 0 0 0 2px rgb(34 211 238 / 14%);
+  filter: saturate(1.08) brightness(1.035);
+  transform: translateY(-1px);
+}
+.panthera-page :is(a[href], button:not(:disabled), summary, label[for], [role="button"]:not([aria-disabled="true"]), [data-slot="tabs-trigger"]:not(:disabled)):active {
+  box-shadow: 0 4px 14px -10px rgb(8 145 178 / 72%);
+  transform: translateY(0) scale(.985);
+}
+.panthera-page :is(a[href], button, summary, [role="button"]):focus-visible {
+  outline: 3px solid rgb(34 211 238 / 38%);
+  outline-offset: 3px;
+}
+.panthera-page :is(button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+/* A consistent steel surface derived from the sidebar, kept light for readable content. */
+.panthera-page :is(section, article, form, nav, [data-slot="card"])[class*="bg-white"]:not([class*="text-white"]):not(.finance-hero),
+.panthera-page :is(div)[class*="rounded-2xl"][class*="bg-white"][class*="border"]:not([class*="text-white"]),
+.panthera-page :is(div)[class*="rounded-xl"][class*="bg-white"][class*="border"]:not([class*="text-white"]) {
+  color: #172b3a;
+  border-color: rgb(81 110 132 / 22%);
+  background-color: #f5f8fa;
+  background-image: linear-gradient(145deg, rgb(255 255 255 / 96%) 0%, rgb(232 240 245 / 94%) 54%, rgb(207 222 231 / 88%) 100%);
+  box-shadow: 0 18px 42px -30px rgb(53 79 99 / 64%), inset 0 1px 0 rgb(255 255 255 / 92%);
+}
+.panthera-page :is(section, article, form, nav, [data-slot="card"])[class*="bg-white"]:not([class*="text-white"]) :is(h1, h2, h3, h4, strong, b),
+.panthera-page :is(div)[class*="rounded-2xl"][class*="bg-white"][class*="border"]:not([class*="text-white"]) :is(h1, h2, h3, h4, strong, b) {
+  color: #14212a;
+}
+.panthera-page :is(section, article, [data-slot="card"])[class*="bg-white"]:not([class*="text-white"]) :is(p, small) {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 72%);
+}
+
+/* Clickable cards receive a stronger steel hover without changing status/tag colours. */
+.panthera-page :is(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"])):is([class*="rounded-xl"], [class*="rounded-2xl"]):is([class*="bg-white"], [class*="bg-slate-50"]):not([style*="background-color"]):hover {
+  background-image: linear-gradient(135deg, rgb(104 134 156 / 18%), rgb(81 110 132 / 24%));
+}
+
+.panthera-page :is(section, article, header, div)[class*="from-slate-950"][class*="text-white"],
+.panthera-page :is(section, article, header, div)[class*="from-slate-900"][class*="text-white"],
+.panthera-page :is(section, article, header, div)[class*="from-indigo-950"][class*="text-white"] {
+  color: white !important;
+  background-image: linear-gradient(135deg, #354f63 0%, #516e84 48%, #68869c 100%) !important;
+  box-shadow: 0 22px 48px -30px rgb(53 79 99 / 78%);
+}
+.panthera-page :is(section, article, header, div)[class*="from-slate-950"][class*="text-white"] :is(h1,h2,h3,h4,p,span,small,strong,b),
+.panthera-page :is(section, article, header, div)[class*="from-slate-900"][class*="text-white"] :is(h1,h2,h3,h4,p,span,small,strong,b),
+.panthera-page :is(section, article, header, div)[class*="from-indigo-950"][class*="text-white"] :is(h1,h2,h3,h4,p,span,small,strong,b),
+.panthera-page :is(section, article, header, div)[class*="from-[#354f63]"] :is(h1,h2,h3,h4,p,small,strong,b),
+.panthera-page :is(section, article, header, div):is([class*="bg-[#071826]"],[class*="bg-[#061827]"],[class*="bg-[#101c25]"])[class*="text-white"] :is(h1,h2,h3,h4,p,span,small,strong,b) {
+  color: white !important;
+}
+
+/* Native fields must stay readable when they live inside a steel identity card. */
+.panthera-page :is(
+  [class*="from-slate-950"],
+  [class*="from-slate-900"],
+  [class*="from-indigo-950"],
+  [class*="from-[#354f63]"],
+  [class*="bg-[#071826]"],
+  [class*="bg-[#061827]"],
+  [class*="bg-[#101c25]"]
+) :is(input, select, textarea, option) {
+  color: #172b3a !important;
+  background-color: white;
+  color-scheme: light;
+}
+.panthera-page :is(
+  [class*="from-slate-950"],
+  [class*="from-slate-900"],
+  [class*="from-indigo-950"],
+  [class*="from-[#354f63]"],
+  [class*="bg-[#071826]"],
+  [class*="bg-[#061827]"],
+  [class*="bg-[#101c25]"]
+) label:has(input) > span {
+  color: #516e84 !important;
 }

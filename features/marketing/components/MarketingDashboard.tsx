@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import SaudiMoney from "@/components/SaudiMoney";
 import { Input } from "@/components/ui/input";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useMasterData } from "@/features/appointments/hooks/useMasterData";
@@ -35,11 +36,7 @@ const channels = [
   "other",
 ];
 function money(n: number) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return <SaudiMoney value={n} />;
 }
 function aiReply(name: string, service: string, status: string) {
   const hello = name ? `Hello ${name},` : "Hello,";

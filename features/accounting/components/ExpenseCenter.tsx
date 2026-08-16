@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Plus, Search, WalletCards } from "lucide-react";
 import { toast } from "sonner";
+import SaudiMoney from "@/components/SaudiMoney";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
@@ -10,7 +11,7 @@ import { useExpenseActions, useExpenses } from "../hooks/useExpenses";
 import type { ClinicExpense } from "../types/expense";
 
 const field="h-11 rounded-xl border px-3 text-sm outline-none focus:border-cyan-500";
-const money=(value:number)=>new Intl.NumberFormat("ar-SA-u-nu-latn",{style:"currency",currency:"SAR",maximumFractionDigits:2}).format(Number(value??0));
+const money=(value:number)=><SaudiMoney value={value}/>;
 const date=(value:string|null)=>value?new Intl.DateTimeFormat("ar-SA-u-nu-latn",{dateStyle:"medium",timeZone:"Asia/Riyadh"}).format(new Date(value)):"—";
 const accountOptions=[['medical_materials','المواد الطبية'],['salaries','الرواتب'],['rent','الإيجار'],['marketing','التسويق'],['utilities','المرافق'],['depreciation','الإهلاك'],['administrative','المصروفات الإدارية'],['other_expense','مصروفات أخرى']];
 
@@ -40,4 +41,4 @@ export default function ExpenseCenter(){
     {paying&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"><form className="w-full max-w-xl space-y-3 rounded-2xl bg-white p-6" onSubmit={async e=>{e.preventDefault();try{await actions.pay.mutateAsync({clinic_id:clinicId,branch_id:branchId,expense_id:paying.id,payment_date:new Date().toISOString(),amount:Number(payment.amount),payment_method:payment.payment_method,treasury_key:payment.treasury_key,reference_number:payment.reference_number||null,details:payment.details||null});toast.success("تم تسجيل دفعة المصروف وترحيلها محاسبيًا");setPaying(null);}catch(error){toast.error(error instanceof Error?error.message:"تعذر تسجيل الدفعة")}}}><h3 className="text-xl font-black">دفع المصروف: {paying.name}</h3><input required min="0.01" max={Math.max(Number(paying.total_amount)-Number(paying.paid_amount),0)} step="0.01" type="number" className={`${field} w-full`} value={payment.amount} onChange={e=>setPayment({...payment,amount:e.target.value})}/><div className="grid grid-cols-2 gap-3"><select className={field} value={payment.payment_method} onChange={e=>{const method=e.target.value;setPayment({...payment,payment_method:method,treasury_key:method==='cash'?'cash':method==='bank_transfer'?'bank':'gateway_clearing'})}}><option value="cash">نقدي</option><option value="bank_transfer">تحويل بنكي</option><option value="card">بطاقة بنكية</option><option value="other">أخرى</option></select><input className={field} placeholder="المرجع" value={payment.reference_number} onChange={e=>setPayment({...payment,reference_number:e.target.value})}/></div><input className={`${field} w-full`} placeholder="تفاصيل الدفعة" value={payment.details} onChange={e=>setPayment({...payment,details:e.target.value})}/><div className="flex gap-2"><button className="flex-1 rounded-xl bg-emerald-600 py-3 font-bold text-white">حفظ وترحيل</button><button type="button" onClick={()=>setPaying(null)} className="rounded-xl border px-5">إلغاء</button></div></form></div>}
   </section>;
 }
-function Card({label,value}:{label:string;value:string}){return <div className="rounded-2xl border bg-white p-4"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>}
+function Card({label,value}:{label:string;value:ReactNode}){return <div className="rounded-2xl border bg-white p-4"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>}

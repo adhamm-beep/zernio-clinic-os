@@ -40,8 +40,12 @@ import { useUpdateAppointment } from "@/features/appointments/hooks/useUpdateApp
 import AppointmentCustomerWorkspace from "./AppointmentCustomerWorkspace";
 import InvoiceDialog from "@/features/payments/components/InvoiceDialog";
 import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
+import PayInvoiceBalanceDialog from "@/features/payments/components/PayInvoiceBalanceDialog";
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
 import { createClient } from "@/lib/supabase/client";
+import { getReferralSources } from "@/features/customers/api/customer.api";
+import { PatientCatalogBadge } from "@/features/customers/components/PatientCatalogBadge";
+import SaudiMoney from "@/components/SaudiMoney";
 import {
   appointmentStatuses,
   appointmentStatusLabelAr,
@@ -81,6 +85,7 @@ export default function DashboardOverview() {
   const paymentsQuery = usePayments(clinicId, branchId);
   const masterQuery = useMasterData();
   const customersQuery = useCustomers();
+  const referralCatalog = useQuery({ queryKey: ["referral-sources", clinic?.id], queryFn: () => getReferralSources(clinic?.id ?? 0), enabled: !!clinic?.id });
   const feedbackQuery = useQuery({
     queryKey: ["dashboard-feedback", clinicId],
     queryFn: async () => {
@@ -138,6 +143,16 @@ export default function DashboardOverview() {
     () => families.find((x) => x.key === serviceFamily)?.serviceIds ?? [],
     [families, serviceFamily],
   );
+  const selectedProviderServiceIds = useMemo(() => {
+    if (!doctorId.startsWith("department:")) return [];
+    const category = doctorId.slice("department:".length).toLowerCase();
+    return services.filter((service) => {
+      const searchable = [service.category, service.category_en, service.category_ar, service.name, service.name_en, service.name_ar].filter(Boolean).join(" ").toLowerCase();
+      if (category === "laser") return searchable.includes("laser hair removal") || searchable.includes("إزالة الشعر");
+      if (category === "bleaching") return searchable.includes("bleach") || searchable.includes("تشقير");
+      return searchable.includes("profacial") || searchable.includes("بروفاشيال");
+    }).map((service) => service.id);
+  }, [doctorId, services]);
   const appointments = useMemo(
     () =>
       (appointmentsQuery.data ?? [])
@@ -146,7 +161,7 @@ export default function DashboardOverview() {
             `${x.customers?.first_name ?? ""} ${x.customers?.last_name ?? ""} ${x.customers?.phone ?? ""}`.toLowerCase();
           return (
             isWithinDateRange(x.appointment_at, range) &&
-            (doctorId === "all" || x.doctor_id === Number(doctorId)) &&
+            (doctorId === "all" || (doctorId.startsWith("department:") ? (x.service_id != null && selectedProviderServiceIds.includes(x.service_id)) : x.doctor_id === Number(doctorId))) &&
             (serviceFamily === "all" ||
               (x.service_id != null && serviceIds.includes(x.service_id))) &&
             (!search.trim() || patient.includes(search.trim().toLowerCase()))
@@ -160,6 +175,7 @@ export default function DashboardOverview() {
       appointmentsQuery.data,
       range,
       doctorId,
+      selectedProviderServiceIds,
       serviceFamily,
       serviceIds,
       search,
@@ -171,10 +187,9 @@ export default function DashboardOverview() {
       (paymentsQuery.data ?? []).filter(
         (x) =>
           isWithinDateRange(x.payment_date ?? x.created_at, range) &&
-          (doctorId === "all" ||
-            x.appointments?.doctor_id === Number(doctorId)),
+          (doctorId === "all" || (doctorId.startsWith("department:") ? (x.appointments?.service_id != null && selectedProviderServiceIds.includes(x.appointments.service_id)) : x.appointments?.doctor_id === Number(doctorId))),
       ),
-    [paymentsQuery.data, range, doctorId],
+    [paymentsQuery.data, range, doctorId, selectedProviderServiceIds],
   );
   const outstanding = payments.filter(
     (x) =>
@@ -191,11 +206,7 @@ export default function DashboardOverview() {
   );
   const money = (n: number) =>
     canViewAmounts
-      ? new Intl.NumberFormat("ar-SA-u-nu-latn", {
-          style: "currency",
-          currency: "SAR",
-          maximumFractionDigits: 2,
-        }).format(n)
+      ? <SaudiMoney value={n} />
       : "••••";
   const serviceName = (id: number | null) => {
     const s = services.find((x) => x.id === id);
@@ -204,28 +215,28 @@ export default function DashboardOverview() {
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
   return (
     <div
-      className="-m-3 min-h-[calc(100vh-60px)] bg-[#eef4f9] text-[12px] md:-m-4"
+      className="panthera-animated-page -m-3 min-h-[calc(100vh-60px)] text-[12px] md:-m-4"
       dir={isArabic ? "rtl" : "ltr"}
     >
-      <div className="border-b bg-white px-3">
-        <div className="mx-auto grid max-w-[1800px] grid-cols-3 text-center">
+      <div className="border-b border-white/70 bg-white/65 px-3 py-2 backdrop-blur-xl">
+        <div className="mx-auto grid max-w-3xl grid-cols-3 gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 text-center shadow-inner">
           <button
             onClick={() => setTab("home")}
-            className={`border-b-2 py-2 font-bold ${tab === "home" ? "border-[#0879b8] text-[#075985]" : "border-transparent"}`}
+            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "home" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CalendarDays className="me-1 inline size-4" />
             اللوحة الرئيسية
           </button>
           <button
             onClick={() => setTab("payments")}
-            className={`border-b-2 py-2 font-bold ${tab === "payments" ? "border-[#0879b8] text-[#075985]" : "border-transparent"}`}
+            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "payments" ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CircleDollarSign className="me-1 inline size-4" />
             المدفوعات
           </button>
           <button
             onClick={() => setTab("summary")}
-            className={`border-b-2 py-2 font-bold ${tab === "summary" ? "border-[#0879b8] text-[#075985]" : "border-transparent"}`}
+            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "summary" ? "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <BarChart3 className="me-1 inline size-4" />
             ملخص
@@ -233,14 +244,15 @@ export default function DashboardOverview() {
         </div>
       </div>
       <div className="mx-auto max-w-[1800px] space-y-2 p-2">
-        <section className="grid items-end gap-2 md:grid-cols-[2fr_1fr_1fr_auto]">
-          <DateRangeFilter />
-          <label>
-            <span className="mb-1 block font-bold">الطبيب المعالج</span>
+        <section className="grid gap-2 lg:grid-cols-[minmax(420px,1.5fr)_minmax(390px,1fr)_160px]">
+          <DateRangeFilter compact />
+          <div className="grid content-center gap-2 rounded-2xl border border-white/20 bg-gradient-to-br from-[#354f63] via-[#516e84] to-[#68869c] p-2.5 text-white shadow-xl shadow-slate-900/20 sm:grid-cols-2">
+          <label className="group">
+            <span className="mb-2 block text-xs font-black text-white">الطبيب المعالج</span>
             <select
               value={doctorId}
               onChange={(e) => setDoctorId(e.target.value)}
-              className="h-9 w-full rounded border bg-white px-2"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-gradient-to-r from-white to-cyan-50 px-3 font-bold text-slate-800 shadow-sm outline-none transition group-hover:border-cyan-300 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100"
             >
               <option value="all">الطبيب المعالج</option>
               {doctors.map((x) => (
@@ -248,14 +260,19 @@ export default function DashboardOverview() {
                   {x.staff_name}
                 </option>
               ))}
+              <optgroup label={isArabic ? "الأقسام" : "Departments"}>
+                <option value="department:laser">{isArabic ? "قسم الليزر" : "Laser Department"}</option>
+                <option value="department:bleaching">{isArabic ? "قسم التشقير" : "Hair Bleaching"}</option>
+                <option value="department:profacial">{isArabic ? "قسم البروفاشيال" : "ProFacial"}</option>
+              </optgroup>
             </select>
           </label>
-          <label>
-            <span className="mb-1 block font-bold">مخصصة ل</span>
+          <label className="group">
+            <span className="mb-2 block text-xs font-black text-white">مخصصة ل</span>
             <select
               value={serviceFamily}
               onChange={(e) => setServiceFamily(e.target.value)}
-              className="h-9 w-full rounded border bg-white px-2"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-gradient-to-r from-white to-indigo-50 px-3 font-bold text-slate-800 shadow-sm outline-none transition group-hover:border-indigo-300 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
             >
               <option value="all">مخصصة ل</option>
               {families.map((x) => (
@@ -265,13 +282,16 @@ export default function DashboardOverview() {
               ))}
             </select>
           </label>
-          <div className="rounded bg-cyan-50 px-4 py-2 text-lg font-black text-[#075985]">
+          </div>
+          <div className="relative grid min-h-24 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-indigo-950 to-cyan-900 px-3 py-2 text-center text-white shadow-xl shadow-indigo-950/20">
+          <div className="absolute -end-8 -top-8 size-24 rounded-full bg-cyan-400/25 blur-2xl"/><div className="absolute -bottom-8 -start-8 size-24 rounded-full bg-indigo-400/25 blur-2xl"/>
+          <div className="relative"><span className="mb-2 block text-[10px] font-bold uppercase tracking-[.22em] text-cyan-200">Panthera · Riyadh</span><strong className="block whitespace-nowrap text-xl font-black tabular-nums">
           {clock ? new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
             timeZone: "Asia/Riyadh",
-          }).format(clock) : "--:--:--"}
+          }).format(clock) : "--:--:--"}</strong><small className="mt-2 block text-[10px] text-slate-300">{clock?new Intl.DateTimeFormat(isArabic?"ar-SA-u-nu-latn":"en-SA",{weekday:"long",day:"2-digit",month:"long",timeZone:"Asia/Riyadh"}).format(clock):"—"}</small></div>
           </div>
         </section>
         <label className="flex h-9 items-center gap-2 rounded border bg-white px-3">
@@ -312,7 +332,7 @@ export default function DashboardOverview() {
           />
         ) : (
           <section className="grid min-h-[650px] gap-2 xl:grid-cols-2">
-            <div className="flex min-h-0 flex-col overflow-hidden rounded border bg-white">
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/85 shadow-xl shadow-slate-200/50 backdrop-blur-xl">
               <header className="border-b p-2">
                 <div className="flex items-center justify-between">
                   <strong className="text-base">
@@ -329,13 +349,19 @@ export default function DashboardOverview() {
                       key={status}
                       aria-pressed={selectedStatuses.includes(status)}
                       onClick={()=>setSelectedStatuses(current=>current.includes(status)?current.filter(item=>item!==status):[...current,status])}
-                      className={`${appointmentStatusSolid[status]} rounded px-2 py-1 text-[10px] font-bold transition ${selectedStatuses.length&&!selectedStatuses.includes(status)?"opacity-35 grayscale":"ring-2 ring-transparent"} ${selectedStatuses.includes(status)?"ring-slate-950 ring-offset-1":""}`}
+                      className={`${appointmentStatusSolid[status]} rounded-lg px-3 py-1.5 text-base font-black transition ${selectedStatuses.length&&!selectedStatuses.includes(status)?"opacity-35 grayscale":"ring-2 ring-transparent"} ${selectedStatuses.includes(status)?"ring-slate-950 ring-offset-1":""}`}
                     >{isArabic ? appointmentStatusLabelAr[status] : appointmentStatusLabelEn[status]}</button>
                   ))}
                   {selectedStatuses.length>0&&<button type="button" onClick={()=>setSelectedStatuses([])} className="rounded border px-2 py-1 text-[10px] font-bold">مسح الفلتر</button>}
                 </div>
               </header>
-              <div className="grid max-h-[610px] gap-1 overflow-y-auto p-2">
+              <div className="grid max-h-[680px] content-start gap-1.5 overflow-y-auto p-2">
+                {appointmentsQuery.isError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-red-700">
+                    <b>{isArabic ? "تعذر تحميل الحجوزات" : "Failed to load appointments"}</b>
+                    <p className="mt-1 text-xs">{appointmentsQuery.error instanceof Error ? appointmentsQuery.error.message : String(appointmentsQuery.error)}</p>
+                  </div>
+                )}
                 {appointments.map((x) => {
                   const customer =
                     `${x.customers?.first_name ?? ""} ${x.customers?.last_name ?? ""}`.trim() ||
@@ -359,15 +385,15 @@ export default function DashboardOverview() {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" ")setSelectedAppointment(x)}}
-                      className={`${appointmentStatusSolid[x.status]} cursor-pointer rounded p-3 text-right shadow-sm`}
+                      className={`${appointmentStatusSolid[x.status]} group min-h-[108px] cursor-pointer overflow-visible rounded-xl p-3 text-right transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-lg`}
                     >
                       <div className="flex items-start justify-between">
-                        <b className="text-sm">{customer}</b>
-                        <span className="rounded bg-white/90 px-2 py-0.5 text-[10px] font-bold text-slate-800">
+                        <b className="text-base font-black">{customer}</b>
+                        <span className="rounded-lg bg-white/90 px-2.5 py-1 text-sm font-black text-slate-800">
                           {serviceName(x.service_id)}
                         </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-sm font-bold">
                         <span>{x.staff?.staff_name ?? "—"}</span>
                         <b>
                           {tf(start)} - {tf(end)}
@@ -378,16 +404,18 @@ export default function DashboardOverview() {
                           {x.notes}
                         </p>
                       )}
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="rounded bg-white/20 px-2 py-1 text-[10px] font-black">{appointmentStatusLabelAr[x.status]}</span>
-                        {x.status!=="confirmed"&&x.status!=="completed"&&x.status!=="cancelled"&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded bg-white px-2 py-1 text-[10px] font-black text-slate-900 disabled:opacity-40">تأكيد الموعد</button>}
-                        {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.tags?.map(tag=><span key={tag.id} className="rounded px-2 py-1 text-[10px] font-bold text-white" style={{backgroundColor:tag.color}}>{tag.name}</span>)}
-                        {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source&&<span className="rounded bg-black/25 px-2 py-1 text-[10px] font-bold">إحالة: {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source}</span>}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                        <span className="rounded-lg bg-white/20 px-3 py-1.5 text-base font-black">{appointmentStatusLabelAr[x.status]}</span>
+                        {x.status!=="confirmed"&&x.status!=="completed"&&x.status!=="cancelled"&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded-lg bg-white px-3 py-1.5 text-base font-black text-slate-900 disabled:opacity-40">تأكيد الموعد</button>}
+                        {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.tags?.map(tag=><PatientCatalogBadge key={tag.id} name={tag.name} color={tag.color}/>)}
+                        {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source&&(
+                          <PatientCatalogBadge prefix={isArabic?"إحالة":"Referral"} name={(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source??""} color={referralCatalog.data?.find(item=>item.id===(customersQuery.data??[]).find(customer=>customer.id===x.customer_id)?.referral_source_id)?.color}/>
+                        )}
                       </div>
                     </article>
                   );
                 })}
-                {!appointments.length && (
+                {!appointmentsQuery.isError && !appointmentsQuery.isLoading && !appointments.length && (
                   <p className="py-20 text-center text-slate-400">
                     لا توجد بيانات
                   </p>
@@ -400,7 +428,7 @@ export default function DashboardOverview() {
                 <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
               </button>
             </div>
-            <div className="flex min-h-0 flex-col overflow-hidden rounded border bg-white">
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/85 shadow-xl shadow-slate-200/50 backdrop-blur-xl">
               <header className="flex items-center justify-between border-b p-2">
                 <strong className="text-base">
                   <FileText className="me-2 inline size-5 text-[#0879b8]" />
@@ -460,7 +488,10 @@ export default function DashboardOverview() {
                       {p.invoice_number || `ZRN-${p.id}`} ·{" "}
                       {p.appointments?.staff?.staff_name || "—"}
                     </p>
-                    <InvoiceDialog payment={p} />
+                    <div className="flex flex-wrap gap-2 [&_button]:flex-1">
+                      <PayInvoiceBalanceDialog payment={p} />
+                      <InvoiceDialog payment={p} />
+                    </div>
                   </article>
                 ))}
                 {!needsInvoice.length && !outstanding.length && (
@@ -617,11 +648,7 @@ function PaymentFeed({
                 </div>
                 <div className="text-left">
                   <b className="block text-base text-emerald-500">
-                    {new Intl.NumberFormat("ar-SA-u-nu-latn", {
-                      style: "currency",
-                      currency: payment.currency || "SAR",
-                      maximumFractionDigits: 2,
-                    }).format(paid)}
+                    <SaudiMoney value={paid} />
                   </b>
                   <div className="mt-3 [&_button]:border-emerald-300 [&_button]:text-emerald-700">
                     <InvoiceDialog payment={payment} />
@@ -693,6 +720,7 @@ function SummaryPanel({
   };
   onRefresh: () => void;
 }) {
+  const { text } = useLocale();
   const amountsPermission = usePermission("payments.amounts.view").allowed;
   const financeManagePermission = usePermission("payments.manage").allowed;
   const canViewAmounts = amountsPermission || financeManagePermission;
@@ -741,122 +769,119 @@ function SummaryPanel({
     .filter((item) => sameDay(item.payment_date))
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0) ?? 0;
   const money = (value: number) =>
-    canViewAmounts
-      ? new Intl.NumberFormat("ar-SA-u-nu-latn", {
-          style: "currency",
-          currency: "SAR",
-          maximumFractionDigits: 0,
-        }).format(value)
-      : "••••";
+    canViewAmounts ? <SaudiMoney value={value} /> : "••••";
   const cards = [
     {
-      title: "المرضى الجدد",
+      title: text("New patients", "المرضى الجدد"),
       value: newPatients,
       icon: UserPlus,
-      color: "bg-blue-500",
+      color: "from-sky-400 via-blue-500 to-indigo-600",
       href: "/customers",
     },
     {
-      title: "المواعيد الجديدة",
+      title: text("New appointments", "المواعيد الجديدة"),
       value: appointments.length,
       icon: CalendarDays,
-      color: "bg-teal-500",
+      color: "from-cyan-400 via-teal-500 to-emerald-600",
       href: "/appointments",
     },
     {
-      title: "العمليات المكتملة",
+      title: text("Completed procedures", "العمليات المكتملة"),
       value: money(completedValue),
       icon: FileCheck2,
-      color: "bg-lime-500",
+      color: "from-lime-400 via-emerald-500 to-green-700",
       href: "/treatments",
     },
     {
-      title: "التدفق المالي",
+      title: text("Cash flow", "التدفق المالي"),
       value: money(collected),
       icon: Wallet,
-      color: "bg-green-500",
+      color: "from-emerald-400 via-teal-500 to-cyan-700",
       href: "/accounting",
       details: [
-        ["المدفوعات", money(collected)],
-        ["مدفوعات المصروفات", money(expensePayments)],
+        [text("Payments", "المدفوعات"), money(collected)],
+        [text("Expense payments", "مدفوعات المصروفات"), money(expensePayments)],
       ],
     },
     {
-      title: "المهام",
+      title: text("Tasks", "المهام"),
       value: completedTasks + pendingTasks,
       icon: ListTodo,
-      color: "bg-pink-500",
+      color: "from-fuchsia-400 via-pink-500 to-rose-600",
       href: "/tasks",
       details: [
-        ["مكتمل", completedTasks],
-        ["قيد الانتظار", pendingTasks],
+        [text("Completed", "مكتمل"), completedTasks],
+        [text("Pending", "قيد الانتظار"), pendingTasks],
       ],
     },
     {
-      title: "الرسائل",
+      title: text("Messages", "الرسائل"),
       value: sentMessages + pendingMessages,
       icon: MessageCircle,
-      color: "bg-red-500",
+      color: "from-rose-400 via-red-500 to-orange-600",
       href: "/messages",
       details: [
-        ["تم الإرسال", sentMessages],
-        ["بانتظار الرد", pendingMessages],
+        [text("Sent", "تم الإرسال"), sentMessages],
+        [text("Awaiting reply", "بانتظار الرد"), pendingMessages],
       ],
     },
     {
-      title: "أعياد الميلاد",
+      title: text("Birthdays", "أعياد الميلاد"),
       value: birthdays,
       icon: Gift,
-      color: "bg-amber-500",
+      color: "from-amber-300 via-orange-500 to-rose-500",
       href: "/customers",
     },
     ...(canViewFeedback
       ? [
           {
-            title: "متوسط التقييم",
+            title: text("Average rating", "متوسط التقييم"),
             value: averageRating ? `${averageRating.toFixed(1)} / 5` : "— / 5",
             icon: Heart,
-            color: "bg-orange-500",
+            color: "from-orange-400 via-rose-500 to-fuchsia-600",
             href: "/reports",
           },
         ]
       : []),
     {
-      title: "النقاط",
+      title: text("Points", "النقاط"),
       value: points,
       icon: Star,
-      color: "bg-lime-500",
+      color: "from-lime-400 via-green-500 to-emerald-700",
       href: "/customers",
     },
   ];
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-cyan-900 p-6 text-white shadow-2xl shadow-indigo-950/20">
+        <div className="absolute -end-16 -top-20 size-56 rounded-full bg-cyan-400/20 blur-3xl"/><div className="absolute -bottom-20 -start-12 size-48 rounded-full bg-violet-500/20 blur-3xl"/>
+        <div className="relative flex items-center justify-between gap-4"><div><span className="text-xs font-bold uppercase tracking-[.22em] text-cyan-200">Panthera Intelligence</span><h2 className="mt-2 text-2xl font-black">{text("Clinic performance summary", "ملخص أداء العيادة")}</h2><p className="mt-1 text-sm text-slate-300">{text("A unified view of operations, patients, finance and communication", "نظرة موحدة على التشغيل والمرضى والمالية والتواصل")}</p></div>
         <button
           onClick={onRefresh}
-          className="grid size-9 place-items-center rounded bg-[#0879b8] text-white"
+          className="grid size-11 place-items-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20 transition hover:rotate-180 hover:bg-white/20"
         >
           <RefreshCw className="size-4" />
-        </button>
+        </button></div>
       </div>
-      <section className="grid gap-1 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <Link
             key={card.title}
             href={card.href}
-            className="min-h-40 border bg-white p-4 text-center transition hover:border-sky-300 hover:shadow"
+            className="group relative min-h-44 overflow-hidden rounded-3xl border border-white/80 bg-white/80 p-5 text-center shadow-xl shadow-slate-200/40 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
           >
+            <span className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${card.color}`}/>
             <span
-              className={`mx-auto grid size-12 place-items-center rounded-full text-white ${card.color}`}
+              className={`mx-auto grid size-14 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-lg transition duration-300 group-hover:scale-110 group-hover:rotate-3 ${card.color}`}
             >
               <card.icon className="size-6" />
             </span>
-            <b className="mt-3 block text-2xl">{card.value}</b>
-            <h3 className="mt-2 text-sm font-bold text-[#0879b8]">
+            <b className="mt-4 block text-2xl font-black text-slate-950">{card.value}</b>
+            <h3 className="mt-2 text-sm font-black text-slate-600">
               {card.title}
             </h3>
             {card.details && (
-              <div className="mt-5 grid grid-cols-2 border-t pt-3">
+              <div className="mt-5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
                 {card.details.map(([label, value]) => (
                   <div key={String(label)}>
                     <b className="block text-base">{value}</b>
@@ -868,22 +893,22 @@ function SummaryPanel({
           </Link>
         ))}
       </section>
-      <section className="rounded border bg-white">
-        <h3 className="border-b p-3 font-black">الإشعارات</h3>
+      <section className="overflow-hidden rounded-3xl border border-white/80 bg-white/80 shadow-xl shadow-slate-200/40 backdrop-blur-xl">
+        <h3 className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-indigo-50 p-4 font-black">{text("Smart alerts", "الإشعارات الذكية")}</h3>
         <div className="grid gap-2 p-3 md:grid-cols-2">
-          <Link href="/customers" className="rounded bg-amber-50 p-3">
+          <Link href="/customers" className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
             <b className="text-amber-700">
               {
                 customers.filter((item) => !item.phone || !item.national_id)
                   .length
               }{" "}
-              المرضى
+              {text("patients", "المرضى")}
             </b>
-            <p>المرضى أو بياناتهم الطبية في انتظار التأكيد</p>
+            <p>{text("Patients or medical details awaiting verification", "المرضى أو بياناتهم الطبية في انتظار التأكيد")}</p>
           </Link>
-          <Link href="/appointments" className="rounded bg-blue-50 p-3">
-            <b className="text-blue-700">{pendingAppointments} المواعيد</b>
-            <p>المواعيد في انتظار التأكيد</p>
+          <Link href="/appointments" className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+            <b className="text-blue-700">{pendingAppointments} {text("appointments", "المواعيد")}</b>
+            <p>{text("Appointments awaiting confirmation", "المواعيد في انتظار التأكيد")}</p>
           </Link>
         </div>
       </section>

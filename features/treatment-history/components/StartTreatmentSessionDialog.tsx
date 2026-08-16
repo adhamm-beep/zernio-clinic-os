@@ -24,6 +24,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SaudiMoney from "@/components/SaudiMoney";
 
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
@@ -809,7 +810,7 @@ export default function StartTreatmentSessionDialog({
                             const startingFrom = doctorPrice?.is_starting_from ?? variant.is_starting_from;
                             return (
                               <option key={variant.id} value={variant.id}>
-                                {variant.name} — {startingFrom ? "From " : ""}{price} SAR
+                                {variant.name} — {startingFrom ? "From " : ""}<SaudiMoney value={price} />
                               </option>
                             );
                           })}

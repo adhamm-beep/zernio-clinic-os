@@ -8,7 +8,7 @@ import type {
 } from "../types/appointment";
 
 import { useUpdateAppointment } from "../hooks/useUpdateAppointment";
-import { appointmentStatuses, appointmentStatusLabelAr, appointmentStatusSoft } from "../appointment-status";
+import AppointmentStatusSelect from "./AppointmentStatusSelect";
 
 type AppointmentTableProps = {
   appointments: Appointment[];
@@ -49,12 +49,6 @@ function getCustomerName(
     `${firstName} ${lastName}`.trim() ||
     "Unnamed customer"
   );
-}
-
-function getStatusClasses(
-  status: string
-): string {
-  return appointmentStatusSoft[status as AppointmentStatus] ?? "bg-slate-100 text-slate-700";
 }
 
 export default function AppointmentTable({
@@ -100,42 +94,42 @@ export default function AppointmentTable({
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse">
+        <table className="min-w-full border-collapse text-base font-bold">
           <thead className="bg-slate-100">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Date & Time
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Customer
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Phone
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Doctor
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Service
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Room
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Branch
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Source
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-5 text-left text-base font-black text-gray-900">
                 Status
               </th>
             </tr>
@@ -148,80 +142,63 @@ export default function AppointmentTable({
                   key={appointment.id}
                   className="transition hover:bg-slate-50"
                 >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {formatAppointmentDate(
                       appointment.appointment_at
                     )}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-black text-gray-900">
                     {getCustomerName(
                       appointment
                     )}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.customers
                       ?.phone ??
                       "No phone"}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.staff
                       ?.staff_name ??
                       "No doctor"}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.services
                       ?.name ??
                       "No service"}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.rooms?.name ??
                       "No room"}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.branches
                       ?.name ??
                       "No branch"}
                   </td>
 
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">
+                  <td className="whitespace-nowrap px-6 py-5 text-base font-bold text-gray-800">
                     {appointment.source ??
                       "Not assigned"}
                   </td>
 
                   <td className="whitespace-nowrap px-6 py-4">
-                    <select
-                      value={
-                        appointment.status
-                      }
+                    <AppointmentStatusSelect
+                      value={appointment.status as AppointmentStatus}
                       disabled={!canEdit || updateAppointment.isPending}
-                      onChange={(event) => {
+                      onChange={(status) => {
                         void handleStatusChange(
                           appointment.id,
-                          event.target
-                            .value as AppointmentStatus
+                          status
                         );
                       }}
-                      className={`rounded-full border-0 px-3 py-2 text-sm font-medium outline-none ${getStatusClasses(
-                        appointment.status
-                      )}`}
-                    >
-                      {appointmentStatuses.map(
-                        (status) => (
-                          <option
-                            key={status}
-                            value={status}
-                          >
-                            {appointmentStatusLabelAr[status]}
-                          </option>
-                        )
-                      )}
-                    </select>
+                    />
                   </td>
                 </tr>
               )

@@ -86,7 +86,7 @@ export async function getCalendarEvents(
         nationality
       ),
 
-      staff(
+      staff:staff!appointments_doctor_id_fkey(
         staff_name
       ),
 

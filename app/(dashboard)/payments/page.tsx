@@ -25,6 +25,7 @@ import { groupServiceFamilies } from "@/features/services/service-family";
 import { usePermission } from "@/features/users/hooks/usePermission";
 import { useSecureUiMetrics } from "@/features/dashboard/hooks/useSecureUiMetrics";
 import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
+import SaudiMoney from "@/components/SaudiMoney";
 
 export default function PaymentsPage() {
   const { isArabic, text } = useLocale();
@@ -145,12 +146,6 @@ export default function PaymentsPage() {
       selectedServiceIds,
     ],
   );
-  const money = (value: number) =>
-    new Intl.NumberFormat(isArabic ? "ar-SA-u-nu-latn" : "en-SA", {
-      style: "currency",
-      currency: "SAR",
-      maximumFractionDigits: 2,
-    }).format(value);
   const cards: Array<{
     label: string;
     value: number;
@@ -297,7 +292,7 @@ export default function PaymentsPage() {
                 {card.label}
               </p>
               <p className={`mt-1 text-xl font-black ${card.tone}`}>
-                {money(card.value)}
+                <SaudiMoney value={card.value} />
               </p>
             </div>
           );

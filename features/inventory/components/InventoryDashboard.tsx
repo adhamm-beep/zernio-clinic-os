@@ -15,6 +15,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import SaudiMoney from "@/components/SaudiMoney";
 import { Input } from "@/components/ui/input";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useMasterData } from "@/features/appointments/hooks/useMasterData";
@@ -29,11 +30,7 @@ import {
 import { useInventory } from "../hooks/useInventory";
 
 function money(value: number) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(value);
+  return <SaudiMoney value={value} />;
 }
 function date(value: string | null) {
   return value
@@ -284,18 +281,18 @@ export default function InventoryDashboard() {
         className="scroll-mt-24 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         {[
-          [
-            "المنتجات النشطة",
-            String(data.products.filter((i) => i.is_active).length),
-            Boxes,
-          ],
+          {
+            label: "المنتجات النشطة",
+            value: String(data.products.filter((i) => i.is_active).length),
+            icon: Boxes,
+          },
           ...(canViewCosts
-            ? [["قيمة المخزون", money(stockValue), PackageCheck] as const]
+            ? [{ label: "قيمة المخزون", value: money(stockValue), icon: PackageCheck }]
             : []),
-          ["منخفض المخزون", String(lowStock.length), AlertTriangle],
-          ["تنتهي خلال 90 يومًا", String(expiring.length), Barcode],
-        ].map(([label, value, Icon]) => {
-          const I = Icon as typeof Boxes;
+          { label: "منخفض المخزون", value: String(lowStock.length), icon: AlertTriangle },
+          { label: "تنتهي خلال 90 يومًا", value: String(expiring.length), icon: Barcode },
+        ].map(({label, value, icon: Icon}) => {
+          const I = Icon;
           return (
             <article
               key={String(label)}
@@ -303,7 +300,7 @@ export default function InventoryDashboard() {
             >
               <I className="text-cyan-400" />
               <p className="mt-4 text-sm text-slate-400">{String(label)}</p>
-              <p className="mt-1 text-2xl font-bold">{String(value)}</p>
+              <p className="mt-1 text-2xl font-bold">{value}</p>
             </article>
           );
         })}

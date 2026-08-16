@@ -58,11 +58,7 @@ export async function saveService(input: SaveServiceInput) {
     const { error } = await supabase.from("services").update(servicePayload).eq("id", input.id);
     if (error) throw new Error(error.message);
     if (input.providerId < 0) {
-      const { error: priceError } = await supabase.from("service_prices").update({
-        price: input.price,
-        is_starting_from: input.startingFrom,
-        is_active: true,
-      }).eq("service_id", input.id).is("staff_id", null);
+      const { error: priceError } = await supabase.from("service_prices").update({ price: input.price, is_starting_from: input.startingFrom, is_active: true }).eq("service_id", input.id).is("staff_id", null);
       if (priceError) throw new Error(priceError.message);
     }
     await syncServiceDevices(input.id, input.deviceIds);
@@ -74,24 +70,10 @@ export async function saveService(input: SaveServiceInput) {
   const serviceId = Number(data.id);
 
   if (input.providerId > 0) {
-    const { error: linkError } = await supabase.from("staff_services").upsert({
-      staff_id: input.providerId,
-      service_id: serviceId,
-      duration_minutes: input.durationMinutes,
-      is_active: true,
-    }, { onConflict: "staff_id,service_id" });
+    const { error: linkError } = await supabase.from("staff_services").upsert({ staff_id: input.providerId, service_id: serviceId, duration_minutes: input.durationMinutes, is_active: true }, { onConflict: "staff_id,service_id" });
     if (linkError) throw new Error(linkError.message);
   } else {
-    const { error: priceError } = await supabase.from("service_prices").insert({
-      clinic_id: input.clinicId,
-      branch_id: input.branchId,
-      service_id: serviceId,
-      staff_id: null,
-      price: input.price,
-      price_type: "offer",
-      is_starting_from: input.startingFrom,
-      is_active: true,
-    });
+    const { error: priceError } = await supabase.from("service_prices").insert({ clinic_id: input.clinicId, branch_id: input.branchId, service_id: serviceId, staff_id: null, price: input.price, price_type: "offer", is_starting_from: input.startingFrom, is_active: true });
     if (priceError) throw new Error(priceError.message);
   }
 

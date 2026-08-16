@@ -16,8 +16,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SaudiMoney from "@/components/SaudiMoney";
 
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
+import { customerOptionLabel, matchesCustomerSearch } from "@/features/customers/utils/customerIdentity";
 import { useAppointments } from "@/features/appointments/hooks/useAppointments";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
@@ -96,20 +98,7 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
     }
 
     return customers
-      .filter((customer) => {
-        const fullName =
-          `${customer.first_name ?? ""} ${
-            customer.last_name ?? ""
-          }`.toLowerCase();
-
-        return (
-          fullName.includes(query) ||
-          (customer.phone ?? "").includes(query) ||
-          (customer.customer_code ?? "")
-            .toLowerCase()
-            .includes(query)
-        );
-      })
+      .filter((customer) => matchesCustomerSearch(customer, query))
       .slice(0, 50);
   }, [customers, customerSearch]);
 
@@ -224,7 +213,7 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
         >
           <div>
             <Input
-              placeholder="Search customer by name, phone or code"
+              placeholder="Search customer by name or file number"
               value={customerSearch}
               onChange={(event) =>
                 setCustomerSearch(event.target.value)
@@ -238,18 +227,12 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
               <option value="">حدد المريض</option>
 
               {filteredCustomers.map((customer) => {
-                const fullName =
-                  `${customer.first_name ?? ""} ${
-                    customer.last_name ?? ""
-                  }`.trim() || "Unnamed customer";
-
                 return (
                   <option
                     key={customer.id}
                     value={String(customer.id)}
                   >
-                    {fullName} — {customer.phone || "No phone"} —{" "}
-                    {customer.customer_code || "No code"}
+                    {customerOptionLabel(customer, "Unnamed customer")}
                   </option>
                 );
               })}
@@ -364,7 +347,7 @@ export default function AddTreatmentDialog({ clinicId, branchId }: { clinicId: n
             </p>
 
             <p className="mt-1 text-xl font-bold">
-              {finalPrice.toLocaleString("en-SA")} SAR
+              <SaudiMoney value={finalPrice} />
             </p>
           </div>
 

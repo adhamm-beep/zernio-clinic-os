@@ -3,6 +3,7 @@
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import SaudiMoney from "@/components/SaudiMoney";
 
 import type { Service } from "../types/service";
 import EditServiceDialog from "./EditServiceDialog";
@@ -11,14 +12,6 @@ import { useToggleServiceStatus } from "../hooks/useToggleServiceStatus";
 type ServiceTableProps = {
   services: Service[];
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0));
-}
 
 export default function ServiceTable({
   services,
@@ -108,9 +101,7 @@ export default function ServiceTable({
               </td>
 
               <td className="px-5 py-4 font-medium">
-                {formatMoney(
-                  Number(service.default_price ?? 0)
-                )}
+                <SaudiMoney value={service.default_price} />
               </td>
 
               <td className="px-5 py-4">

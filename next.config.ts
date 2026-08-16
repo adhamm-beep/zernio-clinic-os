@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
       { key: "X-DNS-Prefetch-Control", value: "off" },
       { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-      { key: "Content-Security-Policy", value: `default-src 'self'; base-uri 'self'; form-action 'self' https://*.moyasar.com; frame-ancestors 'none'; object-src 'none'; img-src 'self' blob: data: https://*.supabase.co; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${developmentScriptPolicy}; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.moyasar.com; upgrade-insecure-requests` },
+      { key: "Content-Security-Policy", value: `default-src 'self'; base-uri 'self'; form-action 'self' https://*.moyasar.com; frame-ancestors 'none'; frame-src 'self' blob:; object-src 'none'; img-src 'self' blob: data: https://*.supabase.co; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${developmentScriptPolicy}; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.moyasar.com; upgrade-insecure-requests` },
     ] }];
   },
 };

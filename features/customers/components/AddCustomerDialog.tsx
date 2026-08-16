@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {useMasterData} from "@/features/master-data/hooks/useMasterData";
 import { useQuery } from "@tanstack/react-query";
 import { getPatientTags, getReferralSources, setCustomerTags } from "../api/customer.api";
 import { getOperationalSettings } from "@/features/settings/api/operational-settings.api";
+import { CatalogColorSelect } from "./PatientCatalogBadge";
 
 const schema = z.object({
   customer_code: z.string().optional(),
@@ -70,11 +71,14 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
     register,
     handleSubmit,
     reset,
+    control,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { nationality: "saudi", phone_verified: false, birth_date_verified: false, address_verified: false },
   });
+  const referralSourceId = useWatch({ control, name: "referral_source_id" });
 
   async function onSubmit(values: FormData) {
     try {
@@ -110,17 +114,17 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
         {text("Add Customer", "إضافة عميل")}
       </DialogTrigger>
 
-      <DialogContent dir={isArabic ? "rtl" : "ltr"}>
+      <DialogContent className="max-h-[92vh] w-[96vw] max-w-[1180px] overflow-y-auto sm:max-w-[1180px]" dir={isArabic ? "rtl" : "ltr"}>
         <DialogHeader>
           <DialogTitle>{text("Add Customer", "إضافة عميل")}</DialogTitle>
         </DialogHeader>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
         >
-          <p className="rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800">{text("The file number will be assigned automatically in sequence.","سيتم تعيين رقم الملف تلقائيًا بالتسلسل.")}</p>
-          {(operational.data?.require_patient_phone || operational.data?.require_national_id) && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">البيانات الإلزامية حسب إعدادات العيادة: {[operational.data.require_patient_phone&&"رقم الهاتف",operational.data.require_national_id&&"رقم الهوية"].filter(Boolean).join("، ")}</p>}
+          <p className="rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800 xl:col-span-4">{text("The file number will be assigned automatically in sequence.","سيتم تعيين رقم الملف تلقائيًا بالتسلسل.")}</p>
+          {(operational.data?.require_patient_phone || operational.data?.require_national_id) && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 xl:col-span-4">{text(`Required by clinic settings: ${[operational.data.require_patient_phone&&"phone number",operational.data.require_national_id&&"national ID"].filter(Boolean).join(", ")}`,`البيانات الإلزامية حسب إعدادات العيادة: ${[operational.data.require_patient_phone&&"رقم الهاتف",operational.data.require_national_id&&"رقم الهوية"].filter(Boolean).join("، ")}`)}</p>}
 
           <div>
             <Input
@@ -139,16 +143,16 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
             <Input type="date" aria-label={text("Date of birth", "تاريخ الميلاد")} {...register("date_of_birth")} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3"><Input placeholder={text("Marital status", "الحالة الاجتماعية")} {...register("marital_status")} /><Input placeholder={text("Occupation", "الوظيفة")} {...register("occupation")} /></div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:col-span-2"><Input placeholder={text("Marital status", "الحالة الاجتماعية")} {...register("marital_status")} /><Input placeholder={text("Occupation", "الوظيفة")} {...register("occupation")} /></div>
           <Input placeholder={text("Address", "العنوان")} {...register("address")} />
-          <div className="grid grid-cols-2 gap-3"><Input placeholder="اللقب" {...register("title")}/><Input placeholder="الهاتف الثاني" {...register("secondary_phone")}/><Input placeholder="اسم جهة اتصال الطوارئ" {...register("emergency_contact_name")}/><Input placeholder="هاتف الطوارئ" {...register("emergency_contact_phone")}/><Input type="number" min="0" placeholder="عدد أفراد العائلة" {...register("family_members_count",{valueAsNumber:true})}/><Input type="date" aria-label="التاريخ المتوقع للولادة" {...register("expected_delivery_date")}/></div>
-          <div className="rounded-xl border p-3"><p className="mb-2 font-bold">{text("Insurance details", "تفاصيل التأمين")}</p><div className="grid grid-cols-2 gap-3"><Input placeholder={text("Insurance company", "شركة التأمين")} {...register("insurance_company")} /><Input placeholder={text("Policy number", "رقم الوثيقة")} {...register("insurance_policy_number")} /><Input placeholder={text("Policy class", "فئة التأمين")} {...register("insurance_policy_class")} /><Input type="date" aria-label={text("Insurance expiry", "تاريخ انتهاء التأمين")} {...register("insurance_expiry")} /></div></div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:col-span-4 xl:grid-cols-6"><Input placeholder={text("Title", "اللقب")} {...register("title")}/><Input placeholder={text("Secondary phone", "الهاتف الثاني")} {...register("secondary_phone")}/><Input placeholder={text("Emergency contact name", "اسم جهة اتصال الطوارئ")} {...register("emergency_contact_name")}/><Input placeholder={text("Emergency phone", "هاتف الطوارئ")} {...register("emergency_contact_phone")}/><Input type="number" min="0" placeholder={text("Family members", "عدد أفراد العائلة")} {...register("family_members_count",{valueAsNumber:true})}/><Input type="date" aria-label={text("Expected delivery date", "التاريخ المتوقع للولادة")} {...register("expected_delivery_date")}/></div>
+          <div className="rounded-xl border p-3 xl:col-span-2"><p className="mb-2 font-bold">{text("Insurance details", "تفاصيل التأمين")}</p><div className="grid gap-3 sm:grid-cols-2"><Input placeholder={text("Insurance company", "شركة التأمين")} {...register("insurance_company")} /><Input placeholder={text("Policy number", "رقم الوثيقة")} {...register("insurance_policy_number")} /><Input placeholder={text("Policy class", "فئة التأمين")} {...register("insurance_policy_class")} /><Input type="date" aria-label={text("Insurance expiry", "تاريخ انتهاء التأمين")} {...register("insurance_expiry")} /></div></div>
           <Input placeholder={text("Price group", "مجموعة قائمة الأسعار")} {...register("price_group")} />
-          <div className="grid gap-2 rounded-xl border p-3 text-sm"><label className="flex items-center gap-2"><input type="checkbox" {...register("phone_verified")} />{text("Phone number verified", "رقم الهاتف صحيح")}</label><label className="flex items-center gap-2"><input type="checkbox" {...register("birth_date_verified")} />{text("Birth date verified", "تاريخ الميلاد صحيح")}</label><label className="flex items-center gap-2"><input type="checkbox" {...register("address_verified")} />{text("Address verified", "العنوان صحيح")}</label></div>
+          <div className="grid gap-2 rounded-xl border p-3 text-sm xl:col-span-2"><label className="flex items-center gap-2"><input type="checkbox" {...register("phone_verified")} />{text("Phone number verified", "رقم الهاتف صحيح")}</label><label className="flex items-center gap-2"><input type="checkbox" {...register("birth_date_verified")} />{text("Birth date verified", "تاريخ الميلاد صحيح")}</label><label className="flex items-center gap-2"><input type="checkbox" {...register("address_verified")} />{text("Address verified", "العنوان صحيح")}</label></div>
 
-          <select {...register("assigned_doctor_id")} className="w-full rounded-md border px-3 py-2"><option value="">{text("Assigned doctor","الطبيب المعالج")}</option>{master?.staff.filter(item=>item.is_active&&item.role?.toLowerCase()==="doctor").map(item=><option key={item.id} value={item.id}>{item.staff_name}</option>)}</select>
-          <div className="grid grid-cols-2 gap-3"><select {...register("referral_source_id")} className="rounded-md border px-3 py-2"><option value="">{text("Referral source","مصدر الإحالة")}</option>{referrals.data?.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
-          <div className="rounded-xl border p-3"><p className="mb-2 font-bold">علامات المريض</p><div className="flex flex-wrap gap-2">{tags.data?.map(item=><label key={item.id} className="flex items-center gap-2 rounded-full border px-3 py-1"><input type="checkbox" checked={selectedTags.includes(item.id)} onChange={()=>setSelectedTags(old=>old.includes(item.id)?old.filter(id=>id!==item.id):[...old,item.id])}/><span className="size-3 rounded-full" style={{backgroundColor:item.color}}/>{item.name}</label>)}</div></div>
+          <select {...register("assigned_doctor_id")} className="w-full rounded-md border px-3 py-2"><option value="">{text("Assigned doctor or department","الطبيب أو القسم المعالج")}</option>{master?.staff.filter(item=>item.is_active&&item.role?.toLowerCase()==="doctor").map(item=><option key={item.id} value={item.id}>{item.staff_name}</option>)}<optgroup label={text("Departments","الأقسام")}><option value="department:profacial">ProFacial</option><option value="department:laser">Laser Department</option><option value="department:bleaching">Hair Bleaching</option></optgroup></select>
+          <div className="grid gap-3 sm:grid-cols-2 xl:col-span-2"><CatalogColorSelect value={referralSourceId||"all"} onValueChange={(value)=>setValue("referral_source_id",value==="all"?"":value,{shouldDirty:true})} label={text("Referral source","مصدر الإحالة")} options={(referrals.data??[]).map(item=>[item.id,item.name,item.color||"#516e84"])} /><Input placeholder={text("Referral details","تفاصيل الإحالة")} {...register("referral_detail")}/></div>
+          <div className="rounded-xl border p-3 xl:col-span-4"><p className="mb-2 font-bold">{text("Patient tags", "علامات المريض")}</p><div className="flex flex-wrap gap-2">{tags.data?.map(item=><label key={item.id} className="flex items-center gap-2 rounded-full border px-3 py-1"><input type="checkbox" checked={selectedTags.includes(item.id)} onChange={()=>setSelectedTags(old=>old.includes(item.id)?old.filter(id=>id!==item.id):[...old,item.id])}/><span className="size-3 rounded-full" style={{backgroundColor:item.color}}/>{item.name}</label>)}</div></div>
 
           <Input
             placeholder={text("Last name", "اسم العائلة")}
@@ -191,7 +195,7 @@ export default function AddCustomerDialog({ clinicId, branchId }: { clinicId: nu
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full xl:col-span-4"
             disabled={createCustomer.isPending}
           >
             {createCustomer.isPending

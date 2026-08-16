@@ -31,6 +31,7 @@ import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 import { useLocale } from "@/components/LocaleProvider";
 import AddPaymentDialog from "@/features/payments/components/AddPaymentDialog";
+import AppointmentStatusSelect from "@/features/appointments/components/AppointmentStatusSelect";
 
 import type {
   CalendarEvent,
@@ -69,23 +70,6 @@ const appointmentSources = [
   "Referral",
   "Dentolize",
   "Other",
-];
-
-const statusOptions: Array<{
-  value: CalendarEventStatus;
-  en: string;
-  ar: string;
-}> = [
-  { value: "booked", en: "Booked", ar: "محجوز" },
-  { value: "confirmed", en: "Confirmed", ar: "مؤكد" },
-  { value: "arrived", en: "Arrived", ar: "وصل" },
-  { value: "in_progress", en: "In progress", ar: "جاري العمل" },
-  { value: "completed", en: "Completed", ar: "مكتمل" },
-  { value: "late", en: "Late", ar: "متأخر" },
-  { value: "cancelled", en: "Cancelled", ar: "ملغي" },
-  { value: "no_show", en: "No show", ar: "لم يحضر" },
-  { value: "waitlist", en: "Waitlist", ar: "قائمة الانتظار" },
-  { value: "note", en: "Note", ar: "ملاحظة" },
 ];
 
 function customerGenderLabel(
@@ -575,20 +559,14 @@ export default function CalendarEventDialog({
                   <label className="mb-1 block text-xs font-medium text-slate-300">
                     {text("Change status", "تغيير الحالة")}
                   </label>
-                  <select
+                  <AppointmentStatusSelect
                     value={form.status}
                     disabled={updateAppointmentStatus.isPending}
-                    onChange={(changeEvent) => {
-                      void handleStatusChange(changeEvent.target.value as CalendarEventStatus);
+                    onChange={(status) => {
+                      void handleStatusChange(status);
                     }}
-                    className="h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm font-bold text-white outline-none disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status.value} value={status.value} className="bg-white text-slate-950">
-                        {text(status.en, status.ar)}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full"
+                  />
                   <p className="mt-2 text-xs text-slate-400">
                     {updateAppointmentStatus.isPending
                       ? text("Updating status...", "جارٍ تحديث الحالة...")
@@ -794,37 +772,11 @@ export default function CalendarEventDialog({
                     {text("Status", "الحالة")}
                   </label>
 
-                  <select
+                  <AppointmentStatusSelect
                     value={form.status}
-                    onChange={(changeEvent) =>
-                      updateForm(
-                        "status",
-                        changeEvent.target
-                          .value as CalendarEventStatus
-                      )
-                    }
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="booked">{text("Booked", "محجوز")}</option>
-
-                    <option value="confirmed">{text("Confirmed", "مؤكد")}</option>
-
-                    <option value="arrived">{text("Arrived", "تم تسجيل الوصول")}</option>
-
-                    <option value="in_progress">{text("In progress", "جاري العمل")}</option>
-
-                    <option value="completed">{text("Completed", "مكتمل")}</option>
-
-                    <option value="late">{text("Late", "متأخر")}</option>
-
-                    <option value="cancelled">{text("Cancelled", "تم الإلغاء")}</option>
-
-                    <option value="no_show">{text("No show", "لم يتم الحضور")}</option>
-
-                    <option value="waitlist">{text("Waitlist", "قائمة الانتظار")}</option>
-
-                    <option value="note">{text("Note", "ملاحظة")}</option>
-                  </select>
+                    onChange={(status) => updateForm("status", status)}
+                    className="w-full"
+                  />
                 </div>
 
                 <div>

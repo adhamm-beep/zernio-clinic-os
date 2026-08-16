@@ -3,10 +3,10 @@ import type {
 } from "../engine/buildCustomerInsights";
 
 export interface TreatmentRecommendation {
-
   title: string;
-
+  titleAr: string;
   description: string;
+  descriptionAr: string;
 
   priority:
     | "LOW"
@@ -28,11 +28,10 @@ buildRecommendations(
   ) {
     list.push({
 
-      title:
-        "رعاية كبار العملاء",
-
-      description:
-        "اقترح باقة مميزة وخطة علاج سنوية.",
+      title: "VIP care",
+      titleAr: "رعاية كبار العملاء",
+      description: "Suggest a premium package and an annual treatment plan.",
+      descriptionAr: "اقترح باقة مميزة وخطة علاج سنوية.",
 
       priority:
         "HIGH",
@@ -45,11 +44,10 @@ buildRecommendations(
   ) {
     list.push({
 
-      title:
-        "متابعة",
-
-      description:
-        "حدد موعد مراجعة.",
+      title: "Follow-up",
+      titleAr: "متابعة",
+      description: "Schedule a follow-up appointment.",
+      descriptionAr: "حدد موعد مراجعة.",
 
       priority:
         "HIGH",
@@ -62,11 +60,10 @@ buildRecommendations(
   ) {
     list.push({
 
-      title:
-        "خدمة إضافية",
-
-      description:
-        "اقترح محفز بشرة أو باقة متكاملة للوجه.",
+      title: "Additional service",
+      titleAr: "خدمة إضافية",
+      description: "Suggest a skin booster or a complete facial package.",
+      descriptionAr: "اقترح محفز بشرة أو باقة متكاملة للوجه.",
 
       priority:
         "MEDIUM",
@@ -79,11 +76,10 @@ buildRecommendations(
   ) {
     list.push({
 
-      title:
-        "تحصيل المبلغ",
-
-      description:
-        "يجب تسوية المبلغ المتبقي قبل العلاج التالي.",
+      title: "Balance collection",
+      titleAr: "تحصيل المبلغ",
+      description: "Settle the outstanding balance before the next treatment.",
+      descriptionAr: "يجب تسوية المبلغ المتبقي قبل العلاج التالي.",
 
       priority:
         "HIGH",
@@ -96,11 +92,10 @@ buildRecommendations(
 
     list.push({
 
-      title:
-        "مريض منتظم",
-
-      description:
-        "استمر في المتابعة الدورية.",
+      title: "Regular patient",
+      titleAr: "مريض منتظم",
+      description: "Continue regular follow-up.",
+      descriptionAr: "استمر في المتابعة الدورية.",
 
       priority:
         "LOW",

@@ -1,0 +1,39 @@
+{
+  "date": "2026-08-15",
+  "range": {
+    "from": "2026-08-14T21:00:00.000Z",
+    "to": "2026-08-15T21:00:00.000Z"
+  },
+  "totals": {
+    "appointments": 15,
+    "completed": 11,
+    "cancelled": 2,
+    "noShow": 2,
+    "collected": 0,
+    "outstanding": 0,
+    "cash": 0,
+    "bank": 0
+  },
+  "tagCounts": {
+    "X": 1,
+    "X10": 1,
+    "Aug20%": 1
+  },
+  "appointmentIds": [
+    23,
+    22,
+    29,
+    15,
+    30,
+    31,
+    16,
+    19,
+    21,
+    20,
+    14,
+    17,
+    33,
+    24,
+    25
+  ]
+}

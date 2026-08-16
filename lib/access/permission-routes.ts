@@ -124,6 +124,7 @@ export const PAGE_PERMISSION_GROUPS: Record<string, readonly string[]> = {
   ],
   "/api/ai": ["ai.use"],
   "/api/payments": ["payments.manage"],
+  "/api/reports": ["reports.view", "reports.export"],
   "/api/admin/users": ["users.manage"],
 };
 

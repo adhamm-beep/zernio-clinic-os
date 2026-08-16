@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { useCustomers } from "@/features/customers/hooks/useCustomers";
+import { customerOptionLabel, matchesCustomerSearch } from "@/features/customers/utils/customerIdentity";
 import { useMasterData } from "@/features/master-data/hooks/useMasterData";
 import { isApprovedDoctor } from "@/features/master-data/utils/doctors";
 
@@ -186,26 +187,7 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
     }
 
     return customers
-      .filter((customer) => {
-        const fullName =
-          `${customer.first_name ?? ""} ${
-            customer.last_name ?? ""
-          }`.toLowerCase();
-
-        const phone =
-          customer.phone?.toLowerCase() ??
-          "";
-
-        const customerCode =
-          customer.customer_code?.toLowerCase() ??
-          "";
-
-        return (
-          fullName.includes(query) ||
-          phone.includes(query) ||
-          customerCode.includes(query)
-        );
-      })
+      .filter((customer) => matchesCustomerSearch(customer, query))
       .slice(0, 50);
   }, [customers, customerSearch]);
 
@@ -415,7 +397,7 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
         >
           {!defaultCustomerId && (
             <Input
-              placeholder="Search customer by name, phone or code"
+              placeholder="Search customer by name or file number"
               value={customerSearch}
               onChange={(event) =>
                 setCustomerSearch(
@@ -449,20 +431,12 @@ const availableStaff = (masterData?.staff ?? []).filter(isApprovedDoctor);
 
               {filteredCustomers.map(
                 (customer) => {
-                  const fullName =
-                    `${customer.first_name ?? ""} ${
-                      customer.last_name ?? ""
-                    }`.trim() ||
-                    "Unnamed customer";
-
                   return (
                     <option
                       key={customer.id}
                       value={customer.id}
                     >
-                      {fullName} —{" "}
-                      {customer.phone ||
-                        "No phone"}
+                      {customerOptionLabel(customer, "Unnamed customer")}
                     </option>
                   );
                 }

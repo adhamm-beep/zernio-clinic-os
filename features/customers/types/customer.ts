@@ -37,6 +37,7 @@ export interface Customer {
   assigned_doctor_name?: string | null;
   referral_source?: string | null;
   referral_source_id?: number | null;
+  referral_source_color?: string | null;
   referral_detail?: string | null;
   selected_at?: string | null;
   total_paid?: number;

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Treatment } from "../types/treatment";
+import SaudiMoney from "@/components/SaudiMoney";
 
 type TreatmentTableProps = {
   treatments: Treatment[];
@@ -19,14 +20,6 @@ function formatDate(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-}
-
-function formatMoney(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0));
 }
 
 function getStatusClasses(status: string) {
@@ -96,17 +89,15 @@ export default function TreatmentTable({
               </td>
 
               <td className="px-5 py-4">
-                {formatMoney(treatment.price)}
+                <SaudiMoney value={treatment.price} />
               </td>
 
               <td className="px-5 py-4">
-                {formatMoney(treatment.discount)}
+                <SaudiMoney value={treatment.discount} />
               </td>
 
               <td className="px-5 py-4 font-semibold">
-                {formatMoney(
-  (treatment.price ?? 0) - (treatment.discount ?? 0)
-)}
+                <SaudiMoney value={(treatment.price ?? 0) - (treatment.discount ?? 0)} />
               </td>
 
               <td className="px-5 py-4">

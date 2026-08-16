@@ -12,6 +12,9 @@ import {
 import type {
   TimelineEvent,
 } from "../types/timeline";
+import AppointmentStatusBadge from "@/features/appointments/components/AppointmentStatusBadge";
+import { isAppointmentStatus } from "@/features/appointments/appointment-status";
+import SaudiMoney from "@/components/SaudiMoney";
 
 const icons = {
   appointment: Calendar,
@@ -62,7 +65,9 @@ export default function TimelineItem({
           </p>
         )}
 
-        {event.status && (
+        {event.type === "appointment" && isAppointmentStatus(event.status) ? (
+          <AppointmentStatusBadge status={event.status} className="mt-3" />
+        ) : event.status && (
           <span className="mt-3 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs">
             {event.status}
           </span>
@@ -71,7 +76,7 @@ export default function TimelineItem({
         {event.amount !==
           undefined && (
           <p className="mt-3 font-semibold text-emerald-600">
-            SAR {event.amount}
+            <SaudiMoney value={event.amount} />
           </p>
         )}
       </div>

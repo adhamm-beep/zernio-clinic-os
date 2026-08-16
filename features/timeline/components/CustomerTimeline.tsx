@@ -3,6 +3,11 @@
 import { useMemo, useState } from "react";
 import TimelineEventDialog from "./TimelineEventDialog";
 import TimelineIntelligenceCard from "./TimelineIntelligenceCard";
+import {
+  appointmentStatusLabelAr,
+  appointmentStatusSolid,
+  isAppointmentStatus,
+} from "@/features/appointments/appointment-status";
 
 import {
   CalendarDays,
@@ -503,11 +508,9 @@ export default function CustomerTimeline({
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                               {event.status && (
                                 <span
-                                  className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                                    event.status
-                                  )}`}
+                                  className={`rounded-xl px-3 py-1 text-xs font-black ${event.type === "appointment" && isAppointmentStatus(event.status) ? appointmentStatusSolid[event.status] : getStatusClasses(event.status)}`}
                                 >
-                                  {({booked:"محجوز",confirmed:"مؤكد",arrived:"تم تسجيل الوصول",in_progress:"جاري العمل",completed:"مكتمل",late:"متأخر",cancelled:"ملغي",no_show:"لم يحضر",waitlist:"قائمة الانتظار",note:"ملاحظة",paid:"مدفوع",partial:"مدفوع جزئيًا",refunded:"مسترد",pending:"معلق",no_answer:"لا يجيب"} as Record<string,string>)[event.status]??event.status.replaceAll("_"," ")}
+                                  {event.type === "appointment" && isAppointmentStatus(event.status) ? appointmentStatusLabelAr[event.status] : ({paid:"مدفوع",partial:"مدفوع جزئيًا",refunded:"مسترد",pending:"معلق",no_answer:"لا يجيب"} as Record<string,string>)[event.status]??event.status.replaceAll("_"," ")}
                                 </span>
                               )}
 

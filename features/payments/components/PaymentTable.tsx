@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +11,7 @@ import {
 import { useLocale } from "@/components/LocaleProvider";
 import type { Payment } from "../types/payment";
 import InvoiceDialog from "./InvoiceDialog";
+import SaudiMoney from "@/components/SaudiMoney";
 
 const statusClass = (status: string) =>
   status === "paid"
@@ -33,12 +34,7 @@ export default function PaymentTable({
   const { isArabic, text } = useLocale();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
-  const money = (value: number | null | undefined, currency = "SAR") =>
-    new Intl.NumberFormat(isArabic ? "ar-SA-u-nu-latn" : "en-SA", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(Number(value ?? 0));
+  const money = (value: number | null | undefined) => <SaudiMoney value={value} />;
   const formatDate = (value: string | null) =>
     value
       ? new Intl.DateTimeFormat(isArabic ? "ar-SA-u-nu-latn" : "en-GB", {
@@ -340,7 +336,7 @@ function InvoiceRows({
   invoices: Payment[];
   isArabic: boolean;
   text: (en: string, ar: string) => string;
-  money: (value: number | null | undefined, currency?: string) => string;
+  money: (value: number | null | undefined, currency?: string) => ReactNode;
   formatDate: (value: string | null) => string;
   statusLabel: (value: string) => string;
   canPrint: boolean;

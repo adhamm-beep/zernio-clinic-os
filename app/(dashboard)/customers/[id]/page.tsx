@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -37,14 +38,12 @@ import PatientChangeHistory from "@/features/customers/components/PatientChangeH
 import CustomerTimeline from "@/features/timeline/components/CustomerTimeline";
 import StartTreatmentSessionButton from "@/features/treatment-history/components/StartTreatmentSessionButton";
 import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
+import { useLocale } from "@/components/LocaleProvider";
+import PatientReceiptGallery from "@/features/customers/components/PatientReceiptGallery";
+import SaudiMoney from "@/components/SaudiMoney";
+import { PatientCatalogBadge } from "@/features/customers/components/PatientCatalogBadge";
 
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat("en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0));
-}
+type ProfileView = "overview" | "intelligence" | "medical" | "timeline" | "activity" | "gallery";
 
 function formatDateTime(value: string | null): string {
   if (!value) return "غير متوفر";
@@ -56,13 +55,8 @@ function formatDateTime(value: string | null): string {
   }).format(date);
 }
 
-const segmentLabel = {
-  New: "جديد",
-  "At Risk": "معرّض للفقد",
-  Growth: "نامٍ",
-  Loyal: "وفيّ",
-  "High Value": "مرتفع القيمة",
-} as const;
+const segmentLabelEn = { New: "New", "At Risk": "At risk", Growth: "Growth", Loyal: "Loyal", "High Value": "High value" } as const;
+const segmentLabelAr = { New: "جديد", "At Risk": "معرّض للفقد", Growth: "نامٍ", Loyal: "وفيّ", "High Value": "مرتفع القيمة" } as const;
 
 function MetricCard({
   label,
@@ -70,7 +64,7 @@ function MetricCard({
   tone = "slate",
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   tone?: "slate" | "blue" | "green" | "orange" | "purple";
 }) {
   const tones = {
@@ -81,14 +75,16 @@ function MetricCard({
     purple: "bg-purple-50 text-purple-900",
   };
   return (
-    <div className={`rounded-2xl border border-black/5 p-5 ${tones[tone]}`}>
-      <p className="text-sm opacity-70">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className={`rounded-2xl border border-black/5 p-3 ${tones[tone]}`}>
+      <p className="text-xs opacity-70">{label}</p>
+      <p className="mt-1 text-xl font-bold">{value}</p>
     </div>
   );
 }
 
 export default function CustomerProfilePage() {
+  const { isArabic, text } = useLocale();
+  const [activeView, setActiveView] = useState<ProfileView>("overview");
   const access = usePermissionAccess();
   const canEditCustomer = access.can("customers.edit", "customers.manage");
   const canCreateAppointment = access.can(
@@ -230,7 +226,7 @@ export default function CustomerProfilePage() {
       label: "الطبيب المعالج",
       value: customer.assigned_doctor_name || "غير متوفر",
     },
-    { label: "مصدر الإحالة", value: customer.referral_source || "غير متوفر" },
+    { label: "مصدر الإحالة", value: customer.referral_source ? <PatientCatalogBadge name={customer.referral_source} color={customer.referral_source_color} /> : "غير متوفر" },
     { label: "شركة التأمين", value: customer.insurance_company || "غير متوفر" },
     {
       label: "رقم وثيقة التأمين",
@@ -249,7 +245,7 @@ export default function CustomerProfilePage() {
   ];
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-4" dir={isArabic ? "rtl" : "ltr"}>
       <Link
         href="/customers"
         className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
@@ -257,16 +253,16 @@ export default function CustomerProfilePage() {
         <ArrowLeft size={18} /> العودة إلى المرضى
       </Link>
 
-      <section className="overflow-hidden rounded-3xl bg-slate-950 p-7 text-white shadow-lg">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <section className="overflow-hidden rounded-3xl bg-slate-950 p-5 text-white shadow-lg">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-5">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/10">
-              <UserRound size={38} />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10">
+              <UserRound size={28} />
             </div>
             <div>
               <p className="text-sm text-slate-400">ملف المريض الشامل</p>
-              <h1 className="mt-1 text-3xl font-bold">{fullName}</h1>
-              <p className="mt-2 text-slate-300">
+              <h1 className="mt-1 text-2xl font-bold">{fullName}</h1>
+              <p className="mt-1 text-sm text-slate-300">
                 رقم الملف #{customer.customer_code || customer.id}
               </p>
               <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
@@ -311,27 +307,27 @@ export default function CustomerProfilePage() {
           </div>
         </div>
         {canViewFinance && (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <MetricCard
-              label="إجمالي المدفوعات"
-              value={formatMoney(customer.totalPaid)}
+              label={text("Total payments", "إجمالي المدفوعات")}
+              value={<SaudiMoney value={customer.totalPaid} />}
             />
             <MetricCard
-              label="قيمة العلاجات"
-              value={formatMoney(customer.treatmentValue)}
+              label={text("Treatment value", "قيمة العلاجات")}
+              value={<SaudiMoney value={customer.treatmentValue} />}
             />
             <MetricCard
-              label="المبلغ المتبقي"
-              value={formatMoney(customer.outstandingBalance)}
+              label={text("Outstanding balance", "المبلغ المتبقي")}
+              value={<SaudiMoney value={customer.outstandingBalance} />}
               tone={customer.outstandingBalance > 0 ? "orange" : "green"}
             />
             <MetricCard
-              label="رصيد المحفظة"
-              value={formatMoney(Number(customer.wallet_balance ?? 0))}
+              label={text("Wallet balance", "رصيد المحفظة")}
+              value={<SaudiMoney value={customer.wallet_balance} />}
               tone="green"
             />
             <MetricCard
-              label="إجمالي النشاط"
+              label={text("Total activity", "إجمالي النشاط")}
               value={String(totalActivity)}
               tone="blue"
             />
@@ -343,24 +339,26 @@ export default function CustomerProfilePage() {
         aria-label="أقسام ملف المريض"
         className="sticky top-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur"
       >
-        {[
-          ["نظرة عامة", "overview"],
-          ["الذكاء التحليلي", "intelligence"],
-          ["السجل الطبي", "medical"],
-          ["التسلسل الزمني", "timeline"],
-          ["النشاط", "activity"],
-        ].map(([label, target]) => (
-          <a
+        {([
+          [text("Overview", "نظرة عامة"), "overview"],
+          [text("Intelligence & analysis", "الذكاء والتحليل"), "intelligence"],
+          [text("Medical record", "السجل الطبي"), "medical"],
+          [text("Timeline", "التسلسل الزمني"), "timeline"],
+          [text("Activity", "النشاط"), "activity"],
+          [text("Patient Gallery", "معرض العميل"), "gallery"],
+        ] as Array<[string, ProfileView]>).map(([label, target]) => (
+          <button
+            type="button"
             key={target}
-            href={`#${target}`}
-            className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-950 hover:text-white"
+            onClick={() => setActiveView(target)}
+            className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${activeView === target ? "bg-slate-950 text-white shadow-md" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
           >
             {label}
-          </a>
+          </button>
         ))}
       </nav>
 
-      {canUseAi && (
+      {activeView === "intelligence" && canUseAi && (
         <section
           id="overview"
           className="scroll-mt-24 rounded-3xl border border-purple-100 bg-gradient-to-br from-purple-50 via-white to-blue-50 p-7 shadow-sm"
@@ -371,60 +369,60 @@ export default function CustomerProfilePage() {
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-purple-700">
-                عقل العيادة
+                {text("Clinic brain", "عقل العيادة")}
               </p>
               <h2 className="mt-1 text-2xl font-bold text-slate-950">
-                نظرة شاملة على ذكاء المريض
+                {text("Comprehensive patient intelligence", "نظرة شاملة على ذكاء المريض")}
               </h2>
-              <p className="mt-2 max-w-3xl text-slate-600">{brain.summary}</p>
+              <p className="mt-2 max-w-3xl text-slate-600">{isArabic ? brain.summaryAr : brain.summary}</p>
             </div>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <MetricCard label="الشريحة" value={segmentLabel[brain.segment]} tone="purple" />
+            <MetricCard label={text("Segment", "الشريحة")} value={(isArabic ? segmentLabelAr : segmentLabelEn)[brain.segment]} tone="purple" />
             <MetricCard
-              label="الولاء"
+              label={text("Loyalty", "الولاء")}
               value={`${brain.loyaltyScore}%`}
               tone="blue"
             />
             <MetricCard
-              label="التفاعل"
+              label={text("Engagement", "التفاعل")}
               value={`${brain.engagementScore}%`}
               tone="green"
             />
             <MetricCard
-              label="المخاطر"
+              label={text("Risk", "المخاطر")}
               value={`${brain.riskScore}%`}
               tone={brain.riskScore >= 60 ? "orange" : "slate"}
             />
             <MetricCard
-              label="الإيراد المتوقع"
-              value={formatMoney(brain.expectedRevenue)}
+              label={text("Expected revenue", "الإيراد المتوقع")}
+              value={<SaudiMoney value={brain.expectedRevenue} />}
               tone="green"
             />
           </div>
         </section>
       )}
 
-      {canUseAi && (
+      {activeView === "intelligence" && canUseAi && (
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl bg-white p-7 shadow-sm">
             <div className="flex items-center gap-3">
               <Sparkles className="text-purple-600" />
-              <h2 className="text-xl font-bold">الملخص الذكي</h2>
+              <h2 className="text-xl font-bold">{text("Smart summary", "الملخص الذكي")}</h2>
             </div>
-            <p className="mt-4 leading-7 text-slate-600">{brain.summary}</p>
+            <p className="mt-4 leading-7 text-slate-600">{isArabic ? brain.summaryAr : brain.summary}</p>
             <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
               <TrendingUp size={17} />
-              مبني على المواعيد والعلاجات والمدفوعات والمتابعات وحداثة الزيارة.
+              {text("Based on appointments, treatments, payments, follow-ups and visit recency.", "مبني على المواعيد والعلاجات والمدفوعات والمتابعات وحداثة الزيارة.")}
             </div>
           </div>
           <div className="rounded-2xl bg-white p-7 shadow-sm">
             <div className="flex items-center gap-3">
               <Lightbulb className="text-amber-500" />
-              <h2 className="text-xl font-bold">الإجراءات التالية المقترحة</h2>
+              <h2 className="text-xl font-bold">{text("Recommended next actions", "الإجراءات التالية المقترحة")}</h2>
             </div>
             <div className="mt-5 space-y-3">
-              {brain.recommendations.map((recommendation) => (
+              {(isArabic ? brain.recommendationsAr : brain.recommendations).map((recommendation) => (
                 <div
                   key={recommendation}
                   className="flex gap-3 rounded-xl bg-slate-50 p-4"
@@ -441,7 +439,7 @@ export default function CustomerProfilePage() {
         </section>
       )}
 
-      {canUseAi && (
+      {activeView === "intelligence" && canUseAi && (
         <div id="intelligence" className="scroll-mt-24 space-y-6">
           <ExecutiveDashboard insights={insights} profile={brain} />
 
@@ -456,24 +454,36 @@ export default function CustomerProfilePage() {
         </div>
       )}
 
-      {canUseAi && <CustomerIntelligenceCards customer={customer} />}
+      {activeView === "intelligence" && canUseAi && <CustomerIntelligenceCards customer={customer} />}
 
-      <section className="rounded-2xl bg-white p-7 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900">بيانات المريض</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {activeView === "overview" && <section className="rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+          <div>
+            <h2 className="text-xl font-black text-gray-900">{text("Patient overview", "النظرة العامة للمريض")}</h2>
+            <p className="text-xs text-slate-500">{text("Identity, contact, assignment and insurance details at a glance.", "الهوية والتواصل والتكليف والتأمين في نظرة واحدة.")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${customer.status === "inactive" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+              {customer.status === "inactive" ? text("Inactive", "غير نشط") : text("Active", "نشط")}
+            </span>
+            {(customer.tags ?? []).map((tag) => <PatientCatalogBadge key={tag.id} name={tag.name} color={tag.color} />)}
+            {!customer.tags?.length && <span className="text-xs text-slate-400">{text("No patient tags", "لا توجد علامات للمريض")}</span>}
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6 2xl:grid-cols-8">
           {information.map((item) => (
             <div
               key={item.label}
-              className="rounded-xl border border-gray-200 p-4"
+              className="min-w-0 rounded-xl border border-gray-200 bg-slate-50/70 px-3 py-2"
             >
-              <p className="text-sm text-gray-500">{item.label}</p>
-              <p className="mt-1 font-medium text-gray-900">{item.value}</p>
+              <p className="truncate text-[11px] font-bold text-gray-500" title={item.label}>{item.label}</p>
+              <div className="mt-0.5 truncate text-sm font-black text-gray-900" title={typeof item.value === "string" ? item.value : undefined}>{item.value}</div>
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
-      {canViewMedical && (
+      {activeView === "medical" && canViewMedical && (
         <div id="medical" className="scroll-mt-24">
           {workspaceReady ? (
             <MedicalRecordCard
@@ -488,10 +498,10 @@ export default function CustomerProfilePage() {
           )}
         </div>
       )}
-      {workspaceReady && <PatientDocuments customerId={numericCustomerId} clinicId={clinicId!} branchId={branchId!} />}
-      {workspaceReady && <PatientChangeHistory customerId={numericCustomerId} clinicId={clinicId!} />}
+      {activeView === "medical" && workspaceReady && <PatientDocuments customerId={numericCustomerId} clinicId={clinicId!} branchId={branchId!} />}
+      {activeView === "activity" && workspaceReady && <PatientChangeHistory customerId={numericCustomerId} clinicId={clinicId!} />}
 
-      <section
+      {activeView === "timeline" && <section
         id="timeline"
         className="scroll-mt-24 rounded-2xl bg-white p-7 shadow-sm"
       >
@@ -512,9 +522,9 @@ export default function CustomerProfilePage() {
           )}
         </div>
         <CustomerTimeline customerId={numericCustomerId} />
-      </section>
+      </section>}
 
-      <section
+      {activeView === "activity" && <section
         id="activity"
         className="scroll-mt-24 grid gap-5 md:grid-cols-2 xl:grid-cols-4"
       >
@@ -555,9 +565,9 @@ export default function CustomerProfilePage() {
             </div>
           );
         })}
-      </section>
+      </section>}
 
-      {(canViewLoyalty || canViewFinance) && (
+      {activeView === "activity" && (canViewLoyalty || canViewFinance) && (
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           {canViewLoyalty && (
             <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-7 text-white shadow-lg">
@@ -631,17 +641,17 @@ export default function CustomerProfilePage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="المدفوع"
-                  value={formatMoney(customer.totalPaid)}
+                  value={<SaudiMoney value={customer.totalPaid} />}
                   tone="green"
                 />
                 <MetricCard
                   label="قيمة الخدمات"
-                  value={formatMoney(customer.treatmentValue)}
+                  value={<SaudiMoney value={customer.treatmentValue} />}
                   tone="blue"
                 />
                 <MetricCard
                   label="المبلغ المستحق"
-                  value={formatMoney(customer.outstandingBalance)}
+                  value={<SaudiMoney value={customer.outstandingBalance} />}
                   tone={customer.outstandingBalance > 0 ? "orange" : "green"}
                 />
               </div>
@@ -664,7 +674,7 @@ export default function CustomerProfilePage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">{formatMoney(payment.amount)}</p>
+                      <p className="font-bold"><SaudiMoney value={payment.amount} /></p>
                       <p className="text-xs capitalize text-slate-500">
                         {payment.payment_status}
                       </p>
@@ -682,7 +692,7 @@ export default function CustomerProfilePage() {
         </section>
       )}
 
-      <section className="grid gap-5 md:grid-cols-3">
+      {activeView === "activity" && <section className="grid gap-5 md:grid-cols-3">
         <MetricCard
           label="المواعيد المكتملة"
           value={String(completedAppointments)}
@@ -698,7 +708,10 @@ export default function CustomerProfilePage() {
           value={String(pendingFollowUps)}
           tone="orange"
         />
-      </section>
+      </section>}
+      {activeView === "gallery" && workspaceReady && (
+        <PatientReceiptGallery customerId={numericCustomerId} clinicId={clinicId!} branchId={branchId!} payments={customer.payments} />
+      )}
     </div>
   );
 }

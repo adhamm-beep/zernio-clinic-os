@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
+
 type ExecutiveStatProps = {
   label: string;
-  value: string;
+  value: ReactNode;
   hint?: string;
 };
 

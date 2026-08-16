@@ -28,6 +28,7 @@ status,
 source,
 notes,
 created_from_channel,
+created_by_staff_id,
 
 customers(
 id,
@@ -41,7 +42,7 @@ gender,
 date_of_birth
 ),
 
-staff(
+staff:staff!appointments_doctor_id_fkey(
 id,
 staff_name
 ),
@@ -61,6 +62,11 @@ name
 branches(
 id,
 name
+),
+
+creator:staff!appointments_created_by_staff_id_fkey(
+id,
+staff_name
 )
 `;
 export async function getAppointments(
