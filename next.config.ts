@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  outputFileTracingIncludes: {
+    "/api/reports/daily": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+    "/api/admin/daily-reports/summary": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "X-Content-Type-Options", value: "nosniff" },
