@@ -92,5 +92,5 @@ ${data.watermark ? `<div class="watermark">${esc(data.watermark)}</div>` : ""}
 <section class="summary"><div><span>إجمالي المبلغ الخاضع للضريبة</span><b>${data.subtotal}</b></div><div><span>الخصم (${data.discountPercent.toFixed(2)}%)</span><b>${data.discount}</b></div><div><span>ضريبة القيمة المضافة (${data.taxPercent.toFixed(2)}%)</span><b>${data.tax}</b></div><div class="grand"><span>المجموع مع الضريبة</span><b>${data.total}</b></div><div class="paid"><span>المدفوع</span><b>${data.paid}</b></div><div class="balance"><span>المتبقي</span><b>${data.balance}</b></div></section>
 ${tenders}${data.notes ? `<section class="notes"><b>ملاحظات:</b> ${esc(data.notes)}</section>` : ""}
 <footer class="footer">${esc(data.footer || "شكرًا لاختياركم عيادات بانثيرا — نتمنى لكم دوام الصحة والعافية")}</footer>
-</main><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`;
+</main></body></html>`;
 }

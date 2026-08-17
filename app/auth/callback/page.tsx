@@ -8,7 +8,8 @@ export default function AuthCallbackPage(){
  const router=useRouter();const[message,setMessage]=useState("جارٍ تأكيد رابط الدخول...");
  useEffect(()=>{let active=true;(async()=>{
   const supabase=createClient();const search=new URLSearchParams(window.location.search);const hash=new URLSearchParams(window.location.hash.slice(1));
-  const next=search.get("next")?.startsWith("/")?search.get("next")!:"/reset-password";
+  const requestedNext=search.get("next");
+  const next=requestedNext?.startsWith("/")&&!requestedNext.startsWith("//")&&!requestedNext.includes("\\")?requestedNext:"/reset-password";
   const code=search.get("code");const accessToken=hash.get("access_token");const refreshToken=hash.get("refresh_token");
   let errorMessage=hash.get("error_description")||search.get("error_description");
   if(accessToken&&refreshToken){const{error}=await supabase.auth.setSession({access_token:accessToken,refresh_token:refreshToken});errorMessage=error?.message||null;}

@@ -3,6 +3,14 @@ import type { Payment } from "@/features/payments/types/payment";
 
 export type PatientReceipt = { id:number; payment_id:number|null; title:string; storage_path:string; mime_type:string; file_size:number; notes:string|null; created_at:string; creator:{staff_name:string|null}|null };
 
+const MAX_RECEIPT_BYTES=10*1024*1024;
+const RECEIPT_TYPES=new Map([
+  ["image/jpeg","jpg"],
+  ["image/png","png"],
+  ["image/webp","webp"],
+  ["application/pdf","pdf"],
+]);
+
 export async function getPatientReceipts(customerId:number){
   const {data,error}=await createClient().from("patient_receipts").select("id,payment_id,title,storage_path,mime_type,file_size,notes,created_at,creator:staff!patient_receipts_created_by_staff_id_fkey(staff_name)").eq("customer_id",customerId).order("created_at",{ascending:false});
   if(error)throw new Error(error.message); return (data??[]) as unknown as PatientReceipt[];
@@ -24,14 +32,20 @@ export async function getPatientGalleryInvoices(customerId:number):Promise<Payme
 }
 
 export async function uploadPatientReceipt(input:{clinicId:number;branchId:number;customerId:number;paymentId:number|null;title:string;notes:string|null;file:File}){
+  if(!Number.isInteger(input.clinicId)||input.clinicId<=0||!Number.isInteger(input.branchId)||input.branchId<=0||!Number.isInteger(input.customerId)||input.customerId<=0)throw new Error("Invalid receipt destination.");
+  if(input.paymentId!==null&&(!Number.isInteger(input.paymentId)||input.paymentId<=0))throw new Error("Invalid payment reference.");
+  const title=input.title.trim();
+  if(!title||title.length>160)throw new Error("Receipt title must be between 1 and 160 characters.");
+  if(input.file.size<=0||input.file.size>MAX_RECEIPT_BYTES)throw new Error("Receipt must be smaller than 10 MB.");
+  const extension=RECEIPT_TYPES.get(input.file.type);
+  if(!extension)throw new Error("Only JPG, PNG, WEBP, and PDF receipts are allowed.");
   const db=createClient();
   const {data:staffId,error:staffError}=await db.rpc("current_staff_id");
   if(staffError)throw new Error(staffError.message);
   if(!staffId)throw new Error("Your account is not linked to an active staff profile.");
-  const extension=input.file.name.split(".").pop()?.toLowerCase()||"jpg";
   const path=`${input.clinicId}/${input.customerId}/${crypto.randomUUID()}.${extension}`;
   const {error:uploadError}=await db.storage.from("patient-receipts").upload(path,input.file,{contentType:input.file.type,upsert:false}); if(uploadError)throw new Error(uploadError.message);
-  const {error:insertError}=await db.from("patient_receipts").insert({clinic_id:input.clinicId,branch_id:input.branchId,customer_id:input.customerId,payment_id:input.paymentId,title:input.title,storage_path:path,mime_type:input.file.type,file_size:input.file.size,notes:input.notes,created_by_staff_id:staffId});
+  const {error:insertError}=await db.from("patient_receipts").insert({clinic_id:input.clinicId,branch_id:input.branchId,customer_id:input.customerId,payment_id:input.paymentId,title,storage_path:path,mime_type:input.file.type,file_size:input.file.size,notes:input.notes?.trim().slice(0,2000)||null,created_by_staff_id:staffId});
   if(insertError){await db.storage.from("patient-receipts").remove([path]);throw new Error(insertError.message)}
 }
 

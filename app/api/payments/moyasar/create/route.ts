@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { privateJson, readJsonWithLimit, RequestValidationError } from "@/lib/security/request";
+import {
+  clientAddress,
+  privateJson,
+  rateLimit,
+  readJsonWithLimit,
+  RequestValidationError,
+} from "@/lib/security/request";
 
 type Prepared = { intentId: number; amount: number; currency: string; description: string };
 type MoyasarInvoice = { id: string; url: string };
@@ -21,6 +27,18 @@ export async function POST(request: Request) {
   const bearer = request.headers.get("authorization");
   if (!bearer?.startsWith("Bearer ") || bearer.length > 4_096) {
     return privateJson({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const limit = await rateLimit(`moyasar:create:${clientAddress(request)}:${bearer}`, 30, 5 * 60_000);
+    if (!limit.allowed) {
+      return privateJson(
+        { error: "Too many payment requests" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      );
+    }
+  } catch {
+    return privateJson({ error: "Security service is temporarily unavailable" }, { status: 503 });
   }
 
   const secret = process.env.MOYASAR_SECRET_KEY;

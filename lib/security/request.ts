@@ -1,8 +1,9 @@
 import "server-only";
 
-type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
+import { createHash, timingSafeEqual } from "node:crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const attempts = new Map<string, { count: number; expiresAt: number }>();
+type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
 export class RequestValidationError extends Error {
   constructor(
@@ -22,27 +23,31 @@ export function clientAddress(request: Request) {
   );
 }
 
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
-  const now = Date.now();
-  if (attempts.size > 2_000) {
-    for (const [candidate, value] of attempts) {
-      if (value.expiresAt <= now) attempts.delete(candidate);
-    }
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult> {
+  if (!Number.isInteger(limit) || limit < 1 || !Number.isFinite(windowMs) || windowMs < 1_000) {
+    throw new Error("Invalid rate-limit configuration.");
   }
 
-  const current = attempts.get(key);
-  if (!current || current.expiresAt <= now) {
-    attempts.set(key, { count: 1, expiresAt: now + windowMs });
-    return { allowed: true };
+  const keyHash = createHash("sha256").update(key).digest("hex");
+  const { data, error } = await createAdminClient().rpc("consume_security_rate_limit", {
+    p_key_hash: keyHash,
+    p_limit: limit,
+    p_window_seconds: Math.ceil(windowMs / 1_000),
+  });
+
+  if (error || !Array.isArray(data) || data.length !== 1) {
+    console.error("Distributed rate limiter failed", { code: error?.code });
+    throw new Error("Security service is temporarily unavailable.");
   }
 
-  current.count += 1;
-  if (current.count <= limit) return { allowed: true };
-
-  return {
-    allowed: false,
-    retryAfterSeconds: Math.max(1, Math.ceil((current.expiresAt - now) / 1_000)),
-  };
+  const result = data[0] as { allowed: boolean; retry_after_seconds: number };
+  return result.allowed
+    ? { allowed: true }
+    : { allowed: false, retryAfterSeconds: Math.max(1, result.retry_after_seconds) };
 }
 
 export function isTrustedBrowserRequest(request: Request) {
@@ -66,6 +71,14 @@ export function isTrustedBrowserRequest(request: Request) {
   } catch {
     return false;
   }
+}
+
+export function hasValidBearerSecret(request: Request, expected: string) {
+  const authorization = request.headers.get("authorization") ?? "";
+  const supplied = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const suppliedBytes = Buffer.from(supplied);
+  const expectedBytes = Buffer.from(expected);
+  return suppliedBytes.length === expectedBytes.length && timingSafeEqual(suppliedBytes, expectedBytes);
 }
 
 export async function readJsonWithLimit<T>(request: Request, maxBytes = 32_768): Promise<T> {

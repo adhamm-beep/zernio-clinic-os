@@ -1,7 +1,8 @@
 ﻿import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { authorizeAnyPermission } from "@/lib/security/authorization";
 import {
+  isTrustedBrowserRequest,
   privateJson,
   rateLimit,
   readJsonWithLimit,
@@ -48,14 +49,19 @@ function readOutputText(response: OpenAIResponse) {
     .find((content) => content.type === "output_text")?.text;
 }
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-
-  if (!data?.claims?.sub) {
-    return privateJson({ error: "Unauthorized" }, { status: 401 });
+  if (!isTrustedBrowserRequest(request)) {
+    return privateJson({ error: "Request rejected." }, { status: 403 });
   }
-
-  const limit = rateLimit(`ai-summary:${data.claims.sub}`, 20, 5 * 60_000);
+  const authorization = await authorizeAnyPermission(["ai.use"]);
+  if (!authorization.allowed) {
+    return privateJson({ error: authorization.error }, { status: authorization.status });
+  }
+  let limit: Awaited<ReturnType<typeof rateLimit>>;
+  try {
+    limit = await rateLimit(`ai-summary:${authorization.userId}`, 20, 5 * 60_000);
+  } catch {
+    return privateJson({ error: "Security service is temporarily unavailable." }, { status: 503 });
+  }
   if (!limit.allowed) {
     return privateJson(
       { error: "Too many AI requests. Please try again later." },

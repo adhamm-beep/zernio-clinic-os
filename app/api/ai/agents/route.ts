@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { authorizeAnyPermission } from "@/lib/security/authorization";
+import {
+  isTrustedBrowserRequest,
+  rateLimit,
+  readJsonWithLimit,
+  RequestValidationError,
+} from "@/lib/security/request";
 const contextSchema = z.object({
   appointmentsToday: z.number().int().nonnegative(),
   pendingConfirmations: z.number().int().nonnegative(),
@@ -132,15 +138,30 @@ function localAnswer(
   };
 }
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  if (!data?.claims?.sub)
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isTrustedBrowserRequest(req)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const authorization = await authorizeAnyPermission(["ai.use"]);
+  if (!authorization.allowed) {
+    return Response.json({ error: authorization.error }, { status: authorization.status });
+  }
+  try {
+    const limit = await rateLimit(`ai:agents:${authorization.userId}`, 30, 5 * 60_000);
+    if (!limit.allowed) {
+      return Response.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      );
+    }
+  } catch {
+    return Response.json({ error: "Security service is temporarily unavailable" }, { status: 503 });
+  }
   let input: z.infer<typeof requestSchema>;
   try {
-    input = requestSchema.parse(await req.json());
-  } catch {
-    return Response.json({ error: "Invalid agent request" }, { status: 400 });
+    input = requestSchema.parse(await readJsonWithLimit(req, 16_384));
+  } catch (error) {
+    const status = error instanceof RequestValidationError ? error.status : 400;
+    return Response.json({ error: "Invalid agent request" }, { status });
   }
   const key = process.env.OPENAI_API_KEY;
   if (!key) return Response.json(localAnswer(input.agent, input.context));

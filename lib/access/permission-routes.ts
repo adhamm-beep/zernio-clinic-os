@@ -82,6 +82,7 @@ export const PAGE_PERMISSION_GROUPS: Record<string, readonly string[]> = {
   "/messages": ["messages.view", "messages.reply", "messages.manage"],
   "/support": ["support.create", "support.manage", "settings.manage"],
   "/settings/users": ["users.manage"],
+  "/settings/security": ["settings.view", "settings.manage", "users.manage"],
   "/settings/clinic-context": [
     "branches.view",
     "branches.manage",
@@ -123,9 +124,10 @@ export const PAGE_PERMISSION_GROUPS: Record<string, readonly string[]> = {
     "settings.print.manage",
   ],
   "/api/ai": ["ai.use"],
-  "/api/payments": ["payments.manage"],
   "/api/reports": ["reports.view", "reports.export"],
   "/api/admin/users": ["users.manage"],
+  "/api/admin/audit": ["audit.view", "enterprise.manage"],
+  "/api/admin/mfa": ["users.manage"],
 };
 
 export function permissionsForPath(pathname: string) {

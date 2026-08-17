@@ -65,8 +65,17 @@ export async function POST(request: Request) {
     return privateJson({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const ipLimit = rateLimit(`reset:ip:${clientAddress(request)}`, 6, 30 * 60_000);
-  const accountLimit = rateLimit(`reset:account:${email}`, 3, 30 * 60_000);
+  let ipLimit: Awaited<ReturnType<typeof rateLimit>>;
+  let accountLimit: Awaited<ReturnType<typeof rateLimit>>;
+  try {
+    [ipLimit, accountLimit] = await Promise.all([
+      rateLimit(`reset:ip:${clientAddress(request)}`, 6, 30 * 60_000),
+      rateLimit(`reset:account:${email}`, 3, 30 * 60_000),
+    ]);
+  } catch {
+    if (isForm) return NextResponse.redirect(forgotPage(request, email, true), 303);
+    return privateJson({ error: "Security service is temporarily unavailable." }, { status: 503 });
+  }
   const blocked = !ipLimit.allowed ? ipLimit : !accountLimit.allowed ? accountLimit : null;
   if (blocked && !blocked.allowed) {
     if (isForm) return NextResponse.redirect(forgotPage(request, email, true), 303);

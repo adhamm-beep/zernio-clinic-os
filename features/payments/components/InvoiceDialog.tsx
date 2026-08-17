@@ -168,6 +168,8 @@ export default function InvoiceDialog({
       }),
     );
     popup.document.close();
+    popup.focus();
+    window.setTimeout(() => popup.print(), 250);
   }
 
   return (

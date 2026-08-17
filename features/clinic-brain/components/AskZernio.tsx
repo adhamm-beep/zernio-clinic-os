@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BrainCircuit, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,14 +27,6 @@ export default function AskZernio() {
   const query = useQuery({ queryKey: ["clinic-brain", clinicId, branchId, canSeeFinance], queryFn: () => getBrainData(clinicId, branchId, canSeeFinance), enabled: clinicId > 0 && branchId > 0 && !access.isLoading });
   const [question, setQuestion] = useState<string>(isArabic ? examples[4][1] : examples[4][0]);
   const [result, setResult] = useState<ReturnType<typeof askClinicBrain> | null>(null);
-  useEffect(() => {
-    setQuestion((current) => {
-      const matchingExample = examples.find(([en, ar]) => current === en || current === ar);
-      return matchingExample
-        ? matchingExample[isArabic ? 1 : 0]
-        : current;
-    });
-  }, [isArabic]);
   function ask() { if (query.data) setResult(askClinicBrain(question, query.data)); }
   if (clinicLoading || access.isLoading || query.isLoading) return <div className="p-12 text-center">{text("Loading Panthera intelligence...", "جارٍ تحميل ذكاء بانثيرا...")}</div>;
   if (query.error || !query.data) return <div className="rounded-2xl bg-red-50 p-6 text-red-700">{query.error instanceof Error ? query.error.message : text("Could not load data.", "تعذر تحميل البيانات.")}</div>;

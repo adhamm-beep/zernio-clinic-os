@@ -6,6 +6,13 @@ import {
 } from "@/lib/reports/daily-management-report";
 import { buildExecutiveDailySummaryPdf } from "@/lib/reports/executive-daily-summary-pdf";
 import { buildExecutiveDailyExceptionsWorkbook } from "@/lib/reports/executive-daily-exceptions-workbook";
+import { authorizeAnyPermission } from "@/lib/security/authorization";
+import {
+  isTrustedBrowserRequest,
+  rateLimit,
+  readJsonWithLimit,
+  RequestValidationError,
+} from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -86,6 +93,10 @@ function fileResponse(content: Buffer, contentType: string, filename: string, in
 
 export async function GET(request: NextRequest) {
   try {
+    const authorization = await authorizeAnyPermission(["reports.view", "reports.export"]);
+    if (!authorization.allowed) {
+      return NextResponse.json({ error: authorization.error }, { status: authorization.status });
+    }
     const date = validDate(request.nextUrl.searchParams.get("date"));
     const kind = request.nextUrl.searchParams.get("kind") ?? "data";
     const data = await loadDailyReportData(date);
@@ -117,14 +128,40 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { date?: string; kind?: "summary" | "exceptions" };
-    const date = validDate(body.date ?? null);
+    if (!isTrustedBrowserRequest(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const authorization = await authorizeAnyPermission(["reports.export"]);
+    if (!authorization.allowed) {
+      return NextResponse.json({ error: authorization.error }, { status: authorization.status });
+    }
+    try {
+      const limit = await rateLimit(`reports:email:${authorization.userId}`, 10, 60 * 60_000);
+      if (!limit.allowed) {
+        return NextResponse.json(
+          { error: "Too many report requests" },
+          { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "Security service is temporarily unavailable" }, { status: 503 });
+    }
+    let body: { date?: unknown; kind?: unknown };
+    try {
+      body = await readJsonWithLimit(request, 8_192);
+    } catch (error) {
+      const status = error instanceof RequestValidationError ? error.status : 400;
+      return NextResponse.json({ error: "Invalid report request" }, { status });
+    }
+    const requestedKind = body.kind === "exceptions" ? "exceptions" : "summary";
+    const requestedDate = typeof body.date === "string" ? body.date : null;
+    const date = validDate(requestedDate);
     const recipient = process.env.DAILY_REPORT_RECIPIENT;
     if (!recipient) {
       return NextResponse.json({ error: "Daily report recipient is not configured" }, { status: 503 });
     }
     const data = await loadDailyReportData(date);
-    if (body.kind === "exceptions") {
+    if (requestedKind === "exceptions") {
       const content = await buildExecutiveDailyExceptionsWorkbook(data);
       const id = await sendReportEmail({
         to: recipient,

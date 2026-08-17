@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { loadDailyReportData, sendReportEmail } from "@/lib/reports/daily-management-report";
 import { buildExecutiveDailySummaryPdf } from "@/lib/reports/executive-daily-summary-pdf";
+import { hasValidBearerSecret, readJsonWithLimit } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -10,21 +11,28 @@ async function handle(request: NextRequest) {
     if (!secret) {
       return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 503 });
     }
-    if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    if (!hasValidBearerSecret(request, secret)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => ({}))) as { date?: string; to?: string };
+    const body = request.method === "POST"
+      ? await readJsonWithLimit<{ date?: unknown; to?: unknown }>(request, 8_192)
+      : {};
+    const bodyDate = typeof body.date === "string" ? body.date : undefined;
+    const bodyTo = typeof body.to === "string" ? body.to : undefined;
     const date =
-      body.date ??
+      bodyDate ??
       request.nextUrl.searchParams.get("date") ??
       new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh" }).format(new Date());
     const to =
-      body.to ??
+      bodyTo ??
       request.nextUrl.searchParams.get("to") ??
       process.env.DAILY_REPORT_RECIPIENT;
     if (!to) {
       return NextResponse.json({ error: "Recipient is not configured" }, { status: 400 });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\S+@\S+\.\S+$/.test(to) || to.length > 254) {
+      return NextResponse.json({ error: "Invalid report date or recipient" }, { status: 400 });
     }
 
     const data = await loadDailyReportData(date);

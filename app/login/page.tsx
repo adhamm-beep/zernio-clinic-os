@@ -32,6 +32,7 @@ export default function LoginPage() {
       });
       const result = (await response.json()) as {
         success?: boolean;
+        requiresMfa?: boolean;
         error?: string;
       };
 
@@ -41,7 +42,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(result.requiresMfa ? "/mfa?next=%2Fdashboard" : "/dashboard");
       router.refresh();
     } catch (error) {
       setMessage(

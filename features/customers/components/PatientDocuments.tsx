@@ -10,6 +10,10 @@ import { createPatientDocument, getPatientDocuments, setPatientDocumentVisibilit
 
 const labels: Record<string, string> = { prescription: "وصفة علاجية", quotation: "عرض سعر", patient_form: "نموذج مريض", clinical_note: "ملاحظة سريرية", patient_link: "رابط مريض", attachment: "ملف مرفق" };
 const safe = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
+const safeFontFamily = (value: string | null | undefined) => {
+  const normalized = value?.trim();
+  return normalized && /^[\w\s,'"-]{1,80}$/u.test(normalized) ? normalized : "Arial";
+};
 
 export default function PatientDocuments({ customerId, clinicId, branchId }: { customerId: number; clinicId: number; branchId: number }) {
   const access = usePermissionAccess();
@@ -34,8 +38,10 @@ export default function PatientDocuments({ customerId, clinicId, branchId }: { c
     const print = settings.data;
     const margins = [print?.print_margin_top_mm ?? 8, print?.print_margin_right_mm ?? 8, print?.print_margin_bottom_mm ?? 8, print?.print_margin_left_mm ?? 8];
     const watermark = print?.print_watermark ? `<div class="mark">${safe(print.print_watermark)}</div>` : "";
-    popup.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${safe(document.title)}</title><style>@page{size:${print?.print_page_size ?? "A4"} ${print?.print_orientation ?? "portrait"};margin:${margins[0]}mm ${margins[1]}mm ${margins[2]}mm ${margins[3]}mm}body{font-family:${print?.print_font_family ?? "Arial"};color:#0f172a;${print?.print_grayscale ? "filter:grayscale(1);" : ""}}header{border-bottom:3px solid #06b6d4;padding-bottom:14px}.mark{position:fixed;inset:40% 0;text-align:center;font-size:64px;opacity:.08;transform:rotate(-25deg)}main{white-space:pre-wrap;line-height:2;margin-top:28px}.amount{font-size:22px;font-weight:bold;color:#047857}</style></head><body>${watermark}<header><h1>${print?.invoice_header ? safe(print.invoice_header) : "Panthera"}</h1><b>${safe(labels[document.document_type] ?? document.document_type)} — ${safe(document.title)}</b>${print?.print_show_date !== false ? `<p>${new Date(document.created_at).toLocaleString("ar-SA-u-nu-latn")}</p>` : ""}</header><main>${safe(document.content ?? "")}</main>${document.amount != null ? `<p class="amount">${Number(document.amount).toLocaleString("en-US")} ر.س</p>` : ""}${print?.invoice_footer ? `<footer>${safe(print.invoice_footer)}</footer>` : ""}<script>window.onload=()=>window.print()</script></body></html>`);
+    popup.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${safe(document.title)}</title><style>@page{size:${print?.print_page_size ?? "A4"} ${print?.print_orientation ?? "portrait"};margin:${margins[0]}mm ${margins[1]}mm ${margins[2]}mm ${margins[3]}mm}body{font-family:${safeFontFamily(print?.print_font_family)};color:#0f172a;${print?.print_grayscale ? "filter:grayscale(1);" : ""}}header{border-bottom:3px solid #06b6d4;padding-bottom:14px}.mark{position:fixed;inset:40% 0;text-align:center;font-size:64px;opacity:.08;transform:rotate(-25deg)}main{white-space:pre-wrap;line-height:2;margin-top:28px}.amount{font-size:22px;font-weight:bold;color:#047857}</style></head><body>${watermark}<header><h1>${print?.invoice_header ? safe(print.invoice_header) : "Panthera"}</h1><b>${safe(labels[document.document_type] ?? document.document_type)} — ${safe(document.title)}</b>${print?.print_show_date !== false ? `<p>${new Date(document.created_at).toLocaleString("ar-SA-u-nu-latn")}</p>` : ""}</header><main>${safe(document.content ?? "")}</main>${document.amount != null ? `<p class="amount">${Number(document.amount).toLocaleString("en-US")} ر.س</p>` : ""}${print?.invoice_footer ? `<footer>${safe(print.invoice_footer)}</footer>` : ""}</body></html>`);
     popup.document.close();
+    popup.focus();
+    window.setTimeout(() => popup.print(), 250);
   }
 
   if (!access.isLoading && !access.can("patient_documents.view", "patient_documents.create", "patient_documents.manage", "customers.manage", "medical.view")) return null;

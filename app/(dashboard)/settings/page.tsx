@@ -13,6 +13,7 @@ type SettingsModule = {
 };
 
 const modules: SettingsModule[] = [
+  {title:"Security & MFA",titleAr:"الأمان والمصادقة متعددة العوامل",description:"Manage authentication devices and protect sensitive access.",descriptionAr:"إدارة أجهزة المصادقة وحماية الوصول إلى الصفحات الحساسة.",href:"/settings/security",permissions:["settings.view","settings.manage","users.manage"]},
   {title:"Operations & integrations",titleAr:"التشغيل والربط والطباعة",description:"Manage templates, communication channels, process rules and invoice printing.",descriptionAr:"إدارة قوالب الرسائل وقنوات التواصل وقواعد التشغيل وتنسيق طباعة الفواتير.",href:"/settings/operations",permissions:["settings.templates.manage","settings.integrations.manage","settings.processes.manage","settings.print.manage","settings.manage"]},
   {title:"Patient catalogs",titleAr:"علامات المرضى والإحالات",description:"Manage patient tags, colors and referral sources.",descriptionAr:"إدارة علامات المرضى وألوانها ومصادر الإحالة من مكان مركزي.",href:"/settings/patient-catalogs",permissions:["patient_catalogs.manage","settings.manage"]},
   {

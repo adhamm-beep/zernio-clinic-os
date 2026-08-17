@@ -1,9 +1,27 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { permissionsForPath } from "@/lib/access/permission-routes";
+import { isBearerRoute, isPublicRoute, isServiceRoute } from "@/lib/security/route-policy";
+import { requiresMfa } from "@/lib/security/mfa-policy";
+
+function contentSecurityPolicy(nonce: string) {
+  const developmentEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+  const upgrade = process.env.NODE_ENV === "production" ? "; upgrade-insecure-requests" : "";
+  return `default-src 'self'; base-uri 'self'; form-action 'self' https://*.moyasar.com; frame-ancestors 'none'; frame-src 'self' blob:; object-src 'none'; img-src 'self' blob: data: https://*.supabase.co; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentEval}; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.moyasar.com${upgrade}`;
+}
+
+function secure(response: NextResponse, csp: string) {
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
+}
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const nonce = btoa(crypto.randomUUID());
+  const csp = contentSecurityPolicy(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +35,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
@@ -28,16 +46,12 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub);
-  const publicRoutes = [
-    "/login", "/forgot-password", "/reset-password", "/privacy", "/terms", "/account-deletion", "/api/auth/login",
-    "/auth/callback",
-    "/api/auth/forgot-password",
-    "/api/payments/moyasar/callback", "/api/payments/moyasar/return", "/api/health",
-  ];
-  const isPublicAuthRoute = publicRoutes.includes(request.nextUrl.pathname);
+  const isPublicAuthRoute = isPublicRoute(request.nextUrl.pathname);
+  const isTrustedServiceRoute = isServiceRoute(request.nextUrl.pathname);
+  const isBearerAuthenticatedRoute = isBearerRoute(request.nextUrl.pathname);
   const isLoginRoute = request.nextUrl.pathname === "/login";
 
-  if (!isAuthenticated && !isPublicAuthRoute) {
+  if (!isAuthenticated && !isPublicAuthRoute && !isTrustedServiceRoute && !isBearerAuthenticatedRoute) {
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -66,6 +80,15 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  if (isAuthenticated && request.nextUrl.pathname !== "/mfa" && requiresMfa(request.nextUrl.pathname) && data?.claims?.aal !== "aal2") {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Multi-factor authentication is required", code: "MFA_REQUIRED" }, { status: 403 });
+    }
+    const mfaUrl = new URL("/mfa", request.url);
+    mfaUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(mfaUrl);
+  }
+
   const required = permissionsForPath(request.nextUrl.pathname);
   if (isAuthenticated && required) {
     const { data: allowed, error } = await supabase.rpc("has_any_hr_permission", { permission_codes: required });
@@ -81,7 +104,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return response;
+  return secure(response, csp);
 }
 
 export const config = {
