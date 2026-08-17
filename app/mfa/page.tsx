@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -36,12 +35,14 @@ export default function MfaPage() {
         setLoading(false);
         return;
       }
-      const existing = factors?.all.find((factor) => factor.factor_type === "totp");
+      const existing = factors?.all.find((factor) => factor.factor_type === "totp" && factor.status === "verified");
       if (existing) {
         setFactorId(existing.id);
         setLoading(false);
         return;
       }
+      const incomplete = factors?.all.filter((factor) => factor.factor_type === "totp" && factor.status !== "verified") ?? [];
+      await Promise.all(incomplete.map((factor) => supabase.auth.mfa.unenroll({ factorId: factor.id })));
       setLoading(false);
     })();
     return () => { active = false; };
@@ -82,7 +83,9 @@ export default function MfaPage() {
       <p className="mt-2 text-sm leading-6 text-slate-600">مطلوب لحماية الإدارة والمالية والتقارير الحساسة.</p>
       {!loading && !factorId && <button type="button" onClick={beginEnrollment} className="mt-6 w-full rounded-xl bg-cyan-600 px-4 py-3 font-bold text-white hover:bg-cyan-700">بدء تفعيل تطبيق المصادقة</button>}
       {qrCode && <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-center">
-        <Image src={qrCode} alt="رمز تفعيل تطبيق المصادقة" width={220} height={220} unoptimized className="mx-auto rounded-xl" />
+        {/* Supabase returns the TOTP QR as an inline SVG data URL, which must be rendered directly. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={qrCode} alt="رمز تفعيل تطبيق المصادقة" width={220} height={220} className="mx-auto rounded-xl" />
         <p className="mt-3 text-xs text-slate-500">امسح الرمز باستخدام Google Authenticator أو Microsoft Authenticator.</p>
         {secret && <code className="mt-2 block break-all rounded-lg bg-white p-2 text-xs" dir="ltr">{secret}</code>}
       </div>}

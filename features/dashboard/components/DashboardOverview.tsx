@@ -61,6 +61,9 @@ export default function DashboardOverview() {
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const canManage = usePermission("appointments.manage").allowed;
+  const canViewDashboardAppointments = usePermission("dashboard.appointments.view").allowed;
+  const canViewDashboardInvoices = usePermission("dashboard.invoices.view").allowed;
+  const canViewDashboardSummary = usePermission("dashboard.summary.view").allowed;
   const cardAppointmentUpdate = useUpdateAppointment();
   const confirmAppointmentCard = async (id:number) => {
     await cardAppointmentUpdate.mutateAsync({id,status:"confirmed"});
@@ -77,6 +80,19 @@ export default function DashboardOverview() {
     useState<Appointment | null>(null);
   const [tab, setTab] = useState<"home" | "payments" | "summary">("home");
   const [clock, setClock] = useState<Date | null>(null);
+  useEffect(() => {
+    if (!canViewDashboardAppointments && !canViewDashboardInvoices && !canViewDashboardSummary) return;
+    const timer = window.setTimeout(() => {
+      if (tab === "home" && !canViewDashboardAppointments) {
+        setTab(canViewDashboardInvoices ? "payments" : "summary");
+      } else if (tab === "payments" && !canViewDashboardInvoices) {
+        setTab(canViewDashboardAppointments ? "home" : "summary");
+      } else if (tab === "summary" && !canViewDashboardSummary) {
+        setTab(canViewDashboardAppointments ? "home" : "payments");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canViewDashboardAppointments, canViewDashboardInvoices, canViewDashboardSummary, tab]);
   useEffect(() => {
     const initial = window.setTimeout(() => setClock(new Date()), 0);
     const timer = window.setInterval(() => setClock(new Date()), 1000);
@@ -218,34 +234,39 @@ export default function DashboardOverview() {
         : "Service";
   };
   const busy = appointmentsQuery.isFetching || paymentsQuery.isFetching;
+  const canViewActiveTab = tab === "home"
+    ? canViewDashboardAppointments
+    : tab === "payments"
+      ? canViewDashboardInvoices
+      : canViewDashboardSummary;
   return (
     <div
       className="panthera-animated-page -m-3 min-h-[calc(100vh-60px)] text-[12px] md:-m-4"
       dir={isArabic ? "rtl" : "ltr"}
     >
       <div className="border-b border-white/70 bg-white/65 px-3 py-2 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-3xl grid-cols-3 gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 text-center shadow-inner">
-          <button
+        <div className="mx-auto flex max-w-3xl gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 text-center shadow-inner">
+          {canViewDashboardAppointments && <button
             onClick={() => setTab("home")}
             className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "home" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CalendarDays className="me-1 inline size-4" />
             اللوحة الرئيسية
-          </button>
-          <button
+          </button>}
+          {canViewDashboardInvoices && <button
             onClick={() => setTab("payments")}
             className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "payments" ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CircleDollarSign className="me-1 inline size-4" />
             المدفوعات
-          </button>
-          <button
+          </button>}
+          {canViewDashboardSummary && <button
             onClick={() => setTab("summary")}
             className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "summary" ? "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <BarChart3 className="me-1 inline size-4" />
             ملخص
-          </button>
+          </button>}
         </div>
       </div>
       <div className="mx-auto max-w-[1800px] space-y-2 p-2">
@@ -308,7 +329,11 @@ export default function DashboardOverview() {
             className="w-full outline-none"
           />
         </label>
-        {tab === "summary" ? (
+        {!canViewActiveTab ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center font-bold text-amber-900">
+            {isArabic ? "لا توجد تفاصيل مفعلة لك داخل لوحة التحكم." : "No dashboard details are enabled for your account."}
+          </div>
+        ) : tab === "summary" ? (
           <SummaryPanel
             appointments={appointments}
             payments={payments}

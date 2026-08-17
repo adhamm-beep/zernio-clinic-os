@@ -5,6 +5,7 @@ import { useState } from "react";
 import RealtimeDataSync from "@/components/RealtimeDataSync";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import SystemTranslationBridge from "@/components/SystemTranslationBridge";
+import UserActivityTracker from "@/components/UserActivityTracker";
 
 export default function Providers({
   children,
@@ -29,6 +30,7 @@ export default function Providers({
       <LocaleProvider>
         <SystemTranslationBridge />
         <RealtimeDataSync />
+        <UserActivityTracker />
         {children}
       </LocaleProvider>
     </QueryClientProvider>

@@ -45,6 +45,10 @@ export default function InventoryDashboard() {
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
   const canManage = usePermission("inventory.manage").allowed;
+  const canManageProducts = usePermission("inventory.products.manage").allowed || canManage;
+  const canAdjustStock = usePermission("inventory.stock.adjust").allowed || canManage;
+  const canManageSuppliers = usePermission("inventory.suppliers.manage").allowed || canManage;
+  const canManageOrders = usePermission("inventory.purchase_orders.manage").allowed || canManage;
   const canViewCosts =
     usePermission("inventory.cost.view").allowed || canManage;
   const { data, isLoading, error, refetch, isFetching } = useInventory(
@@ -58,8 +62,8 @@ export default function InventoryDashboard() {
   const [message, setMessage] = useState("");
   const [today] = useState(() => Date.now());
 
-  async function run(action: () => Promise<unknown>, success: string) {
-    if (!canManage) {
+  async function run(action: () => Promise<unknown>, success: string, allowed = canManage) {
+    if (!allowed) {
       setMessage("هذه العملية غير متوفرة لك حسب صلاحيات حسابك.");
       return;
     }
@@ -94,7 +98,7 @@ export default function InventoryDashboard() {
           phone: String(form.get("phone") || ""),
           email: String(form.get("email") || ""),
         }),
-      "Supplier added.",
+      "Supplier added.", canManageSuppliers,
     );
     element.reset();
   }
@@ -136,7 +140,7 @@ export default function InventoryDashboard() {
             notes: "Opening stock",
           });
       }
-    }, "Product added.");
+    }, "Product added.", canManageProducts);
     element.reset();
   }
 
@@ -157,7 +161,7 @@ export default function InventoryDashboard() {
           service_id: Number(form.get("service")) || null,
           notes: String(form.get("notes") || "") || null,
         }),
-      "Stock movement recorded.",
+      "Stock movement recorded.", canAdjustStock,
     );
     element.reset();
   }
@@ -186,7 +190,7 @@ export default function InventoryDashboard() {
             },
           ],
         }),
-      "Purchase order created.",
+      "Purchase order created.", canManageOrders,
     );
     element.reset();
   }
@@ -309,7 +313,7 @@ export default function InventoryDashboard() {
         id="products"
         className="scroll-mt-24 grid gap-6 xl:grid-cols-[1fr_1.5fr]"
       >
-        {canManage && <form
+        {canManageProducts && <form
           onSubmit={createProduct}
           className="space-y-3 rounded-2xl border bg-white p-6 shadow-sm"
         >
@@ -411,7 +415,7 @@ export default function InventoryDashboard() {
         id="consumption"
         className="scroll-mt-24 grid gap-6 xl:grid-cols-[1fr_1.5fr]"
       >
-        {canManage && <form
+        {canAdjustStock && <form
           onSubmit={createMovement}
           className="space-y-3 rounded-2xl border bg-white p-6 shadow-sm"
         >
@@ -507,7 +511,7 @@ export default function InventoryDashboard() {
         id="suppliers"
         className="scroll-mt-24 grid gap-6 lg:grid-cols-2"
       >
-        {canManage && <form
+        {canManageSuppliers && <form
           onSubmit={createSupplier}
           className="space-y-3 rounded-2xl border bg-white p-6 shadow-sm"
         >
@@ -537,7 +541,7 @@ export default function InventoryDashboard() {
         id="orders"
         className="scroll-mt-24 grid gap-6 xl:grid-cols-[1fr_1.5fr]"
       >
-        {canManage && <form
+        {canManageOrders && <form
           onSubmit={createOrder}
           className="space-y-3 rounded-2xl border bg-white p-6 shadow-sm"
         >
@@ -611,7 +615,7 @@ export default function InventoryDashboard() {
                     {date(order.expected_at)}
                   </p>
                 </div>
-                {canManage && order.status !== "received" &&
+                {canManageOrders && order.status !== "received" &&
                   order.status !== "cancelled" && (
                     <Button
                       size="sm"
@@ -625,7 +629,7 @@ export default function InventoryDashboard() {
                               branch_id: branchId,
                               items: order.items ?? [],
                             }),
-                          "Delivery received and stock updated.",
+                          "Delivery received and stock updated.", canManageOrders,
                         )
                       }
                     >
