@@ -28,6 +28,7 @@
     "features/**/*.tsx",
     "lib/**/*.ts",
     "lib/**/*.tsx",
+    "types/**/*.d.ts",
     "proxy.ts",
     "next.config.ts"
   ],
