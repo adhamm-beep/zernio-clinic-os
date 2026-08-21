@@ -1,0 +1,22 @@
+[Unit]
+Description=Panthera encrypted external backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=panthera-backup
+Group=panthera-backup
+WorkingDirectory=/opt/panthera-clinic-os
+EnvironmentFile=/etc/panthera-backup.env
+Environment=RCLONE_CONFIG=/etc/rclone/panthera-backup.conf
+ExecStart=/usr/bin/npm run backup:external
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/panthera-backup
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

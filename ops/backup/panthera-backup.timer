@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Panthera external backup every day
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 Asia/Riyadh
+Persistent=true
+RandomizedDelaySec=10m
+Unit=panthera-backup.service
+
+[Install]
+WantedBy=timers.target

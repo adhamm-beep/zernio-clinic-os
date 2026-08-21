@@ -112,3 +112,9 @@ google-service-account*.json
 .codex-status*
 .codex-vercel-*
 .inspect-*.png
+
+# External backup runtime data and credentials
+ops/backup/.env
+ops/backup/*.conf
+ops/backup/*.secret
+backups/
