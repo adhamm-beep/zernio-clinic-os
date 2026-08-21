@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import SaudiMoney from "@/components/SaudiMoney";
 import { Input } from "@/components/ui/input";
+import { useLocale } from "@/components/LocaleProvider";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
 import { useMasterData } from "@/features/appointments/hooks/useMasterData";
 import { usePermission } from "@/features/users/hooks/usePermission";
@@ -41,6 +42,7 @@ function date(value: string | null) {
 }
 
 export default function InventoryDashboard() {
+  const { text, isArabic } = useLocale();
   const { clinic, selectedBranch, isLoading: clinicLoading } = useClinic();
   const clinicId = clinic?.id ?? 0;
   const branchId = selectedBranch?.id ?? 0;
@@ -240,14 +242,13 @@ export default function InventoryDashboard() {
     master?.serviceVariants.filter((item) => item.is_active) ?? [];
 
   return (
-    <div className="space-y-7" dir="rtl">
+    <div className="space-y-7" dir={isArabic ? "rtl" : "ltr"}>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-cyan-700">إدارة المخزون</p>
-          <h1 className="mt-1 text-3xl font-black">مركز تشغيل المخزون</h1>
+          <p className="text-sm font-semibold text-cyan-700">{text("Inventory management", "إدارة المخزون")}</p>
+          <h1 className="mt-1 text-3xl font-black">{text("Inventory operations center", "مركز تشغيل المخزون")}</h1>
           <p className="mt-2 text-slate-500">
-            المنتجات والموردون والمشتريات والاستلام والصلاحية والاستهلاك
-            العلاجي.
+            {text("Products, suppliers, purchasing, receiving, expiry and clinical consumption.", "المنتجات والموردون والمشتريات والاستلام والصلاحية والاستهلاك العلاجي.")}
           </p>
         </div>
         <Button
@@ -255,7 +256,7 @@ export default function InventoryDashboard() {
           onClick={() => void refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={isFetching ? "animate-spin" : ""} /> تحديث
+          <RefreshCw className={isFetching ? "animate-spin" : ""} /> {text("Refresh", "تحديث")}
         </Button>
       </header>
       {message && (
@@ -265,11 +266,11 @@ export default function InventoryDashboard() {
       )}
       <nav className="sticky top-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border bg-white/95 p-2 shadow-sm backdrop-blur">
         {[
-          ["نظرة عامة", "overview"],
-          ["المنتجات", "products"],
-          ["الاستهلاك والحركات", "consumption"],
-          ["الموردون", "suppliers"],
-          ["طلبات الشراء", "orders"],
+          [text("Overview", "نظرة عامة"), "overview"],
+          [text("Products", "المنتجات"), "products"],
+          [text("Consumption and movements", "الاستهلاك والحركات"), "consumption"],
+          [text("Suppliers", "الموردون"), "suppliers"],
+          [text("Purchase orders", "طلبات الشراء"), "orders"],
         ].map(([label, id]) => (
           <a
             key={id}
@@ -286,15 +287,15 @@ export default function InventoryDashboard() {
       >
         {[
           {
-            label: "المنتجات النشطة",
+            label: text("Active products", "المنتجات النشطة"),
             value: String(data.products.filter((i) => i.is_active).length),
             icon: Boxes,
           },
           ...(canViewCosts
-            ? [{ label: "قيمة المخزون", value: money(stockValue), icon: PackageCheck }]
+            ? [{ label: text("Inventory value", "قيمة المخزون"), value: money(stockValue), icon: PackageCheck }]
             : []),
-          { label: "منخفض المخزون", value: String(lowStock.length), icon: AlertTriangle },
-          { label: "تنتهي خلال 90 يومًا", value: String(expiring.length), icon: Barcode },
+          { label: text("Low stock", "منخفض المخزون"), value: String(lowStock.length), icon: AlertTriangle },
+          { label: text("Expiring within 90 days", "تنتهي خلال 90 يومًا"), value: String(expiring.length), icon: Barcode },
         ].map(({label, value, icon: Icon}) => {
           const I = Icon;
           return (

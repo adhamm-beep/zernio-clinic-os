@@ -20,7 +20,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import QRCode from "react-native-qrcode-svg";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import pantheraBrand from "./assets/panthera-brand-transparent.png";
@@ -48,6 +48,7 @@ import {
   loadPatientResults,
   loadPatientDocuments,
   loadProviderServices,
+  markPatientMessagesRead,
   markPatientNotificationsRead,
   openGoogleReview,
   requestAppointmentAction,
@@ -4213,6 +4214,18 @@ function Concierge({
     [message, setMessage] = useState(""),
     [name, setName] = useState(""),
     [busy, setBusy] = useState(false);
+  const orderedMessages = [...data.messages].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  const unreadReplyIds = data.messages
+    .filter((item) => item.sender !== "patient" && !item.isRead)
+    .map((item) => item.id)
+    .join(",");
+
+  useEffect(() => {
+    if (!unreadReplyIds) return;
+    void markPatientMessagesRead().catch(() => undefined);
+  }, [unreadReplyIds]);
   const run = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true);
     try {
@@ -4517,6 +4530,140 @@ function Concierge({
         {ar ? "راسل فريق الرعاية" : "Message the care team"}
       </Text>
       <View style={{ backgroundColor: "#fff", borderRadius: 22, padding: 16 }}>
+        <View
+          style={{
+            backgroundColor: "#F4F8FA",
+            borderColor: colors.border,
+            borderRadius: 18,
+            borderWidth: 1,
+            marginBottom: 14,
+            padding: 12,
+          }}
+        >
+          <View
+            style={{
+              alignItems: "center",
+              flexDirection: ar ? "row-reverse" : "row",
+              gap: 8,
+              marginBottom: 10,
+            }}
+          >
+            <Icon name="chatbubbles" color={colors.cyan} size={20} />
+            <Text style={[s.cardTitle, ar && { textAlign: "right" }]}>
+              {ar ? "محادثة دعم بانثيرا" : "Panthera support conversation"}
+            </Text>
+          </View>
+          {orderedMessages.length ? (
+            <ScrollView
+              nestedScrollEnabled
+              style={{ maxHeight: 340 }}
+              contentContainerStyle={{ gap: 10, paddingVertical: 2 }}
+            >
+              {orderedMessages.map((item) => {
+                const mine = item.sender === "patient";
+                return (
+                  <View
+                    key={item.id}
+                    style={{
+                      alignSelf: mine ? "flex-end" : "flex-start",
+                      backgroundColor: mine ? colors.navy : "#E1F4F6",
+                      borderColor: mine ? colors.navy : "#B8E1E5",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      maxWidth: "88%",
+                      paddingHorizontal: 13,
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: mine ? "#BFEAF0" : colors.cyan,
+                        fontSize: 11,
+                        fontWeight: "900",
+                        marginBottom: 4,
+                        textAlign: ar ? "right" : "left",
+                      }}
+                    >
+                      {mine
+                        ? ar
+                          ? "أنت"
+                          : "You"
+                        : ar
+                          ? "فريق بانثيرا"
+                          : "Panthera team"}
+                    </Text>
+                    <Text
+                      style={{
+                        color: mine ? "#fff" : colors.text,
+                        fontSize: 15,
+                        lineHeight: 22,
+                        textAlign: ar ? "right" : "left",
+                      }}
+                    >
+                      {item.message}
+                    </Text>
+                    <Text
+                      style={{
+                        color: mine ? "#C8D8E0" : colors.muted,
+                        fontSize: 10,
+                        marginTop: 6,
+                        textAlign: ar ? "right" : "left",
+                      }}
+                    >
+                      {new Date(item.createdAt).toLocaleString(
+                        ar ? "ar-SA-u-nu-latn" : "en-SA",
+                      )}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <Text
+              style={[
+                s.cardMuted,
+                { paddingVertical: 18, textAlign: "center" },
+              ]}
+            >
+              {ar
+                ? "لا توجد رسائل بعد. اكتب استفسارك وسيظهر رد الفريق هنا."
+                : "No messages yet. Send a question and the team's reply will appear here."}
+            </Text>
+          )}
+        </View>
+        <View
+          style={{
+            backgroundColor: "#FFFFFF",
+            borderColor: colors.cyan,
+            borderRadius: 18,
+            borderWidth: 2,
+            marginBottom: 12,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              alignItems: "center",
+              backgroundColor: "#E7F6F8",
+              flexDirection: ar ? "row-reverse" : "row",
+              gap: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <Icon name="create-outline" color={colors.cyan} size={20} />
+            <Text
+              style={{
+                color: colors.navy,
+                flex: 1,
+                fontSize: 15,
+                fontWeight: "900",
+                textAlign: ar ? "right" : "left",
+              }}
+            >
+              {ar ? "اكتب رسالتك لفريق الدعم" : "Write a message to support"}
+            </Text>
+          </View>
         <TextInput
           value={message}
           onChangeText={setMessage}
@@ -4525,12 +4672,16 @@ function Concierge({
             ar ? "اكتبي سؤالك أو طلبك هنا…" : "Write your question or request…"
           }
           style={{
-            minHeight: 92,
+            minHeight: 118,
+            padding: 14,
+            fontSize: 16,
+            lineHeight: 23,
             textAlignVertical: "top",
             color: colors.text,
             textAlign: ar ? "right" : "left",
           }}
         />
+        </View>
         <TouchableOpacity
           disabled={busy || !message.trim()}
           onPress={() =>
@@ -4542,8 +4693,19 @@ function Concierge({
               ar ? "تم إرسال رسالتك" : "Your message was sent",
             )
           }
-          style={s.primary}
+          style={[
+            s.primary,
+            {
+              alignItems: "center",
+              flexDirection: ar ? "row-reverse" : "row",
+              gap: 8,
+              justifyContent: "center",
+              minHeight: 54,
+              opacity: busy || !message.trim() ? 0.55 : 1,
+            },
+          ]}
         >
+          <Icon name="send" color="#fff" size={19} />
           <Text style={s.primaryText}>
             {ar ? "إرسال للفريق" : "Send to care team"}
           </Text>
@@ -5246,23 +5408,17 @@ export default function App() {
         {tab !== "concierge" && tab !== "book" && tab !== "privacy" ? (
           <TouchableOpacity
             accessibilityLabel={
-              language === "ar" ? "مساعد بانثيرا" : "Panthera Concierge"
+              language === "ar" ? "دعم بانثيرا" : "Panthera Support"
             }
+            accessibilityRole="button"
+            activeOpacity={0.86}
             onPress={() => setTab("concierge")}
-            style={{
-              position: "absolute",
-              right: 22,
-              bottom: 96,
-              width: 52,
-              height: 52,
-              borderRadius: 19,
-              backgroundColor: colors.navy,
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 30,
-            }}
+            style={s.supportFab}
           >
-            <Icon name="sparkles" color="#fff" size={24} />
+            <Icon name="chatbubble-ellipses" color="#fff" size={21} />
+            <Text style={s.supportFabText} numberOfLines={1}>
+              {language === "ar" ? "دعم بانثيرا" : "Panthera Support"}
+            </Text>
           </TouchableOpacity>
         ) : null}
         <View style={s.nav}>
@@ -5293,6 +5449,31 @@ const s = StyleSheet.create({
   actionButtonText:{color:"white",fontWeight:"700",textAlign:"center"},
   safe: { flex: 1, backgroundColor: colors.canvas },
   content: { flex: 1 },
+  supportFab: {
+    position: "absolute",
+    right: 16,
+    bottom: 94,
+    minWidth: 132,
+    height: 50,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.navy,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    zIndex: 30,
+    elevation: 8,
+    shadowColor: "#061B25",
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  supportFabText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   page: { padding: 22, paddingTop: 24, paddingBottom: 42 },
   header: {
     flexDirection: "row",

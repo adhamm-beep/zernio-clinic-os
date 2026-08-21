@@ -14,6 +14,9 @@ export async function authorizeAnyPermission(
   if (claimsError || !claims?.claims?.sub) {
     return { allowed: false, status: 401, error: "Unauthorized" };
   }
+  if (claims.claims.aal !== "aal2") {
+    return { allowed: false, status: 403, error: "Multi-factor authentication is required." };
+  }
 
   const { data: allowed, error } = await supabase.rpc("has_any_hr_permission", {
     permission_codes: [...permissionCodes],

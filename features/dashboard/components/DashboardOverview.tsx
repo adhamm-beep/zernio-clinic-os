@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   BarChart3,
   CalendarDays,
   CircleDollarSign,
@@ -53,6 +54,23 @@ import {
   appointmentStatusLabelEn,
   appointmentStatusSolid,
 } from "@/features/appointments/appointment-status";
+
+const LATE_GRACE_MINUTES = 15;
+
+function getOperationalAppointmentStatus(
+  appointment: Appointment,
+  now: Date | null,
+): AppointmentStatus {
+  if (!now || !["booked", "confirmed", "late"].includes(appointment.status)) {
+    return appointment.status;
+  }
+  const minutesLate = Math.floor(
+    (now.getTime() - new Date(appointment.appointment_at).getTime()) / 60000,
+  );
+  if (minutesLate >= LATE_GRACE_MINUTES) return "no_show";
+  if (minutesLate >= 0) return "late";
+  return appointment.status;
+}
 
 export default function DashboardOverview() {
   const { isArabic } = useLocale();
@@ -182,7 +200,7 @@ export default function DashboardOverview() {
             (serviceFamily === "all" ||
               (x.service_id != null && serviceIds.includes(x.service_id))) &&
             (!search.trim() || patient.includes(search.trim().toLowerCase()))
-            && (!selectedStatuses.length || selectedStatuses.includes(x.status))
+            && (!selectedStatuses.length || selectedStatuses.includes(getOperationalAppointmentStatus(x, clock)))
           );
         })
         .sort(
@@ -197,6 +215,7 @@ export default function DashboardOverview() {
       serviceIds,
       search,
       selectedStatuses,
+      clock,
     ],
   );
   const payments = useMemo(
@@ -245,27 +264,27 @@ export default function DashboardOverview() {
       dir={isArabic ? "rtl" : "ltr"}
     >
       <div className="border-b border-white/70 bg-white/65 px-3 py-2 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 text-center shadow-inner">
+        <div className="mx-auto flex w-full max-w-5xl gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 text-center shadow-inner">
           {canViewDashboardAppointments && <button
             onClick={() => setTab("home")}
-            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "home" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+            className={`min-w-0 flex-1 rounded-xl px-3 py-2.5 font-black transition duration-300 ${tab === "home" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CalendarDays className="me-1 inline size-4" />
-            اللوحة الرئيسية
+            {isArabic ? "اللوحة الرئيسية" : "Dashboard"}
           </button>}
           {canViewDashboardInvoices && <button
             onClick={() => setTab("payments")}
-            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "payments" ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+            className={`min-w-0 flex-1 rounded-xl px-3 py-2.5 font-black transition duration-300 ${tab === "payments" ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <CircleDollarSign className="me-1 inline size-4" />
-            المدفوعات
+            {isArabic ? "المدفوعات" : "Payments"}
           </button>}
           {canViewDashboardSummary && <button
             onClick={() => setTab("summary")}
-            className={`rounded-xl py-2.5 font-black transition duration-300 ${tab === "summary" ? "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
+            className={`min-w-0 flex-1 rounded-xl px-3 py-2.5 font-black transition duration-300 ${tab === "summary" ? "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/20" : "text-slate-600 hover:bg-white hover:text-slate-950"}`}
           >
             <BarChart3 className="me-1 inline size-4" />
-            ملخص
+            {isArabic ? "ملخص" : "Summary"}
           </button>}
         </div>
       </div>
@@ -397,6 +416,10 @@ export default function DashboardOverview() {
                     `${x.customers?.first_name ?? ""} ${x.customers?.last_name ?? ""}`.trim() ||
                     "مريض";
                   const start = new Date(x.appointment_at);
+                  const displayStatus = getOperationalAppointmentStatus(x, clock);
+                  const minutesLate = displayStatus === "late" && clock
+                    ? Math.max(0, Math.floor((clock.getTime() - start.getTime()) / 60000))
+                    : 0;
                   const end = new Date(
                     start.getTime() +
                       (x.services?.duration_minutes ?? 30) * 60000,
@@ -415,7 +438,7 @@ export default function DashboardOverview() {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" ")setSelectedAppointment(x)}}
-                      className={`${appointmentStatusSolid[x.status]} group min-h-[108px] cursor-pointer overflow-visible rounded-xl p-3 text-right transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-lg`}
+                      className={`${appointmentStatusSolid[displayStatus]} group min-h-[108px] cursor-pointer overflow-visible rounded-xl p-3 text-right transition duration-300 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-lg`}
                     >
                       <div className="flex items-start justify-between">
                         <b className="text-base font-black">{customer}</b>
@@ -434,9 +457,20 @@ export default function DashboardOverview() {
                           {x.notes}
                         </p>
                       )}
+                      {displayStatus === "late" && (
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/40 bg-black/20 px-3 py-2 font-black text-white shadow-inner">
+                          <span className="flex items-center gap-2">
+                            <AlertTriangle className="size-5 animate-pulse" />
+                            {isArabic ? "برجاء التواصل لتأكيد الحضور" : "Please contact the patient to confirm attendance"}
+                          </span>
+                          <span className="rounded-lg bg-white px-2.5 py-1 text-orange-700">
+                            {isArabic ? `متأخر ${minutesLate} دقيقة` : `${minutesLate} min late`}
+                          </span>
+                        </div>
+                      )}
                       <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                        <span className="rounded-lg bg-white/20 px-3 py-1.5 text-base font-black">{isArabic?appointmentStatusLabelAr[x.status]:appointmentStatusLabelEn[x.status]}</span>
-                        {canConfirmAppointment(x.status)&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded-lg bg-white px-3 py-1.5 text-base font-black text-slate-900 disabled:opacity-40">{isArabic?"تأكيد الموعد":"Confirm appointment"}</button>}
+                        <span className="rounded-lg bg-white/20 px-3 py-1.5 text-base font-black">{isArabic?appointmentStatusLabelAr[displayStatus]:appointmentStatusLabelEn[displayStatus]}</span>
+                        {canConfirmAppointment(displayStatus)&&<button type="button" disabled={!canManage} onClick={(event)=>{event.stopPropagation();void (async()=>{try{await confirmAppointmentCard(x.id)}catch{}})()}} className="rounded-lg bg-white px-3 py-1.5 text-base font-black text-slate-900 disabled:opacity-40">{isArabic?"تأكيد الموعد":"Confirm appointment"}</button>}
                         {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.tags?.map(tag=><PatientCatalogBadge key={tag.id} name={tag.name} color={tag.color}/>)}
                         {(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source&&(
                           <PatientCatalogBadge prefix={isArabic?"إحالة":"Referral"} name={(customersQuery.data??[]).find(item=>item.id===x.customer_id)?.referral_source??""} color={referralCatalog.data?.find(item=>item.id===(customersQuery.data??[]).find(customer=>customer.id===x.customer_id)?.referral_source_id)?.color}/>

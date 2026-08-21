@@ -21,6 +21,11 @@ export default function UserActivityTracker() {
 
   useEffect(() => {
     if (!pathname || pathname === "/login" || pathname === "/unauthorized") return;
+    const storageKey = `panthera:audit:page:${pathname}`;
+    const previous = Number(window.sessionStorage.getItem(storageKey) || 0);
+    const now = Date.now();
+    if (now - previous < 2000) return;
+    window.sessionStorage.setItem(storageKey, String(now));
     sendActivity("page_view", pathname, document.title || pathname);
   }, [pathname]);
 

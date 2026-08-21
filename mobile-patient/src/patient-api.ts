@@ -647,3 +647,8 @@ export async function sendPatientMessage(
     .catch(() => null);
   return messageId;
 }
+
+export async function markPatientMessagesRead() {
+  const { error } = await supabase.rpc("patient_mark_messages_read");
+  if (error) throw new Error(message(error));
+}

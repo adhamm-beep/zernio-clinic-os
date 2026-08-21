@@ -1,15 +1,7 @@
-const MFA_PATHS = [
-  "/accounting",
-  "/enterprise",
-  "/reports",
-  "/settings/users",
-  "/settings/security",
-  "/api/admin/users",
-  "/api/admin/audit",
-  "/api/admin/mfa",
-  "/api/reports/daily",
-] as const;
-
 export function requiresMfa(pathname: string) {
-  return MFA_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  // Every authenticated employee session must reach AAL2. Public, scheduled,
+  // webhook and patient-bearer routes are excluded by the route policy before
+  // this function is evaluated. The enrollment page must remain reachable at
+  // AAL1 so a new employee can register their first factor.
+  return pathname !== "/mfa" && !pathname.startsWith("/mfa/");
 }

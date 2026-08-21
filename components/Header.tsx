@@ -22,7 +22,7 @@ const titles: Record<string, [string, string]> = {
   "follow-ups": ["Patient reminders", "تنبيهات المرضى"],
 };
 const arTerms: Record<string, string> = { requested:"بانتظار التأكيد",pending:"قيد الانتظار",confirmed:"مؤكد",booked:"محجوز",arrived:"تم تسجيل الوصول",completed:"مكتمل",cancelled:"ملغي",canceled:"ملغي",no_show:"لم يحضر",paid:"مدفوع",partially_paid:"مدفوع جزئيًا",unpaid:"غير مدفوع",refunded:"مسترد" };
-function localized(value:string,isArabic:boolean){const parts=value.split(/\s*(?:·|\|)\s*/u).map(x=>x.trim()).filter(Boolean);let output=value;if(parts.length>1){const ar=parts.find(x=>/[\u0600-\u06ff]/.test(x)),en=parts.find(x=>!/[\u0600-\u06ff]/.test(x));output=isArabic?(ar??parts[0]):(en??parts.at(-1)??value);}if(isArabic)for(const[term,label]of Object.entries(arTerms))output=output.replace(new RegExp(`\\b${term}\\b`,"gi"),label);return output;}
+function localized(value:string,isArabic:boolean){const parts=value.split(/\s*(?:·|\|)\s*/u).map(x=>x.trim()).filter(Boolean);let output=value;if(parts.length>1){const ar=parts.find(x=>/[\u0600-\u06ff]/.test(x)),en=parts.find(x=>!/[\u0600-\u06ff]/.test(x));output=isArabic?(ar??parts[0]):(en??parts.at(-1)??value);}if(!isArabic)return output;const exact:Record<string,string>={"new patient message":"رسالة جديدة من مريض","new payment":"دفعة جديدة","invoice required":"مطلوب إصدار فاتورة"};if(exact[output.toLowerCase()])return exact[output.toLowerCase()];let match=output.match(/^New message received from (.+)\.?$/i);if(match)return `تم استلام رسالة جديدة من ${match[1].replace(/\.$/,"")}.`;match=output.match(/^A payment of (?:SAR\s*)?([\d,.]+) was recorded for (.+)\.?$/i);if(match)return `تم تسجيل دفعة بقيمة ${match[1]} ر.س للعميل ${match[2].replace(/\.$/,"")}.`;match=output.match(/^(.+) for (.+) is complete and requires an invoice\.?$/i);if(match)return `اكتملت خدمة ${match[1]} للعميل ${match[2].replace(/\.$/,"")} وتحتاج إلى إصدار فاتورة.`;for(const[term,label]of Object.entries(arTerms))output=output.replace(new RegExp(`\\b${term}\\b`,"gi"),label);return output;}
 function hrefFor(item:{href:string|null;type:string}){if(item.href?.startsWith("/")&&!item.href.startsWith("//"))return item.href;const t=item.type.toLowerCase();if(/appointment|booking|request/.test(t))return"/appointments";if(/invoice|payment|billing/.test(t))return"/payments";if(/customer|patient/.test(t))return"/customers";if(/treatment|care/.test(t))return"/treatments";if(/follow/.test(t))return"/follow-ups";if(/inventory|stock/.test(t))return"/inventory";if(/marketing|lead|campaign/.test(t))return"/marketing";if(/message/.test(t))return"/messages";if(/task/.test(t))return"/tasks";if(/staff|employee|attendance|schedule/.test(t))return"/staff";return"/dashboard";}
 
 export default function Header(){
@@ -33,7 +33,26 @@ export default function Header(){
   const notifications=useQuery({queryKey:["staff-notifications",clinicId,branchId??"all"],queryFn:()=>getStaffNotifications(clinicId,branchId),enabled:clinicId>0,refetchInterval:10_000,refetchIntervalInBackground:true});
   const items=notifications.data??[],unread=items.filter(x=>!x.is_read).length,key=pathname.split("/").filter(Boolean)[0]??"dashboard",title=titles[key]??["Panthera","بانثيرا"];
   async function signOut(){await createClient().auth.signOut();router.replace("/login");router.refresh();}
-  async function openItem(item:(typeof items)[number]){if(!item.is_read)await readNotification(item.id);await qc.invalidateQueries({queryKey:["staff-notifications"]});setOpen(false);router.push(hrefFor(item));}
+  async function openItem(item:(typeof items)[number]){
+    if(!item.is_read)await readNotification(item.id);
+    await qc.invalidateQueries({queryKey:["staff-notifications"]});
+    setOpen(false);
+    let destination=hrefFor(item);
+    if(destination==="/messages"){
+      const db=createClient();
+      let messageQuery=db.from("patient_messages")
+        .select("customer_id")
+        .eq("clinic_id",clinicId)
+        .eq("sender_type","patient")
+        .lte("created_at",item.created_at)
+        .order("created_at",{ascending:false})
+        .limit(1);
+      if(item.branch_id)messageQuery=messageQuery.eq("branch_id",item.branch_id);
+      const{data}=await messageQuery.maybeSingle();
+      if(data?.customer_id)destination=`/messages?customer=${data.customer_id}`;
+    }
+    router.push(destination);
+  }
   async function readAll(){await readAllNotifications(clinicId);await qc.invalidateQueries({queryKey:["staff-notifications"]});}
   return <header className="sticky top-0 z-30 border-b border-white/70 bg-white/65 px-3 shadow-[0_10px_35px_-28px_rgba(15,23,42,.65)] backdrop-blur-2xl md:px-4" dir={isArabic?"rtl":"ltr"}>
     <div className="relative flex h-[68px] items-center gap-2 overflow-visible">

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import SaudiMoney from "@/components/SaudiMoney";
 import { Input } from "@/components/ui/input";
 import { useClinic } from "@/features/clinic/hooks/useClinic";
+import { useLocale } from "@/components/LocaleProvider";
 import { useMasterData } from "@/features/appointments/hooks/useMasterData";
 import { usePermissionAccess } from "@/features/users/hooks/usePermissionAccess";
 import {
@@ -47,6 +48,7 @@ function aiReply(name: string, service: string, status: string) {
   return `${hello} we are following up regarding ${service || "your inquiry"}. Reply here and our team will assist you.`;
 }
 export default function MarketingDashboard() {
+  const { isArabic, text } = useLocale();
   const access = usePermissionAccess();
   const canManage = access.can("marketing.manage");
   const canViewSpend = access.can("marketing.spend.view", "marketing.manage");
@@ -165,19 +167,19 @@ export default function MarketingDashboard() {
   if (cl || isLoading)
     return (
       <div className="rounded-2xl bg-white p-12 text-center">
-        جارٍ تحميل مركز التسويق...
+        {text("Loading Marketing Center...", "جارٍ تحميل مركز التسويق...")}
       </div>
     );
   if (!c || !b)
     return (
       <div className="rounded-2xl bg-amber-50 p-6">
-        اختر العيادة والفرع أولًا.
+        {text("Select a clinic and branch first.", "اختر العيادة والفرع أولًا.")}
       </div>
     );
   if (error || !data)
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
-        <strong>تعذر تحميل مركز التسويق.</strong>
+        <strong>{text("Marketing Center could not be loaded.", "تعذر تحميل مركز التسويق.")}</strong>
         <p>{error instanceof Error ? error.message : "Run Phase 7 SQL."}</p>
       </div>
     );
@@ -191,7 +193,7 @@ export default function MarketingDashboard() {
     active = data.campaigns.filter((x) => x.status === "active").length,
     queued = data.messages.filter((x) => x.status === "queued").length;
   return (
-    <div className="space-y-7" dir="rtl">
+    <div className="space-y-7" dir={isArabic ? "rtl" : "ltr"}>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wider text-fuchsia-700">

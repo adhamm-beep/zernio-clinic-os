@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check:mobile": "npm --prefix mobile-patient run typecheck && npx expo-doctor mobile-patient",
-    "test:security": "tsx --test tests/security/route-policy.test.ts",
+    "test:security": "node --experimental-strip-types --test tests/security/route-policy.test.ts",
     "check:release": "npm run lint && npm run typecheck && npm run test:security && npm run build && npm run check:mobile"
   },
   "dependencies": {

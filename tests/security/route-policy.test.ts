@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { permissionsForPath } from "../../lib/access/permission-routes";
-import { isBearerRoute, isPublicRoute, isServiceRoute } from "../../lib/security/route-policy";
-import { requiresMfa } from "../../lib/security/mfa-policy";
+import { permissionsForPath } from "../../lib/access/permission-routes.ts";
+import { isBearerRoute, isPublicRoute, isServiceRoute } from "../../lib/security/route-policy.ts";
+import { requiresMfa } from "../../lib/security/mfa-policy.ts";
 
 test("scheduled reports bypass session middleware only on exact secret-protected paths", () => {
   assert.equal(isServiceRoute("/api/admin/daily-reports/summary"), true);
@@ -32,11 +32,13 @@ test("sensitive employee APIs have permission gates", () => {
   assert.equal(permissionsForPath("/api/payments/moyasar/create"), null);
 });
 
-test("MFA is required for sensitive administration and finance paths", () => {
+test("MFA is required for every employee page and API", () => {
   assert.equal(requiresMfa("/accounting"), true);
   assert.equal(requiresMfa("/accounting/journal"), true);
   assert.equal(requiresMfa("/settings/users"), true);
   assert.equal(requiresMfa("/api/admin/users/invite"), true);
-  assert.equal(requiresMfa("/appointments"), false);
-  assert.equal(requiresMfa("/api/payments/moyasar/create"), false);
+  assert.equal(requiresMfa("/appointments"), true);
+  assert.equal(requiresMfa("/dashboard"), true);
+  assert.equal(requiresMfa("/api/audit/activity"), true);
+  assert.equal(requiresMfa("/mfa"), false);
 });

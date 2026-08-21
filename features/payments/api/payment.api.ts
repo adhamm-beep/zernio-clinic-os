@@ -88,7 +88,7 @@ export async function getPayments(clinicId?: number, branchId?: number): Promise
 
 export async function getPaymentById(id:number):Promise<Payment>{
   const payment=(await getPayments()).find(item=>item.id===id);
-  if(!payment)throw new Error("تعذر تحميل الفاتورة بعد إصدارها.");
+  if(!payment)throw new Error("Could not load the invoice after it was issued.");
   return payment;
 }
 
